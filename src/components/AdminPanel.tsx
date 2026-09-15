@@ -1,0 +1,644 @@
+import React, { useState } from 'react';
+import { 
+  ShieldCheck, 
+  UserCheck, 
+  UserX, 
+  Clock, 
+  Lock, 
+  FolderTree, 
+  History, 
+  Check, 
+  X, 
+  Filter, 
+  Search, 
+  AlertTriangle,
+  FolderLock,
+  UserCog,
+  CheckCircle2,
+  ChevronRight,
+  Palette
+} from 'lucide-react';
+import { 
+  UserProfile, 
+  UserRole, 
+  UserStatus, 
+  Folder, 
+  FolderPermission, 
+  PermissionLevel, 
+  AuditLog, 
+  Sector,
+  SiteBackgroundConfig,
+  AuthHeaderConfig
+} from '../types';
+import { BackgroundCustomizer } from './BackgroundCustomizer';
+import { AuthHeaderCustomizer } from './AuthHeaderCustomizer';
+import { DEFAULT_AUTH_HEADER_CONFIG } from '../lib/storage-service';
+
+interface AdminPanelProps {
+  currentUser: UserProfile;
+  profiles: UserProfile[];
+  folders: Folder[];
+  folderPermissions: FolderPermission[];
+  auditLogs: AuditLog[];
+  siteBackgroundConfig?: SiteBackgroundConfig;
+  authHeaderConfig?: AuthHeaderConfig;
+  initialTab?: 'pending' | 'matrix' | 'users' | 'audit' | 'appearance';
+  onApproveUser: (userId: string, role: UserRole) => void;
+  onRejectUser: (userId: string) => void;
+  onUpdateUserStatus: (userId: string, status: UserStatus) => void;
+  onUpdateUserRole: (userId: string, role: UserRole) => void;
+  onUpdateFolderPermission: (folderId: string, profileId: string, level: PermissionLevel | 'none') => void;
+  onUpdateSiteBackgroundConfig?: (config: SiteBackgroundConfig) => void;
+  onUpdateAuthHeaderConfig?: (config: AuthHeaderConfig) => void;
+  onAuditLog?: (details: Record<string, any>) => void;
+}
+
+export const AdminPanel: React.FC<AdminPanelProps> = ({
+  currentUser,
+  profiles,
+  folders,
+  folderPermissions,
+  auditLogs,
+  siteBackgroundConfig,
+  authHeaderConfig,
+  initialTab = 'pending',
+  onApproveUser,
+  onRejectUser,
+  onUpdateUserStatus,
+  onUpdateUserRole,
+  onUpdateFolderPermission,
+  onUpdateSiteBackgroundConfig,
+  onUpdateAuthHeaderConfig,
+  onAuditLog,
+}) => {
+  const [activeTab, setActiveTab] = useState<'pending' | 'matrix' | 'users' | 'audit' | 'appearance'>(initialTab);
+  const [appearanceSubTab, setAppearanceSubTab] = useState<'site-bg' | 'auth-header'>('site-bg');
+  const [selectedRoleForApproval, setSelectedRoleForApproval] = useState<Record<string, UserRole>>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [auditFilter, setAuditFilter] = useState<string>('ALL');
+
+  const pendingProfiles = profiles.filter(p => p.status === 'pending');
+  const activeProfiles = profiles.filter(p => p.status !== 'pending');
+
+  const getPermissionFor = (folderId: string, profileId: string): PermissionLevel | 'none' => {
+    const perm = folderPermissions.find(p => p.folder_id === folderId && p.profile_id === profileId);
+    return perm ? perm.permission_level : 'none';
+  };
+
+  const filteredLogs = auditLogs.filter(log => {
+    if (auditFilter !== 'ALL' && log.action !== auditFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return (
+        log.user_name.toLowerCase().includes(q) ||
+        log.action.toLowerCase().includes(q) ||
+        log.target_type.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-2">
+            <div className="p-2 bg-purple-100 rounded-lg text-purple-700">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-gray-900 tracking-tight">Painel de Governança & RBAC</h1>
+              <p className="text-sm text-gray-500">Controle de acessos, aprovações de novos funcionários e matriz de segurança por setor</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Status badges */}
+        <div className="flex items-center space-x-3 text-xs">
+          <div className="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg flex items-center space-x-2">
+            <Clock className="w-4 h-4 text-amber-600" />
+            <span><strong>{pendingProfiles.length}</strong> pendentes de homologação</span>
+          </div>
+          <div className="px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg flex items-center space-x-2">
+            <UserCheck className="w-4 h-4 text-blue-600" />
+            <span><strong>{profiles.filter(p => p.status === 'active').length}</strong> ativos</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs Navigation */}
+      <div className="flex border-b border-gray-200 space-x-8 mb-6 overflow-x-auto">
+        <button
+          id="tab-admin-pending"
+          onClick={() => setActiveTab('pending')}
+          className={`py-3 text-sm font-semibold border-b-2 flex items-center space-x-2 whitespace-nowrap transition-colors ${
+            activeTab === 'pending'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Solicitações Pendentes</span>
+          {pendingProfiles.length > 0 && (
+            <span className="px-2 py-0.5 text-xs bg-amber-500 text-white font-bold rounded-full">
+              {pendingProfiles.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          id="tab-admin-matrix"
+          onClick={() => setActiveTab('matrix')}
+          className={`py-3 text-sm font-semibold border-b-2 flex items-center space-x-2 whitespace-nowrap transition-colors ${
+            activeTab === 'matrix'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <FolderLock className="w-4 h-4" />
+          <span>Matriz de Permissões Granular</span>
+        </button>
+
+        <button
+          id="tab-admin-users"
+          onClick={() => setActiveTab('users')}
+          className={`py-3 text-sm font-semibold border-b-2 flex items-center space-x-2 whitespace-nowrap transition-colors ${
+            activeTab === 'users'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <UserCog className="w-4 h-4" />
+          <span>Equipe & Perfis Cadastrados</span>
+        </button>
+
+        <button
+          id="tab-admin-audit"
+          onClick={() => setActiveTab('audit')}
+          className={`py-3 text-sm font-semibold border-b-2 flex items-center space-x-2 whitespace-nowrap transition-colors ${
+            activeTab === 'audit'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          <span>Trilha de Auditoria</span>
+        </button>
+
+        <button
+          id="tab-admin-appearance"
+          onClick={() => setActiveTab('appearance')}
+          className={`py-3 text-sm font-semibold border-b-2 flex items-center space-x-2 whitespace-nowrap transition-colors ${
+            activeTab === 'appearance'
+              ? 'border-purple-600 text-purple-600 font-bold'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <Palette className="w-4 h-4 text-purple-600" />
+          <span>Aparência & Imagem de Fundo</span>
+          {siteBackgroundConfig?.enabled && (
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs" title="Fundo personalizado ativo" />
+          )}
+        </button>
+      </div>
+
+      {/* TAB 1: PENDING ACCESS REQUESTS */}
+      {activeTab === 'pending' && (
+        <div className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start space-x-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-900 leading-relaxed">
+              <strong className="font-bold">Diretriz de Segurança:</strong> Novos funcionários que se cadastram recebem status <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">status = 'pending'</code> na tabela <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">profiles</code> e ficam impossibilitados de visualizar pastas ou baixar documentos até que um Administrador aprove sua adesão e defina seu papel corporativo.
+            </div>
+          </div>
+
+          {pendingProfiles.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+              <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-gray-900">Nenhuma solicitação pendente</h3>
+              <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                Todos os cadastros foram homologados. Novas solicitações de acesso via tela de login aparecerão automaticamente aqui.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {pendingProfiles.map(profile => {
+                const chosenRole = selectedRoleForApproval[profile.id] || 'viewer';
+
+                return (
+                  <div key={profile.id} className="bg-white rounded-xl border border-amber-300 shadow-sm p-5 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-bl-lg">
+                      Aguardando Homologação
+                    </div>
+
+                    <div className="flex items-start space-x-3.5 mb-4">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-tr from-amber-500 to-orange-500 text-white font-black text-lg flex items-center justify-center shadow-xs shrink-0 border border-amber-200">
+                        {profile.avatar_url ? (
+                          <img 
+                            src={profile.avatar_url} 
+                            alt={profile.full_name} 
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          profile.full_name.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="pr-12">
+                        <h4 className="font-bold text-gray-900 text-sm leading-snug">{profile.full_name}</h4>
+                        <p className="text-xs text-gray-500">{profile.email}</p>
+                        <div className="flex items-center space-x-2 mt-1.5">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                            Setor: {profile.sector}
+                          </span>
+                          <span className="text-[11px] text-gray-400">
+                            Cadastrado em {new Date(profile.created_at).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-100">
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                        Definir Papel na Aprovação:
+                      </label>
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRoleForApproval(prev => ({ ...prev, [profile.id]: 'viewer' }))}
+                          className={`p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
+                            chosenRole === 'viewer'
+                              ? 'bg-gray-800 text-white border-gray-900'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          Leitor
+                          <span className="block text-[10px] opacity-75 font-normal">Apenas Leitura</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRoleForApproval(prev => ({ ...prev, [profile.id]: 'editor' }))}
+                          className={`p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
+                            chosenRole === 'editor'
+                              ? 'bg-blue-600 text-white border-blue-700'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          Editor
+                          <span className="block text-[10px] opacity-75 font-normal">Leitura + Upload</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRoleForApproval(prev => ({ ...prev, [profile.id]: 'admin' }))}
+                          className={`p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
+                            chosenRole === 'admin'
+                              ? 'bg-purple-600 text-white border-purple-700'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          Admin
+                          <span className="block text-[10px] opacity-75 font-normal">Controle Total</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <button
+                          id={`approve-user-${profile.id}`}
+                          onClick={() => onApproveUser(profile.id, chosenRole)}
+                          className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors shadow-2xs"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>Aprovar Solicitação</span>
+                        </button>
+
+                        <button
+                          id={`reject-user-${profile.id}`}
+                          onClick={() => onRejectUser(profile.id)}
+                          className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition-colors"
+                          title="Recusar cadastro"
+                        >
+                          <X className="w-4 h-4" />
+                          <span>Recusar</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: GRANULAR PERMISSIONS MATRIX (RBAC) */}
+      {activeTab === 'matrix' && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-gray-200 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <h3 className="font-bold text-sm text-gray-900">Matriz de Acessos por Pasta e Setor</h3>
+              <p className="text-xs text-gray-500">Defina o nível individual de permissão de cada colaborador em cada pasta do GED.</p>
+            </div>
+            <div className="flex items-center space-x-3 text-xs">
+              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-400"></span> <span>Nenhum</span></span>
+              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span> <span>Leitor</span></span>
+              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span> <span>Editor</span></span>
+              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span> <span>Admin</span></span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-100/70 border-b border-gray-200 text-gray-700">
+                  <th className="p-3 font-bold sticky left-0 bg-gray-100 min-w-[220px] z-10">Pasta / Setor</th>
+                  {activeProfiles.map(p => (
+                    <th key={p.id} className="p-3 font-semibold text-center min-w-[150px]">
+                      <div className="font-bold text-gray-900 truncate max-w-[140px] mx-auto">{p.full_name}</div>
+                      <div className="text-[10px] text-gray-500 font-normal">{p.sector} • {p.role}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {folders.map(folder => (
+                  <tr key={folder.id} className="hover:bg-gray-50/80 transition-colors">
+                    <td className="p-3 font-medium text-gray-900 sticky left-0 bg-white shadow-xs z-10">
+                      <div className="flex items-center space-x-2">
+                        <FolderTree className="w-4 h-4 text-blue-600 shrink-0" />
+                        <div>
+                          <span className="font-bold block text-xs">{folder.name}</span>
+                          <span className="text-[10px] text-gray-500">{folder.sector}</span>
+                        </div>
+                      </div>
+                    </td>
+
+                    {activeProfiles.map(profile => {
+                      const currentPerm = getPermissionFor(folder.id, profile.id);
+                      const isGlobalAdmin = profile.role === 'admin';
+
+                      return (
+                        <td key={profile.id} className="p-2.5 text-center">
+                          {isGlobalAdmin ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200" title="Acesso total herdado do papel de Administrador Global">
+                              Admin Total
+                            </span>
+                          ) : (
+                            <select
+                              value={currentPerm}
+                              onChange={(e) => onUpdateFolderPermission(folder.id, profile.id, e.target.value as any)}
+                              className={`text-xs rounded-md px-2 py-1 border font-medium outline-hidden transition-all ${
+                                currentPerm === 'admin'
+                                  ? 'bg-purple-50 text-purple-800 border-purple-300 font-bold'
+                                  : currentPerm === 'editor'
+                                  ? 'bg-blue-50 text-blue-800 border-blue-300 font-bold'
+                                  : currentPerm === 'viewer'
+                                  ? 'bg-slate-50 text-slate-800 border-slate-300'
+                                  : 'bg-white text-gray-400 border-gray-200'
+                              }`}
+                            >
+                              <option value="none">Sem Acesso</option>
+                              <option value="viewer">Leitor (Ver/Baixar)</option>
+                              <option value="editor">Editor (+ Upload)</option>
+                              <option value="admin">Admin da Pasta</option>
+                            </select>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: USER MANAGEMENT */}
+      {activeTab === 'users' && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 className="font-bold text-sm text-gray-900">Colaboradores Cadastrados</h3>
+            <span className="text-xs text-gray-500">Total: {profiles.length} usuários</span>
+          </div>
+
+          <div className="divide-y divide-gray-100">
+            {profiles.map(profile => (
+              <div key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 text-slate-800 font-bold flex items-center justify-center text-sm shrink-0 border border-slate-300">
+                    {profile.avatar_url ? (
+                      <img 
+                        src={profile.avatar_url} 
+                        alt={profile.full_name} 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      profile.full_name.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h4 className="font-bold text-sm text-gray-900">{profile.full_name}</h4>
+                      <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                        profile.status === 'active'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : profile.status === 'pending'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        {profile.status}
+                      </span>
+                      {profile.lgpd_accepted_at ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200" title={`Aceite LGPD registrado em ${new Date(profile.lgpd_accepted_at).toLocaleString('pt-BR')}`}>
+                          LGPD: Aceito
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                          LGPD: Pendente
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">{profile.email} • Setor: <strong className="text-gray-700">{profile.sector}</strong></p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={profile.role}
+                    onChange={(e) => onUpdateUserRole(profile.id, e.target.value as UserRole)}
+                    className="text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700"
+                  >
+                    <option value="viewer">Papel: Leitor</option>
+                    <option value="editor">Papel: Editor</option>
+                    <option value="admin">Papel: Admin</option>
+                  </select>
+
+                  <select
+                    value={profile.status}
+                    onChange={(e) => onUpdateUserStatus(profile.id, e.target.value as UserStatus)}
+                    className="text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700"
+                  >
+                    <option value="active">Status: Ativo</option>
+                    <option value="pending">Status: Pendente</option>
+                    <option value="blocked">Status: Bloqueado</option>
+                    <option value="rejected">Status: Recusado</option>
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: AUDIT LOGS */}
+      {activeTab === 'audit' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Buscar logs por usuário ou ação..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg w-64 focus:ring-2 focus:ring-blue-500 outline-hidden"
+                />
+              </div>
+
+              <select
+                value={auditFilter}
+                onChange={(e) => setAuditFilter(e.target.value)}
+                className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-700"
+              >
+                <option value="ALL">Todas as Ações</option>
+                <option value="LOGIN">LOGIN</option>
+                <option value="ACCESS_REQUEST">ACCESS_REQUEST</option>
+                <option value="FILE_UPLOAD">FILE_UPLOAD</option>
+                <option value="PERMISSION_CHANGE">PERMISSION_CHANGE</option>
+                <option value="USER_APPROVED">USER_APPROVED</option>
+              </select>
+            </div>
+
+            <span className="text-xs text-gray-500 font-medium">Exibindo {filteredLogs.length} eventos de auditoria</span>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
+                  <th className="p-3">Data / Hora</th>
+                  <th className="p-3">Ação</th>
+                  <th className="p-3">Usuário</th>
+                  <th className="p-3">Setor</th>
+                  <th className="p-3">Alvo</th>
+                  <th className="p-3">Detalhes Técnicos</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 font-mono text-[11px]">
+                {filteredLogs.map(log => (
+                  <tr key={log.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="p-3 text-gray-500 whitespace-nowrap">
+                      {new Date(log.created_at).toLocaleString('pt-BR')}
+                    </td>
+                    <td className="p-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        log.action.includes('UPLOAD')
+                          ? 'bg-blue-100 text-blue-800'
+                          : log.action.includes('PERMISSION') || log.action.includes('APPROVED')
+                          ? 'bg-purple-100 text-purple-800'
+                          : log.action.includes('REQUEST')
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {log.action}
+                      </span>
+                    </td>
+                    <td className="p-3 font-sans font-medium text-gray-900">{log.user_name}</td>
+                    <td className="p-3 font-sans text-gray-600">{log.sector}</td>
+                    <td className="p-3 text-gray-500">{log.target_type}</td>
+                    <td className="p-3 text-gray-600 max-w-xs truncate" title={JSON.stringify(log.details)}>
+                      {JSON.stringify(log.details)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: SITE BACKGROUND & VISUAL APPEARANCE */}
+      {activeTab === 'appearance' && (
+        <div className="space-y-6">
+          {/* Sub-tabs for Appearance */}
+          <div className="flex items-center space-x-2 bg-gray-100 p-1.5 rounded-2xl w-fit border border-gray-200">
+            <button
+              id="subtab-site-bg"
+              type="button"
+              onClick={() => setAppearanceSubTab('site-bg')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${
+                appearanceSubTab === 'site-bg'
+                  ? 'bg-white text-purple-700 shadow-xs border border-gray-200 font-black'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Palette className="w-4 h-4 text-purple-600" />
+              <span>Fundo Geral do Site</span>
+            </button>
+            <button
+              id="subtab-auth-header"
+              type="button"
+              onClick={() => setAppearanceSubTab('auth-header')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${
+                appearanceSubTab === 'auth-header'
+                  ? 'bg-white text-blue-700 shadow-xs border border-gray-200 font-black'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Lock className="w-4 h-4 text-blue-600" />
+              <span>Cabeçalho de Login & Boas-Vindas</span>
+            </button>
+          </div>
+
+          {appearanceSubTab === 'site-bg' ? (
+            <BackgroundCustomizer
+              currentUser={currentUser}
+              currentConfig={siteBackgroundConfig || {
+                enabled: false,
+                imageUrl: '',
+                presetId: 'none',
+                opacity: 25,
+                blur: 0,
+                overlayType: 'light',
+                overlayOpacity: 40,
+                position: 'cover',
+              }}
+              onConfigChange={(newConf) => {
+                if (onUpdateSiteBackgroundConfig) {
+                  onUpdateSiteBackgroundConfig(newConf);
+                }
+              }}
+              onAuditLog={onAuditLog}
+            />
+          ) : (
+            <AuthHeaderCustomizer
+              currentUser={currentUser}
+              currentConfig={authHeaderConfig || DEFAULT_AUTH_HEADER_CONFIG}
+              onConfigChange={(newConf) => {
+                if (onUpdateAuthHeaderConfig) {
+                  onUpdateAuthHeaderConfig(newConf);
+                }
+              }}
+              onAuditLog={onAuditLog}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
