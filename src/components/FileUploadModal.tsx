@@ -44,6 +44,14 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   const [selectedFolderId, setSelectedFolderId] = useState<string>(
     currentFolder ? currentFolder.id : (allFolders[0]?.id || '')
   );
+
+  React.useEffect(() => {
+    if (currentFolder?.id) {
+      setSelectedFolderId(currentFolder.id);
+    } else if (allFolders.length > 0 && !allFolders.some(f => f.id === selectedFolderId)) {
+      setSelectedFolderId(allFolders[0].id);
+    }
+  }, [isOpen, currentFolder, allFolders]);
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>(['Contábil', '2026']);
 

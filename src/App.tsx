@@ -69,12 +69,27 @@ export default function App() {
   });
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    return profiles.find(p => p.email.toLowerCase() === 'evandro230655@gmail.com') ||
-      profiles.find(p => p.role === 'admin' && p.status === 'active') || 
-      profiles[0];
+    try {
+      const sessionToken = sessionStorage.getItem('mvrj_session_token') || localStorage.getItem('mvrj_session_token');
+      const savedUserStr = sessionStorage.getItem('mvrj_session_user') || localStorage.getItem('mvrj_session_user');
+      if (sessionToken && savedUserStr) {
+        const parsed = JSON.parse(savedUserStr) as UserProfile;
+        // Check if user is active (not pending or blocked or rejected)
+        if (parsed && (parsed.status === 'active' || parsed.status === 'approved')) {
+          return parsed;
+        }
+      }
+    } catch {}
+    // Mandatory: No automatic login or default mock user
+    return null;
   });
 
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(() => {
+    const sessionToken = sessionStorage.getItem('mvrj_session_token') || localStorage.getItem('mvrj_session_token');
+    return !sessionToken;
+  });
+
+  const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null);
 
   // Data State
   const [folders, setFolders] = useState<Folder[]>(() => {
@@ -335,18 +350,20 @@ export default function App() {
   };
 
   // Handlers for User Management
-  const handleApproveUser = (userId: string, role: UserRole) => {
+  const handleApproveUser = (userId: string, role: UserRole, sector?: Sector) => {
     const target = profiles.find(p => p.id === userId);
-    setProfiles(prev => prev.map(p => p.id === userId ? { ...p, status: 'active', role } : p));
+    const finalSector = sector || target?.sector || 'Fiscal';
+    setProfiles(prev => prev.map(p => p.id === userId ? { ...p, status: 'active', role, sector: finalSector } : p));
     logAudit('USER_APPROVED', 'USER', userId, {
       approved_name: target?.full_name,
       approved_email: target?.email,
       assigned_role: role,
+      assigned_sector: finalSector,
     });
     fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'active', role, email: target?.email }),
+      body: JSON.stringify({ status: 'approved', role, sector: finalSector, email: target?.email }),
     }).catch(err => console.warn('Aviso ao sincronizar aprovação com Supabase:', err));
   };
 
@@ -481,7 +498,21 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    try {
+      sessionStorage.clear();
+      localStorage.removeItem('mvrj_session_token');
+      localStorage.removeItem('mvrj_session_user');
+      localStorage.removeItem('mvrj_current_user');
+    } catch {}
     setCurrentUser(null);
+    setActiveView('drive');
+    setViewingFile(null);
+    setIsUploadModalOpen(false);
+    setUploadTargetFolderId(null);
+    setIsProfileModalOpen(false);
+    setIsFirstAccessModalOpen(false);
+    setIsLgpdModalOpen(false);
+    setIsBackgroundModalOpen(false);
     setIsAuthModalOpen(true);
   };
 
@@ -629,7 +660,7 @@ export default function App() {
 
         {/* Main View Area */}
         <main className="flex-1">
-          {currentUser && currentUser.status === 'active' ? (
+          {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') ? (
             activeView === 'drive' ? (
               <FileManager
                 currentUser={currentUser}
@@ -638,7 +669,10 @@ export default function App() {
                 storageMetrics={storageMetrics}
                 onRefreshStorage={fetchStorageMetrics}
                 onOpenFileViewer={(file) => setViewingFile(file)}
-                onOpenUploadModal={() => setIsUploadModalOpen(true)}
+                onOpenUploadModal={(folderId) => {
+                  setUploadTargetFolderId(folderId || null);
+                  setIsUploadModalOpen(true);
+                }}
                 onCreateFolder={handleCreateFolder}
                 onDeleteFile={handleDeleteFile}
                 hasFolderPermission={checkFolderPermission}
@@ -670,15 +704,17 @@ export default function App() {
             )
           ) : (
             <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-2xl border border-gray-200 shadow-xl text-center">
-              <h2 className="text-xl font-bold text-gray-900">Autenticação Necessária</h2>
+              <h2 className="text-xl font-bold text-gray-900">Autenticação Obrigatória</h2>
               <p className="text-xs text-gray-500 mt-1 mb-4">
-                Por favor, selecione ou acesse uma conta para visualizar os documentos da MVRJCONTÁBIL.
+                {currentUser?.status === 'pending'
+                  ? 'Cadastro realizado com sucesso! Aguarde a aprovação do Administrador para acessar os documentos contábeis.'
+                  : 'Por favor, realize seu login com e-mail e senha para acessar os documentos da MVRJ CONTÁBIL.'}
               </p>
               <button
                 onClick={() => setIsAuthModalOpen(true)}
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors"
               >
-                Fazer Login / Solicitar Acesso
+                {currentUser?.status === 'pending' ? 'Ver Status da Conta' : 'Acessar com Login'}
               </button>
             </div>
           )}
@@ -704,7 +740,7 @@ export default function App() {
 
       {/* Modals */}
       <AuthModal
-        isOpen={isAuthModalOpen || (!currentUser || currentUser.status !== 'active')}
+        isOpen={isAuthModalOpen || (!currentUser || (currentUser.status !== 'active' && currentUser.status !== 'approved'))}
         authHeaderConfig={authHeaderConfig}
         isAdmin={currentUser?.role === 'admin'}
         onOpenHeaderCustomizer={() => {
@@ -712,8 +748,16 @@ export default function App() {
           setIsBackgroundModalOpen(true);
         }}
         onLoginSuccess={(user) => {
+          const token = `mvrj_session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          try {
+            sessionStorage.setItem('mvrj_session_token', token);
+            sessionStorage.setItem('mvrj_session_user', JSON.stringify(user));
+            localStorage.setItem('mvrj_session_token', token);
+            localStorage.setItem('mvrj_session_user', JSON.stringify(user));
+          } catch {}
           setCurrentUser(user);
           setIsAuthModalOpen(false);
+          logAudit('LOGIN', 'USER', user.id, { email: user.email, name: user.full_name });
         }}
         onRequestAccessSuccess={(newUser) => {
           setProfiles(prev => [newUser, ...prev]);
@@ -722,14 +766,22 @@ export default function App() {
             name: newUser.full_name,
             sector: newUser.sector,
           });
+          fetch('/api/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newUser),
+          }).catch(err => console.warn('Aviso ao sincronizar novo perfil no backend:', err));
         }}
         allProfiles={profiles}
       />
 
       <FileUploadModal
         isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        currentFolder={null}
+        onClose={() => {
+          setIsUploadModalOpen(false);
+          setUploadTargetFolderId(null);
+        }}
+        currentFolder={uploadTargetFolderId ? (folders.find(f => f.id === uploadTargetFolderId) || null) : null}
         allFolders={folders}
         currentUser={currentUser || profiles[0]}
         onUploadSuccess={handleUploadSuccess}

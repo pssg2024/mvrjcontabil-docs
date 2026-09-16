@@ -43,7 +43,7 @@ interface AdminPanelProps {
   siteBackgroundConfig?: SiteBackgroundConfig;
   authHeaderConfig?: AuthHeaderConfig;
   initialTab?: 'pending' | 'matrix' | 'users' | 'audit' | 'appearance';
-  onApproveUser: (userId: string, role: UserRole) => void;
+  onApproveUser: (userId: string, role: UserRole, sector?: Sector) => void;
   onRejectUser: (userId: string) => void;
   onUpdateUserStatus: (userId: string, status: UserStatus) => void;
   onUpdateUserRole: (userId: string, role: UserRole) => void;
@@ -74,6 +74,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'pending' | 'matrix' | 'users' | 'audit' | 'appearance'>(initialTab);
   const [appearanceSubTab, setAppearanceSubTab] = useState<'site-bg' | 'auth-header'>('site-bg');
   const [selectedRoleForApproval, setSelectedRoleForApproval] = useState<Record<string, UserRole>>({});
+  const [selectedSectorForApproval, setSelectedSectorForApproval] = useState<Record<string, Sector>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [auditFilter, setAuditFilter] = useState<string>('ALL');
 
@@ -260,6 +261,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
 
                     <div className="pt-3 border-t border-gray-100">
+                      {/* Definir Setor / Departamento */}
+                      <div className="mb-3">
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Definir Setor / Departamento de Atuação:
+                        </label>
+                        <select
+                          id={`select-sector-${profile.id}`}
+                          value={selectedSectorForApproval[profile.id] || profile.sector}
+                          onChange={(e) => setSelectedSectorForApproval(prev => ({ ...prev, [profile.id]: e.target.value as Sector }))}
+                          className="w-full text-xs py-1.5 px-2.5 border border-gray-300 rounded-lg bg-white font-medium text-gray-800 outline-hidden focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="Fiscal">Fiscal</option>
+                          <option value="Departamento Pessoal">Departamento Pessoal (DP)</option>
+                          <option value="Contábil">Contábil</option>
+                          <option value="Financeiro">Financeiro</option>
+                          <option value="Diretoria">Diretoria</option>
+                          <option value="Geral">Geral</option>
+                        </select>
+                      </div>
+
                       <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                         Definir Papel na Aprovação:
                       </label>
@@ -268,12 +289,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           type="button"
                           onClick={() => setSelectedRoleForApproval(prev => ({ ...prev, [profile.id]: 'viewer' }))}
                           className={`p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
-                            chosenRole === 'viewer'
+                            chosenRole === 'viewer' || chosenRole === 'User'
                               ? 'bg-gray-800 text-white border-gray-900'
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                           }`}
                         >
-                          Leitor
+                          Leitor (User)
                           <span className="block text-[10px] opacity-75 font-normal">Apenas Leitura</span>
                         </button>
 
@@ -307,21 +328,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="flex items-center space-x-2">
                         <button
                           id={`approve-user-${profile.id}`}
-                          onClick={() => onApproveUser(profile.id, chosenRole)}
+                          onClick={() => {
+                            const finalSector = selectedSectorForApproval[profile.id] || profile.sector;
+                            onApproveUser(profile.id, chosenRole, finalSector);
+                          }}
                           className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors shadow-2xs"
                         >
                           <Check className="w-4 h-4" />
-                          <span>Aprovar Solicitação</span>
+                          <span>Aprovar Acesso</span>
                         </button>
 
                         <button
                           id={`reject-user-${profile.id}`}
                           onClick={() => onRejectUser(profile.id)}
                           className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition-colors"
-                          title="Recusar cadastro"
+                          title="Recusar ou excluir solicitação de cadastro"
                         >
                           <X className="w-4 h-4" />
-                          <span>Recusar</span>
+                          <span>Recusar/Excluir</span>
                         </button>
                       </div>
                     </div>

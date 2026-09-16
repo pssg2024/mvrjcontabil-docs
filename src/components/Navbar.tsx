@@ -167,7 +167,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* Current User Profile & Quick Switch Dropdown */}
-            {currentUser && (
+            {currentUser ? (
               <div className="relative">
                 <button
                   id="user-profile-menu-btn"
@@ -302,49 +302,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       )}
                     </div>
 
-                    <div className="px-3 py-2 border-b border-gray-100">
-                      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-1 mb-1">
-                        Alternar Usuário de Teste (RBAC)
-                      </p>
-                      <div className="space-y-1 max-h-48 overflow-y-auto">
-                        {allProfiles.map((profile) => (
-                          <button
-                            key={profile.id}
-                            onClick={() => {
-                              onSwitchUser(profile);
-                              setShowUserDropdown(false);
-                            }}
-                            className={`w-full text-left px-2 py-1.5 rounded-md text-xs flex items-center justify-between transition-colors ${
-                              profile.id === currentUser.id
-                                ? 'bg-blue-50 text-blue-700 font-bold'
-                                : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                          >
-                            <div className="flex items-center space-x-2 truncate pr-2">
-                              <div className="w-5 h-5 rounded-full overflow-hidden bg-slate-200 text-slate-700 text-[10px] font-bold flex items-center justify-center shrink-0">
-                                {profile.avatar_url ? (
-                                  <img 
-                                    src={profile.avatar_url} 
-                                    alt={profile.full_name}
-                                    referrerPolicy="no-referrer"
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  profile.full_name.charAt(0).toUpperCase()
-                                )}
-                              </div>
-                              <div className="truncate">
-                                <span className="block truncate">{profile.full_name}</span>
-                                <span className="text-[10px] text-gray-400 block">{profile.sector} • {profile.status}</span>
-                              </div>
-                            </div>
-                            {getRoleBadge(profile.role)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="px-2 pt-1">
+                    <div className="px-2 pt-1 border-t border-gray-100">
                       <button
                         id="logout-btn"
                         onClick={() => {
@@ -354,12 +312,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg flex items-center space-x-2 transition-colors"
                       >
                         <LogOut className="w-4 h-4" />
-                        <span>Sair da Conta</span>
+                        <span>Sair da Conta (Logout)</span>
                       </button>
                     </div>
                   </div>
                 )}
               </div>
+            ) : (
+              <button
+                id="navbar-login-btn"
+                onClick={onLogout}
+                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors flex items-center space-x-1.5"
+              >
+                <span>Acessar o Drive</span>
+              </button>
             )}
           </div>
         </div>

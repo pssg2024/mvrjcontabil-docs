@@ -39,7 +39,7 @@ interface FileManagerProps {
   storageMetrics?: StorageMetrics | null;
   onRefreshStorage?: () => void;
   onOpenFileViewer: (file: DocumentFile) => void;
-  onOpenUploadModal: () => void;
+  onOpenUploadModal: (targetFolderId?: string | null) => void;
   onCreateFolder: (name: string, parentId: string | null, sector: Sector) => void;
   onDeleteFile: (fileId: string) => void;
   hasFolderPermission: (folderId: string, minLevel: PermissionLevel) => boolean;
@@ -82,7 +82,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
   // Filter folders: only direct children of current folder & sector filter
   const visibleFolders = folders.filter(folder => {
-    const isDirectChild = currentFolderId ? folder.parent_id === currentFolderId : folder.parent_id === null;
+    const isDirectChild = currentFolderId 
+      ? folder.parent_id === currentFolderId 
+      : (!folder.parent_id || folder.parent_id === null || folder.parent_id === '');
     if (!isDirectChild) return false;
     if (selectedSector !== 'ALL' && folder.sector !== selectedSector) return false;
     // RLS Permission check: User must have at least 'viewer' permission on the folder
@@ -100,14 +102,16 @@ export const FileManager: React.FC<FileManagerProps> = ({
     if (searchQuery) {
       // Global search returns matching files the user has permission to see
       if (selectedSector !== 'ALL' && file.sector !== selectedSector) return false;
-      return matchesSearch && hasFolderPermission(file.folder_id, 'viewer');
+      return matchesSearch && (file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true);
     }
 
-    // In regular navigation, show files in current folder
-    const isInCurrentFolder = currentFolderId ? file.folder_id === currentFolderId : false;
+    // In regular navigation, show files in current folder strictly
+    const isInCurrentFolder = currentFolderId 
+      ? file.folder_id === currentFolderId 
+      : (!file.folder_id || file.folder_id === null || file.folder_id === 'root');
     if (!isInCurrentFolder) return false;
     if (selectedSector !== 'ALL' && file.sector !== selectedSector) return false;
-    return matchesSearch && hasFolderPermission(file.folder_id, 'viewer');
+    return matchesSearch && (file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true);
   });
 
   // Sorting
@@ -293,7 +297,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
             ) : canUpload ? (
               <button
                 id="upload-doc-btn"
-                onClick={onOpenUploadModal}
+                onClick={() => onOpenUploadModal(currentFolderId)}
                 className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-xs flex items-center space-x-1.5 transition-colors"
               >
                 <UploadCloud className="w-4 h-4" />
@@ -480,7 +484,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               </button>
             ) : canUpload ? (
               <button
-                onClick={onOpenUploadModal}
+                onClick={() => onOpenUploadModal(currentFolderId)}
                 className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center space-x-1.5 transition-colors"
               >
                 <UploadCloud className="w-4 h-4" />

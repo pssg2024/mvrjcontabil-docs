@@ -84,7 +84,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (user.status === 'pending') {
       setLoginStatusMessage({
         type: 'pending',
-        text: 'Solicitação em Análise: Seu cadastro foi realizado com sucesso e está aguardando homologação pela Diretoria ou Administrador do escritório.',
+        text: 'Cadastro realizado com sucesso! Aguarde a aprovação do Administrador para acessar os documentos contábeis.',
         user,
       });
       return;
@@ -140,7 +140,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       email: regEmail.trim(),
       full_name: regFullName.trim(),
       sector: regSector,
-      role: 'viewer',
+      role: 'User',
       status: 'pending', // Regra mandatória: inicia pendente
       first_access_completed: false,
       created_at: new Date().toISOString(),
@@ -416,9 +416,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto">
                     <Clock className="w-6 h-6 animate-pulse" />
                   </div>
-                  <h3 className="font-bold text-base text-gray-900">Solicitação Registrada com Sucesso!</h3>
+                  <h3 className="font-bold text-base text-gray-900">Cadastro Realizado com Sucesso!</h3>
                   <p className="text-xs text-gray-600 leading-relaxed max-w-xs mx-auto">
-                    Seu cadastro foi enviado com status <strong className="text-amber-800 font-bold">"Pendente"</strong>. Conforme as diretrizes de segurança da MVRJCONTÁBIL, um administrador avaliará suas permissões para o setor <strong className="text-blue-700 font-bold">{registrationSubmitted.sector}</strong>.
+                    Cadastro realizado com sucesso! Aguarde a aprovação do Administrador para acessar os documentos contábeis.
                   </p>
                   <div className="pt-3">
                     <button

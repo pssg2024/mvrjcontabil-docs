@@ -1,5 +1,5 @@
-export type UserRole = 'admin' | 'editor' | 'viewer';
-export type UserStatus = 'pending' | 'active' | 'blocked' | 'rejected';
+export type UserRole = 'admin' | 'editor' | 'viewer' | 'User';
+export type UserStatus = 'pending' | 'active' | 'approved' | 'blocked' | 'rejected';
 
 export type Sector = 
   | 'Fiscal'
