@@ -137,6 +137,12 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const isQuotaExceeded = effectiveUsedBytes >= totalQuotaBytes || (storageMetrics ? storageMetrics.usedPercent >= 100 : false);
   const [showBlockedLimitModal, setShowBlockedLimitModal] = useState(false);
 
+  // File capacity metrics in real time
+  const currentFilesCount = Math.max(files.length, storageMetrics?.filesCount || 0);
+  const usedPercentValue = totalQuotaBytes > 0 
+    ? Number(((effectiveUsedBytes / totalQuotaBytes) * 100).toFixed(2)) 
+    : 0;
+
   // Permissions for current folder (Bloqueado se cota de armazenamento estourada)
   const isApprovedOrActive = currentUser.status === 'active' || currentUser.status === 'approved';
   const canUpload = isApprovedOrActive && !isQuotaExceeded && (currentFolderId ? hasFolderPermission(currentFolderId, 'editor') : (currentUser.role === 'admin' || currentUser.role === 'editor'));
@@ -170,33 +176,54 @@ export const FileManager: React.FC<FileManagerProps> = ({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
       {/* Top Storage & Bandwidth Optimization Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-md relative overflow-hidden">
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
+      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 rounded-2xl p-6 sm:p-7 text-white shadow-md relative overflow-hidden border border-slate-800/60">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
             <div className="flex items-center space-x-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 border border-blue-400/30 text-xs font-semibold uppercase tracking-wider">
-                Drive Corporativo MVRJCONTÁBIL
+              <span className="px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 text-[11px] font-medium tracking-wide">
+                DRIVE CORPORATIVO MVRJCONTÁBIL
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black mt-2 tracking-tight">Gestão Eletrônica de Documentos Contábeis</h2>
-            <p className="text-xs text-blue-200/80 mt-1 max-w-xl">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white leading-tight">
+              Gestão Eletrônica de Documentos Contábeis
+            </h2>
+            <p className="text-sm text-slate-300/80 leading-relaxed">
               Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais.
             </p>
           </div>
 
-          {/* Savings Metric Widget */}
-          <div className="grid grid-cols-3 gap-3 bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10 text-center">
-            <div>
-              <span className="text-[10px] text-blue-200 uppercase tracking-wider block">Arquivos</span>
-              <strong className="text-base sm:text-lg font-extrabold text-white">{files.length}</strong>
+          {/* Clean & Minimalist Metrics Cards */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 shrink-0">
+            {/* Card 1 - Total de Arquivos */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-white/10 shadow-xs min-w-[125px] sm:min-w-[135px]">
+              <span className="text-[11px] font-medium text-slate-300 tracking-wide block">
+                Documentos
+              </span>
+              <strong className="text-2xl sm:text-3xl font-black text-white tracking-tight block mt-0.5">
+                {currentFilesCount}
+              </strong>
             </div>
-            <div>
-              <span className="text-[10px] text-blue-200 uppercase tracking-wider block">Espaço Ocupado</span>
-              <strong className="text-base sm:text-lg font-extrabold text-white">{formatBytes(totalOptimizedBytes)}</strong>
-            </div>
-            <div>
-              <span className="text-[10px] text-emerald-300 uppercase tracking-wider block">Economia Total</span>
-              <strong className="text-base sm:text-lg font-extrabold text-emerald-300">-{overallSavingsPercent}%</strong>
+
+            {/* Card 2 - Espaço Utilizado com barra fina de progresso */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-white/10 shadow-xs min-w-[185px] sm:min-w-[205px]">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[11px] font-medium text-slate-300 tracking-wide block">
+                  Espaço Utilizado
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  de {formatBytes(totalQuotaBytes)}
+                </span>
+              </div>
+              <strong className="text-2xl sm:text-3xl font-black text-white tracking-tight block mt-0.5">
+                {formatBytes(effectiveUsedBytes)}
+              </strong>
+              {/* Barra de progresso fina e discreta */}
+              <div className="w-full bg-white/15 h-1.5 rounded-full overflow-hidden mt-2.5">
+                <div 
+                  className="bg-indigo-400 h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.max(effectiveUsedBytes > 0 ? 2 : 0, Math.min(100, usedPercentValue))}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>

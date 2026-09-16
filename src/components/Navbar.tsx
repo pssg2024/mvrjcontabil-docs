@@ -53,49 +53,52 @@ export const Navbar: React.FC<NavbarProps> = ({
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
       case 'admin':
-        return <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-purple-100 text-purple-800 border border-purple-200">Admin</span>;
+        return <span className="px-1.5 py-0.2 text-[10px] font-semibold rounded bg-purple-50 text-purple-700 border border-purple-200/70">Admin</span>;
       case 'editor':
-        return <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-blue-100 text-blue-800 border border-blue-200">Editor</span>;
+        return <span className="px-1.5 py-0.2 text-[10px] font-semibold rounded bg-blue-50 text-blue-700 border border-blue-200/70">Editor</span>;
       case 'viewer':
-        return <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-gray-100 text-gray-700 border border-gray-200">Leitor</span>;
+        return <span className="px-1.5 py-0.2 text-[10px] font-semibold rounded bg-slate-100 text-slate-600 border border-slate-200/70">Leitor</span>;
     }
   };
 
   const pendingUsersCount = allProfiles.filter(p => p.status === 'pending').length;
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-xs">
+    <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 shadow-2xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3 cursor-pointer" onClick={() => onNavigate('drive')}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white shadow-sm">
-                <FolderLock className="w-6 h-6 text-white" />
+          <div className="flex items-center space-x-5">
+            <div 
+              className="flex items-center space-x-3 cursor-pointer group select-none" 
+              onClick={() => onNavigate('drive')}
+            >
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 flex items-center justify-center text-white shadow-sm ring-1 ring-black/5 group-hover:scale-105 transition-transform duration-200">
+                <FolderLock className="w-5 h-5 text-white" />
               </div>
               <div>
                 <div className="flex items-center space-x-1.5">
-                  <span className="font-extrabold text-xl tracking-tight text-gray-900">MVRJ</span>
-                  <span className="text-xl font-medium tracking-tight text-indigo-600">CONTÁBIL</span>
-                  <span className="ml-1 text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-sm">GED</span>
+                  <span className="font-extrabold text-lg tracking-tight text-slate-900">MVRJ</span>
+                  <span className="font-bold text-lg tracking-tight text-indigo-600">CONTÁBIL</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/60 rounded-md">GED</span>
                 </div>
-                <p className="text-[11px] text-gray-500 font-medium leading-none">Gestão Eletrônica de Documentos</p>
+                <p className="text-[10px] text-slate-400 font-medium tracking-normal leading-none mt-0.5">Gestão Eletrônica de Documentos</p>
               </div>
             </div>
 
-            {/* Navigation Tabs */}
-            {currentUser && currentUser.status === 'active' && (
-              <nav className="hidden md:flex items-center space-x-1 ml-6 pl-6 border-l border-gray-200">
+            {/* Navigation Tabs - Modern Segmented Control */}
+            {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
+              <nav className="hidden md:flex items-center p-1 bg-slate-100/90 border border-slate-200/70 rounded-xl shadow-inner-xs ml-3">
                 <button
                   id="nav-drive-btn"
                   onClick={() => onNavigate('drive')}
-                  className={`px-3.5 py-2 text-sm font-medium rounded-lg transition-colors flex items-center space-x-2 ${
+                  className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center space-x-2 ${
                     activeView === 'drive'
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
-                  <HardDrive className="w-4 h-4" />
+                  <HardDrive className={`w-3.5 h-3.5 ${activeView === 'drive' ? 'text-indigo-600' : 'text-slate-500'}`} />
                   <span>Drive Corporativo</span>
                 </button>
 
@@ -103,32 +106,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     id="nav-admin-btn"
                     onClick={() => onNavigate('admin')}
-                    className={`px-3.5 py-2 text-sm font-medium rounded-lg transition-colors flex items-center space-x-2 relative ${
+                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center space-x-2 relative ${
                       activeView === 'admin'
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                     }`}
                   >
-                    <ShieldCheck className="w-4 h-4" />
+                    <ShieldCheck className={`w-3.5 h-3.5 ${activeView === 'admin' ? 'text-indigo-600' : 'text-slate-500'}`} />
                     <span>Painel Admin & RBAC</span>
                     {pendingUsersCount > 0 && (
-                      <span className="ml-1.5 px-1.5 py-0.2 bg-amber-500 text-white text-[11px] font-bold rounded-full animate-pulse">
+                      <span className="ml-1 px-1.5 py-0.2 bg-amber-500 text-white text-[10px] font-bold rounded-full ring-2 ring-white shadow-2xs animate-pulse">
                         {pendingUsersCount}
                       </span>
                     )}
-                  </button>
-                )}
-
-                {currentUser.role === 'admin' && onOpenBackgroundModal && (
-                  <button
-                    id="nav-background-btn"
-                    type="button"
-                    onClick={onOpenBackgroundModal}
-                    className="px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center space-x-1.5 text-purple-700 hover:bg-purple-50 hover:text-purple-800 cursor-pointer"
-                    title="Mudar Fundo do Site & Cabeçalho de Login (Exclusivo Administrador)"
-                  >
-                    <Palette className="w-4 h-4 text-purple-600" />
-                    <span className="hidden lg:inline">Aparência & Marca</span>
                   </button>
                 )}
               </nav>
@@ -137,23 +127,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action Tools & User Profile */}
           <div className="flex items-center space-x-3">
-            {/* Supabase & R2 Status Badge */}
-            <div 
-              id="navbar-cloud-status"
-              className="hidden lg:flex items-center space-x-2 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-full shadow-2xs"
-              title="Banco de dados Supabase e Armazenamento Cloudflare R2 ativos e sincronizados"
-            >
-              <div className="flex items-center space-x-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="font-semibold text-slate-700">Supabase</span>
-              </div>
-              <span className="text-slate-300">|</span>
-              <div className="flex items-center space-x-1">
-                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                <span className="font-semibold text-slate-700">Cloudflare R2</span>
-              </div>
-            </div>
-
             {/* Storage Quota Indicator: Oculto por padrão, aparece apenas se o limite for atingido */}
             {storageMetrics && (storageMetrics.usedBytes >= (storageMetrics.totalCapacityBytes || 10 * 1024 * 1024 * 1024) || storageMetrics.usedPercent >= 100) && (
               <div 
@@ -172,28 +145,36 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   id="user-profile-menu-btn"
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
-                  className="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
+                  className="flex items-center space-x-3 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50/90 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
                 >
-                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs border border-white">
-                    {currentUser.avatar_url ? (
-                      <img 
-                        src={currentUser.avatar_url} 
-                        alt={currentUser.full_name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span>{currentUser.full_name.charAt(0).toUpperCase()}</span>
-                    )}
+                  <div className="relative">
+                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-xs flex items-center justify-center ring-1 ring-slate-200/80 shadow-2xs">
+                      {currentUser.avatar_url ? (
+                        <img 
+                          src={currentUser.avatar_url} 
+                          alt={currentUser.full_name}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>{currentUser.full_name.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
                   </div>
+
                   <div className="text-left hidden sm:block">
-                    <p className="text-xs font-bold text-gray-800 leading-tight truncate max-w-[140px]">{currentUser.full_name}</p>
+                    <p className="text-xs font-semibold text-slate-900 leading-tight truncate max-w-[150px] group-hover:text-indigo-600 transition-colors">
+                      {currentUser.full_name}
+                    </p>
                     <div className="flex items-center space-x-1.5 mt-0.5">
-                      <span className="text-[10px] text-gray-500 font-medium">{currentUser.sector}</span>
+                      <span className="text-[10px] text-slate-500 font-medium">{currentUser.sector}</span>
+                      <span className="text-slate-300 text-[10px]">•</span>
                       {getRoleBadge(currentUser.role)}
                     </div>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
+
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform duration-150 ${showUserDropdown ? 'rotate-180 text-indigo-600' : ''}`} />
                 </button>
 
                 {/* Dropdown Menu */}

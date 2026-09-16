@@ -157,6 +157,8 @@ export interface StorageMetrics {
   usedPercent: number;
   freePercent: number;
   filesCount: number;
+  maxFilesCapacity?: number;
+  remainingFilesCapacity?: number;
   originalBytes: number;
   savedBytes: number;
   savingsPercent: number;

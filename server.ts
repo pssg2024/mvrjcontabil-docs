@@ -1961,6 +1961,11 @@ app.get('/api/storage/metrics', async (req: Request, res: Response) => {
     const usedPercent = Math.min(100, Number(((effectiveUsedBytes / totalCapacityBytes) * 100).toFixed(2)));
     const freePercent = Math.max(0, Number((100 - usedPercent).toFixed(2)));
 
+    const maxFilesCapacity = process.env.R2_MAX_FILES 
+      ? parseInt(process.env.R2_MAX_FILES, 10) 
+      : 10000; // Capacidade padrão de até 10.000 documentos no plano 10GB
+    const remainingFilesCapacity = Math.max(0, maxFilesCapacity - effectiveFilesCount);
+
     return res.status(200).json({
       totalCapacityBytes,
       usedBytes: effectiveUsedBytes,
@@ -1968,6 +1973,8 @@ app.get('/api/storage/metrics', async (req: Request, res: Response) => {
       usedPercent,
       freePercent,
       filesCount: effectiveFilesCount,
+      maxFilesCapacity,
+      remainingFilesCapacity,
       originalBytes: dbOriginalBytes,
       savedBytes: Math.max(0, dbOriginalBytes - effectiveUsedBytes),
       savingsPercent: dbOriginalBytes > 0 ? Math.round(((dbOriginalBytes - effectiveUsedBytes) / dbOriginalBytes) * 100) : 0,
