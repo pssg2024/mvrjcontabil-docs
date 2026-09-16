@@ -343,24 +343,44 @@ export default function App() {
       approved_email: target?.email,
       assigned_role: role,
     });
+    fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'active', role, email: target?.email }),
+    }).catch(err => console.warn('Aviso ao sincronizar aprovação com Supabase:', err));
   };
 
   const handleRejectUser = (userId: string) => {
     const target = profiles.find(p => p.id === userId);
     setProfiles(prev => prev.map(p => p.id === userId ? { ...p, status: 'rejected' } : p));
     logAudit('USER_REJECTED', 'USER', userId, { rejected_name: target?.full_name });
+    fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'rejected', email: target?.email }),
+    }).catch(err => console.warn('Aviso ao sincronizar recusa com Supabase:', err));
   };
 
   const handleUpdateUserStatus = (userId: string, status: UserStatus) => {
     const target = profiles.find(p => p.id === userId);
     setProfiles(prev => prev.map(p => p.id === userId ? { ...p, status } : p));
     logAudit('USER_BLOCKED', 'USER', userId, { user_name: target?.full_name, new_status: status });
+    fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, email: target?.email }),
+    }).catch(err => console.warn('Aviso ao sincronizar status com Supabase:', err));
   };
 
   const handleUpdateUserRole = (userId: string, role: UserRole) => {
     const target = profiles.find(p => p.id === userId);
     setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role } : p));
     logAudit('PERMISSION_CHANGE', 'USER', userId, { user_name: target?.full_name, new_role: role });
+    fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, email: target?.email }),
+    }).catch(err => console.warn('Aviso ao sincronizar papel com Supabase:', err));
   };
 
   const handleUpdateFolderPermission = async (folderId: string, profileId: string, level: PermissionLevel | 'none') => {

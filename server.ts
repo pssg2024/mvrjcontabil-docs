@@ -597,6 +597,8 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
       full_name, 
       avatar_url, 
       email,
+      role,
+      status,
       first_access_completed,
       lgpd_accepted_at,
       password_changed_at,
@@ -611,6 +613,8 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
     const payload: any = { updated_at: new Date().toISOString() };
     if (full_name !== undefined) payload.full_name = full_name;
     if (avatar_url !== undefined) payload.avatar_url = avatar_url;
+    if (role !== undefined) payload.role = role;
+    if (status !== undefined) payload.status = status;
     if (first_access_completed !== undefined) payload.first_access_completed = first_access_completed;
     if (lgpd_accepted_at !== undefined) payload.lgpd_accepted_at = lgpd_accepted_at;
     if (password_changed_at !== undefined) payload.password_changed_at = password_changed_at;
