@@ -41,6 +41,7 @@ interface FileManagerProps {
   onOpenFileViewer: (file: DocumentFile) => void;
   onOpenUploadModal: (targetFolderId?: string | null) => void;
   onCreateFolder: (name: string, parentId: string | null, sector: Sector) => void;
+  onDeleteFolder?: (folderId: string) => void;
   onDeleteFile: (fileId: string) => void;
   hasFolderPermission: (folderId: string, minLevel: PermissionLevel) => boolean;
 }
@@ -54,6 +55,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   onOpenFileViewer,
   onOpenUploadModal,
   onCreateFolder,
+  onDeleteFolder,
   onDeleteFile,
   hasFolderPermission,
 }) => {
@@ -136,8 +138,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const [showBlockedLimitModal, setShowBlockedLimitModal] = useState(false);
 
   // Permissions for current folder (Bloqueado se cota de armazenamento estourada)
-  const canUpload = !isQuotaExceeded && (currentFolderId ? hasFolderPermission(currentFolderId, 'editor') : (currentUser.role === 'admin' || currentUser.role === 'editor'));
-  const canCreateSubfolder = currentFolderId ? hasFolderPermission(currentFolderId, 'editor') : currentUser.role === 'admin';
+  const isApprovedOrActive = currentUser.status === 'active' || currentUser.status === 'approved';
+  const canUpload = isApprovedOrActive && !isQuotaExceeded && (currentFolderId ? hasFolderPermission(currentFolderId, 'editor') : (currentUser.role === 'admin' || currentUser.role === 'editor'));
+  const canCreateSubfolder = isApprovedOrActive && (currentFolderId ? hasFolderPermission(currentFolderId, 'editor') : currentUser.role === 'admin');
 
   const handleCreateFolderSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -281,6 +284,24 @@ export const FileManager: React.FC<FileManagerProps> = ({
               >
                 <FolderPlus className="w-4 h-4 text-blue-600" />
                 <span>Nova Pasta</span>
+              </button>
+            )}
+
+            {currentFolderId && currentFolder && currentUser.role === 'admin' && onDeleteFolder && (
+              <button
+                id="delete-current-folder-btn"
+                type="button"
+                onClick={() => {
+                  if (confirm(`Tem certeza que deseja excluir a pasta "${currentFolder.name}" e todo o seu conteúdo do Supabase?`)) {
+                    onDeleteFolder(currentFolder.id);
+                    setCurrentFolderId(currentFolder.parent_id || null);
+                  }
+                }}
+                className="px-3 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl flex items-center space-x-1.5 transition-colors shadow-2xs"
+                title="Excluir esta pasta permanentemente (Admin)"
+              >
+                <Trash2 className="w-4 h-4 text-rose-600" />
+                <span className="hidden sm:inline">Excluir Pasta</span>
               </button>
             )}
 
@@ -436,6 +457,24 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     </h4>
                     <p className="text-[11px] text-gray-500 mt-0.5">{folder.sector}</p>
                   </div>
+
+                  {currentUser.role === 'admin' && onDeleteFolder && (
+                    <button
+                      type="button"
+                      id={`btn-delete-folder-${folder.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Tem certeza que deseja excluir a pasta "${folder.name}" e todo seu conteúdo do Supabase?`)) {
+                          onDeleteFolder(folder.id);
+                        }
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                      title="Excluir Pasta (Admin)"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+
                   <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-600 shrink-0 mt-1" />
                 </div>
               </div>

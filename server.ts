@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createClient } from '@supabase/supabase-js';
@@ -589,7 +590,133 @@ app.delete('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
   }
 });
 
-// 10. Update Profile metadata in Supabase
+// ==============================================================================
+// 10. PROFILES MANAGEMENT (Supabase + Local Disk Persistence)
+// ==============================================================================
+const PROFILES_FILE = path.join(process.cwd(), 'storage', 'profiles.json');
+
+interface StoredProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  sector: string;
+  role: 'admin' | 'editor' | 'viewer' | 'User';
+  status: 'pending' | 'active' | 'approved' | 'blocked' | 'rejected';
+  avatar_url?: string | null;
+  first_access_completed?: boolean;
+  lgpd_accepted_at?: string | null;
+  password_changed_at?: string | null;
+  lgpd_terms_version?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+let persistedProfiles: StoredProfile[] = [
+  {
+    id: '57e1d483-669b-4791-b09e-7496570e63ea',
+    email: 'evandro230655@gmail.com',
+    full_name: 'Evandro (Administrador)',
+    sector: 'Diretoria',
+    role: 'admin',
+    status: 'active',
+    avatar_url: '/api/r2/avatar/57e1d483-669b-4791-b09e-7496570e63ea.webp?t=1789404217549',
+    created_at: '2026-09-14T16:21:34.630637+00:00',
+    updated_at: '2026-09-14T16:43:39.722+00:00',
+  }
+];
+
+function loadPersistedProfiles() {
+  try {
+    if (fs.existsSync(PROFILES_FILE)) {
+      const raw = fs.readFileSync(PROFILES_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.length > 0) {
+        persistedProfiles = data;
+        console.log(`[Profiles] ${persistedProfiles.length} perfis carregados do disco com sucesso`);
+      }
+    } else {
+      savePersistedProfiles();
+    }
+  } catch (e) {
+    console.warn('[Profiles] Aviso ao ler perfis do disco:', e);
+  }
+}
+
+function savePersistedProfiles() {
+  try {
+    const dir = path.dirname(PROFILES_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(PROFILES_FILE, JSON.stringify(persistedProfiles, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[Profiles] Erro ao persistir perfis em disco:', e);
+  }
+}
+
+loadPersistedProfiles();
+
+// 10a. Create Profile / Access Request (POST /api/profiles)
+app.post('/api/profiles', async (req: Request, res: Response) => {
+  try {
+    const { id, email, full_name, sector, role, status, avatar_url } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'E-mail corporativo é obrigatório' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existingIndex = persistedProfiles.findIndex(p => p.email.toLowerCase() === cleanEmail);
+    const resolvedId = (id && isValidUuid(id)) ? id : (existingIndex >= 0 ? persistedProfiles[existingIndex].id : crypto.randomUUID());
+
+    const newProfile: StoredProfile = {
+      id: resolvedId,
+      email: cleanEmail,
+      full_name: full_name?.trim() || email.split('@')[0],
+      sector: sector || 'Fiscal',
+      role: (role === 'User' || role === 'viewer') ? 'viewer' : (role || 'viewer'),
+      status: status || 'pending',
+      avatar_url: avatar_url || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existingIndex >= 0) {
+      persistedProfiles[existingIndex] = { ...persistedProfiles[existingIndex], ...newProfile, updated_at: new Date().toISOString() };
+    } else {
+      persistedProfiles = [newProfile, ...persistedProfiles];
+    }
+    savePersistedProfiles();
+
+    // Sincroniza com Supabase se disponível
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        const { error: insertError } = await supabase.from('profiles').upsert({
+          id: newProfile.id,
+          email: newProfile.email,
+          full_name: newProfile.full_name,
+          sector: newProfile.sector,
+          role: newProfile.role === 'User' ? 'viewer' : newProfile.role,
+          status: newProfile.status,
+          avatar_url: newProfile.avatar_url,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'email' });
+
+        if (insertError) {
+          console.warn('[Supabase Profiles] Aviso ao salvar perfil no Supabase:', insertError.message);
+        }
+      } catch (dbErr: any) {
+        console.warn('[Supabase Profiles] Erro não impeditivo ao gravar no Supabase:', dbErr.message);
+      }
+    }
+
+    return res.status(201).json({ status: 'success', profile: newProfile });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Erro ao cadastrar perfil', details: error.message });
+  }
+});
+
+// 10b. Update Profile metadata in Supabase & Disk (PUT /api/profiles/:userId)
 app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
   try {
     const userId = req.params.userId;
@@ -597,6 +724,7 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
       full_name, 
       avatar_url, 
       email,
+      sector,
       role,
       status,
       first_access_completed,
@@ -605,65 +733,148 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
       lgpd_terms_version 
     } = req.body;
 
+    const normalizedRole = role === 'User' ? 'viewer' : role;
+
+    // Atualiza armazenamento em disco
+    const idx = persistedProfiles.findIndex(p => p.id === userId || (email && p.email.toLowerCase() === email.trim().toLowerCase()));
+    if (idx >= 0) {
+      if (full_name !== undefined) persistedProfiles[idx].full_name = full_name;
+      if (avatar_url !== undefined) persistedProfiles[idx].avatar_url = avatar_url;
+      if (sector !== undefined) persistedProfiles[idx].sector = sector;
+      if (normalizedRole !== undefined) persistedProfiles[idx].role = normalizedRole;
+      if (status !== undefined) persistedProfiles[idx].status = status;
+      if (first_access_completed !== undefined) persistedProfiles[idx].first_access_completed = first_access_completed;
+      if (lgpd_accepted_at !== undefined) persistedProfiles[idx].lgpd_accepted_at = lgpd_accepted_at;
+      if (password_changed_at !== undefined) persistedProfiles[idx].password_changed_at = password_changed_at;
+      if (lgpd_terms_version !== undefined) persistedProfiles[idx].lgpd_terms_version = lgpd_terms_version;
+      persistedProfiles[idx].updated_at = new Date().toISOString();
+      savePersistedProfiles();
+    }
+
+    // Atualiza Supabase
     const supabase = getSupabaseServerClient();
-    if (!supabase) {
-      return res.status(200).json({ status: 'ok', message: 'Salvo localmente (Supabase não conectado)' });
+    let updatedSupabaseProfile: any = null;
+    if (supabase) {
+      try {
+        const payload: any = { updated_at: new Date().toISOString() };
+        if (full_name !== undefined) payload.full_name = full_name;
+        if (avatar_url !== undefined) payload.avatar_url = avatar_url;
+        if (sector !== undefined) payload.sector = sector;
+        if (normalizedRole !== undefined) payload.role = normalizedRole;
+        if (status !== undefined) payload.status = status;
+        if (first_access_completed !== undefined) payload.first_access_completed = first_access_completed;
+        if (lgpd_accepted_at !== undefined) payload.lgpd_accepted_at = lgpd_accepted_at;
+        if (password_changed_at !== undefined) payload.password_changed_at = password_changed_at;
+        if (lgpd_terms_version !== undefined) payload.lgpd_terms_version = lgpd_terms_version;
+
+        let { error, data } = await supabase
+          .from('profiles')
+          .update(payload)
+          .eq('id', userId)
+          .select();
+
+        if ((error || !data || data.length === 0) && email) {
+          const emailRes = await supabase
+            .from('profiles')
+            .update(payload)
+            .eq('email', email.trim().toLowerCase())
+            .select();
+          data = emailRes.data;
+        }
+        if (data && data[0]) updatedSupabaseProfile = data[0];
+      } catch (err: any) {
+        console.warn('[Supabase Profiles] Erro na sincronização:', err.message);
+      }
     }
 
-    const payload: any = { updated_at: new Date().toISOString() };
-    if (full_name !== undefined) payload.full_name = full_name;
-    if (avatar_url !== undefined) payload.avatar_url = avatar_url;
-    if (role !== undefined) payload.role = role;
-    if (status !== undefined) payload.status = status;
-    if (first_access_completed !== undefined) payload.first_access_completed = first_access_completed;
-    if (lgpd_accepted_at !== undefined) payload.lgpd_accepted_at = lgpd_accepted_at;
-    if (password_changed_at !== undefined) payload.password_changed_at = password_changed_at;
-    if (lgpd_terms_version !== undefined) payload.lgpd_terms_version = lgpd_terms_version;
-
-    let { error, data } = await supabase
-      .from('profiles')
-      .update(payload)
-      .eq('id', userId)
-      .select();
-
-    if ((error || !data || data.length === 0) && email) {
-      const emailRes = await supabase
-        .from('profiles')
-        .update(payload)
-        .eq('email', email)
-        .select();
-      data = emailRes.data;
-      error = emailRes.error;
-    }
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    return res.status(200).json({ status: 'success', profile: data?.[0] });
+    const finalProfile = updatedSupabaseProfile || (idx >= 0 ? persistedProfiles[idx] : null);
+    return res.status(200).json({ status: 'success', profile: finalProfile });
   } catch (error: any) {
     res.status(500).json({ error: 'Erro ao atualizar perfil', details: error.message });
   }
 });
 
-// 11. Fetch Profiles from Supabase
+// 10c. Delete Profile (DELETE /api/profiles/:userId)
+app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.userId;
+    const email = (req.query.email as string)?.trim().toLowerCase();
+
+    // Proteção mandatória: não permite que o Administrador Master seja excluído
+    const isMasterAdmin = 
+      userId === '57e1d483-669b-4791-b09e-7496570e63ea' || 
+      email === 'evandro230655@gmail.com';
+
+    if (isMasterAdmin) {
+      return res.status(403).json({ error: 'O perfil do Administrador Master não pode ser excluído.' });
+    }
+
+    // Remove do disco local
+    persistedProfiles = persistedProfiles.filter(p => p.id !== userId && (!email || p.email.toLowerCase() !== email));
+    savePersistedProfiles();
+
+    // Deleta do Supabase (tabela profiles e opcionalmente auth.users)
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        let { error } = await supabase.from('profiles').delete().eq('id', userId);
+        if (error && email) {
+          await supabase.from('profiles').delete().eq('email', email);
+        }
+
+        // Tenta remover também de auth.users caso tenha conta de login
+        if (isValidUuid(userId)) {
+          try {
+            await supabase.auth.admin.deleteUser(userId);
+          } catch (authErr) {
+            // Silencioso se não houver auth.users
+          }
+        }
+      } catch (dbErr: any) {
+        console.warn('[Supabase Profiles] Erro ao excluir no banco:', dbErr.message);
+      }
+    }
+
+    return res.status(200).json({ status: 'success', message: 'Perfil excluído com sucesso.' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Erro ao excluir perfil', details: error.message });
+  }
+});
+
+// 11. Fetch Profiles from Supabase & Disk Unified
 app.get('/api/profiles', async (req: Request, res: Response) => {
   try {
     const supabase = getSupabaseServerClient();
-    if (!supabase) {
-      return res.status(200).json({ profiles: null, source: 'local' });
+    let supabaseProfiles: any[] = [];
+
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: true });
+      if (!error && Array.isArray(data)) {
+        supabaseProfiles = data;
+      }
     }
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: true });
+    // Unifica com os perfis salvos em disco (garante que solicitações pendentes apareçam sempre)
+    const mergedMap = new Map<string, any>();
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
+    // Insere primeiro os perfis locais
+    for (const p of persistedProfiles) {
+      mergedMap.set(p.email.toLowerCase(), p);
     }
 
-    return res.status(200).json({ profiles: data, source: 'supabase' });
+    // Sobrescreve com os dados do Supabase
+    for (const p of supabaseProfiles) {
+      mergedMap.set(p.email.toLowerCase(), {
+        ...mergedMap.get(p.email.toLowerCase()),
+        ...p
+      });
+    }
+
+    const unifiedList = Array.from(mergedMap.values());
+    return res.status(200).json({ profiles: unifiedList, source: supabaseProfiles.length > 0 ? 'unified' : 'local' });
   } catch (error: any) {
     res.status(500).json({ error: 'Erro ao listar perfis', details: error.message });
   }
@@ -799,13 +1010,32 @@ app.post('/api/folders', async (req: Request, res: Response) => {
 });
 
 app.delete('/api/folders/:id', async (req: Request, res: Response) => {
+  const folderId = req.params.id;
   const supabase = getSupabaseServerClient();
-  if (!supabase) return res.status(503).json({ error: 'Supabase não conectado' });
 
   try {
-    const folderId = req.params.id;
-    const { error } = await supabase.from('folders').delete().eq('id', folderId);
-    if (error) return res.status(400).json({ error: error.message });
+    if (supabase) {
+      // 1. Remove arquivos associados à pasta
+      try {
+        await supabase.from('files').delete().eq('folder_id', folderId);
+      } catch (fErr) {
+        console.warn('[Delete Folder] Aviso ao remover arquivos da pasta:', fErr);
+      }
+
+      // 2. Remove subpastas filhas
+      try {
+        await supabase.from('folders').delete().eq('parent_id', folderId);
+      } catch (subErr) {
+        console.warn('[Delete Folder] Aviso ao remover subpastas:', subErr);
+      }
+
+      // 3. Executa DELETE na tabela folders
+      const { error } = await supabase.from('folders').delete().eq('id', folderId);
+      if (error) {
+        console.warn('[Delete Folder] Erro ao deletar no Supabase:', error.message);
+        return res.status(400).json({ error: error.message });
+      }
+    }
 
     res.json({ status: 'success', message: 'Pasta removida com sucesso' });
   } catch (err: any) {

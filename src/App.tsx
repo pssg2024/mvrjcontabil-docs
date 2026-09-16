@@ -258,54 +258,51 @@ export default function App() {
     // Poll storage metrics periodically every 15 seconds for real-time tracking
     const interval = setInterval(fetchStorageMetrics, 15000);
 
-    // Fetch and sync profiles from Supabase
-    fetch('/api/profiles')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.profiles && Array.isArray(data.profiles) && data.profiles.length > 0) {
-          setProfiles(prev => {
-            const merged = [...prev];
-            for (const sp of data.profiles) {
-              const idx = merged.findIndex(p => p.email.toLowerCase() === sp.email.toLowerCase() || p.id === sp.id);
-              if (idx !== -1) {
-                merged[idx] = {
-                  ...merged[idx],
-                  id: sp.id || merged[idx].id,
-                  full_name: sp.full_name || merged[idx].full_name,
-                  avatar_url: sp.avatar_url !== undefined ? (sp.avatar_url || undefined) : merged[idx].avatar_url,
+    // Initial sync of profiles from API / Supabase
+    const syncProfiles = () => {
+      fetch('/api/profiles')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.profiles && Array.isArray(data.profiles) && data.profiles.length > 0) {
+            setProfiles(data.profiles);
+
+            setCurrentUser(prevUser => {
+              if (!prevUser) return prevUser;
+              const match = data.profiles.find((p: UserProfile) => 
+                p.email.toLowerCase() === prevUser.email.toLowerCase() || p.id === prevUser.id
+              );
+              if (match) {
+                return {
+                  ...prevUser,
+                  id: match.id || prevUser.id,
+                  full_name: match.full_name || prevUser.full_name,
+                  role: match.role || prevUser.role,
+                  status: match.status || prevUser.status,
+                  sector: match.sector || prevUser.sector,
+                  avatar_url: match.avatar_url !== undefined ? (match.avatar_url || undefined) : prevUser.avatar_url,
                 };
-              } else {
-                merged.push(sp);
               }
-            }
-            return merged;
-          });
+              return prevUser;
+            });
+          }
+        })
+        .catch(err => console.log('Erro ao sincronizar perfis com Supabase:', err));
+    };
 
-          setCurrentUser(prevUser => {
-            if (!prevUser) return prevUser;
-            const match = data.profiles.find((p: UserProfile) => 
-              p.email.toLowerCase() === prevUser.email.toLowerCase() || p.id === prevUser.id
-            );
-            if (match) {
-              return {
-                ...prevUser,
-                id: match.id || prevUser.id,
-                full_name: match.full_name || prevUser.full_name,
-                avatar_url: match.avatar_url !== undefined ? (match.avatar_url || undefined) : prevUser.avatar_url,
-              };
-            }
-            return prevUser;
-          });
-        }
-      })
-      .catch(err => console.log('Erro ao sincronizar perfis com Supabase:', err));
+    syncProfiles();
+    const profilesInterval = setInterval(syncProfiles, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearInterval(profilesInterval);
+    };
   }, []);
 
   // Permission Checker (Mirrors PostgreSQL RLS function public.has_folder_permission)
   const checkFolderPermission = (folderId: string, minLevel: PermissionLevel): boolean => {
-    if (!currentUser || currentUser.status !== 'active') return false;
+    if (!currentUser) return false;
+    // Usuários com status 'active' ou 'approved' possuem acesso normal liberado
+    if (currentUser.status !== 'active' && currentUser.status !== 'approved') return false;
     if (currentUser.role === 'admin') return true;
 
     // 1. Explicit folder assignment in folder_permissions
@@ -350,10 +347,11 @@ export default function App() {
   };
 
   // Handlers for User Management
+  // 1. Aprovar: atualiza status para 'approved' na tabela profiles
   const handleApproveUser = (userId: string, role: UserRole, sector?: Sector) => {
     const target = profiles.find(p => p.id === userId);
     const finalSector = sector || target?.sector || 'Fiscal';
-    setProfiles(prev => prev.map(p => p.id === userId ? { ...p, status: 'active', role, sector: finalSector } : p));
+    setProfiles(prev => prev.map(p => p.id === userId ? { ...p, status: 'approved', role, sector: finalSector } : p));
     logAudit('USER_APPROVED', 'USER', userId, {
       approved_name: target?.full_name,
       approved_email: target?.email,
@@ -367,15 +365,46 @@ export default function App() {
     }).catch(err => console.warn('Aviso ao sincronizar aprovação com Supabase:', err));
   };
 
-  const handleRejectUser = (userId: string) => {
+  // 1. Recusar: deleta da tabela profiles
+  const handleRejectUser = async (userId: string) => {
     const target = profiles.find(p => p.id === userId);
-    setProfiles(prev => prev.map(p => p.id === userId ? { ...p, status: 'rejected' } : p));
-    logAudit('USER_REJECTED', 'USER', userId, { rejected_name: target?.full_name });
-    fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'rejected', email: target?.email }),
-    }).catch(err => console.warn('Aviso ao sincronizar recusa com Supabase:', err));
+    setProfiles(prev => prev.filter(p => p.id !== userId));
+    logAudit('USER_REJECTED', 'USER', userId, { rejected_name: target?.full_name, rejected_email: target?.email });
+    try {
+      await fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.warn('Aviso ao excluir perfil recusado do Supabase:', err);
+    }
+  };
+
+  // 2. Exclusão de Usuários da tabela profiles (exceto o próprio perfil logado)
+  const handleDeleteUser = async (userId: string, userName?: string) => {
+    if (currentUser && (currentUser.id === userId || currentUser.email.toLowerCase() === userName?.toLowerCase())) {
+      alert('Você não pode excluir seu próprio perfil de administrador logado.');
+      return;
+    }
+    if (!confirm(`Tem certeza que deseja excluir permanentemente o usuário "${userName || userId}" da tabela profiles?`)) {
+      return;
+    }
+    setProfiles(prev => prev.filter(p => p.id !== userId));
+    logAudit('USER_DELETED', 'USER', userId, { deleted_name: userName });
+    try {
+      const res = await fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && data.error) {
+        alert(`Erro: ${data.error}`);
+        // Recarregar perfis caso falhe
+        fetch('/api/profiles')
+          .then(r => r.json())
+          .then(d => { if (d && d.profiles) setProfiles(d.profiles); });
+      }
+    } catch (err: any) {
+      console.warn('Erro ao excluir usuário no Supabase:', err);
+    }
   };
 
   const handleUpdateUserStatus = (userId: string, status: UserStatus) => {
@@ -485,6 +514,24 @@ export default function App() {
       } catch (err) {
         console.warn('Erro ao excluir no Supabase/R2:', err);
       }
+    }
+  };
+
+  // 3. Exclusão de Pastas pelo Admin com deleção no Supabase (DELETE /api/folders/:id)
+  const handleDeleteFolder = async (folderId: string) => {
+    const folder = folders.find(f => f.id === folderId);
+    try {
+      await deleteFolderInApi(folderId);
+      // Remove pasta excluída e eventuais subpastas vinculadas
+      setFolders(prev => prev.filter(f => f.id !== folderId && f.parent_id !== folderId));
+      // Remove arquivos pertencentes a esta pasta da listagem local
+      setFiles(prev => prev.filter(file => file.folder_id !== folderId));
+      fetchStorageMetrics();
+      if (folder) {
+        logAudit('FOLDER_DELETE', 'FOLDER', folderId, { name: folder.name });
+      }
+    } catch (err: any) {
+      alert(`Erro ao excluir pasta no Supabase: ${err.message || 'Falha na requisição'}`);
     }
   };
 
@@ -674,6 +721,7 @@ export default function App() {
                   setIsUploadModalOpen(true);
                 }}
                 onCreateFolder={handleCreateFolder}
+                onDeleteFolder={handleDeleteFolder}
                 onDeleteFile={handleDeleteFile}
                 hasFolderPermission={checkFolderPermission}
               />
@@ -697,6 +745,7 @@ export default function App() {
                 }}
                 onApproveUser={handleApproveUser}
                 onRejectUser={handleRejectUser}
+                onDeleteUser={handleDeleteUser}
                 onUpdateUserStatus={handleUpdateUserStatus}
                 onUpdateUserRole={handleUpdateUserRole}
                 onUpdateFolderPermission={handleUpdateFolderPermission}

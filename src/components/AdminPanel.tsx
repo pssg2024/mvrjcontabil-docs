@@ -16,7 +16,8 @@ import {
   UserCog,
   CheckCircle2,
   ChevronRight,
-  Palette
+  Palette,
+  Trash2
 } from 'lucide-react';
 import { 
   UserProfile, 
@@ -45,6 +46,7 @@ interface AdminPanelProps {
   initialTab?: 'pending' | 'matrix' | 'users' | 'audit' | 'appearance';
   onApproveUser: (userId: string, role: UserRole, sector?: Sector) => void;
   onRejectUser: (userId: string) => void;
+  onDeleteUser: (userId: string, userName?: string) => void;
   onUpdateUserStatus: (userId: string, status: UserStatus) => void;
   onUpdateUserRole: (userId: string, role: UserRole) => void;
   onUpdateFolderPermission: (folderId: string, profileId: string, level: PermissionLevel | 'none') => void;
@@ -64,6 +66,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   initialTab = 'pending',
   onApproveUser,
   onRejectUser,
+  onDeleteUser,
   onUpdateUserStatus,
   onUpdateUserRole,
   onUpdateFolderPermission,
@@ -468,7 +471,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="flex items-center space-x-2">
                       <h4 className="font-bold text-sm text-gray-900">{profile.full_name}</h4>
                       <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                        profile.status === 'active'
+                        profile.status === 'active' || profile.status === 'approved'
                           ? 'bg-emerald-100 text-emerald-800'
                           : profile.status === 'pending'
                           ? 'bg-amber-100 text-amber-800'
@@ -494,7 +497,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <select
                     value={profile.role}
                     onChange={(e) => onUpdateUserRole(profile.id, e.target.value as UserRole)}
-                    className="text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700"
+                    className="text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 outline-hidden"
                   >
                     <option value="viewer">Papel: Leitor</option>
                     <option value="editor">Papel: Editor</option>
@@ -504,13 +507,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <select
                     value={profile.status}
                     onChange={(e) => onUpdateUserStatus(profile.id, e.target.value as UserStatus)}
-                    className="text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700"
+                    className="text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 outline-hidden"
                   >
                     <option value="active">Status: Ativo</option>
+                    <option value="approved">Status: Aprovado</option>
                     <option value="pending">Status: Pendente</option>
                     <option value="blocked">Status: Bloqueado</option>
                     <option value="rejected">Status: Recusado</option>
                   </select>
+
+                  {/* Botão de Exclusão de Usuário (exceto o próprio usuário logado) */}
+                  {profile.id !== currentUser.id && profile.email.toLowerCase() !== currentUser.email.toLowerCase() && (
+                    <button
+                      type="button"
+                      id={`delete-user-${profile.id}`}
+                      onClick={() => onDeleteUser(profile.id, profile.full_name)}
+                      className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200"
+                      title="Excluir perfil permanentemente da tabela profiles"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
