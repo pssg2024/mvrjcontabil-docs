@@ -166,7 +166,8 @@ export async function uploadToPresignedUrl(
  */
 export async function getPresignedDownloadUrl(
   storageKey: string,
-  fileName?: string
+  fileName?: string,
+  inline?: boolean
 ): Promise<PresignedDownloadResponse> {
   const response = await fetch('/api/r2/presigned-download', {
     method: 'POST',
@@ -176,6 +177,7 @@ export async function getPresignedDownloadUrl(
     body: JSON.stringify({
       storageKey,
       fileName,
+      inline: !!inline,
     }),
   });
 

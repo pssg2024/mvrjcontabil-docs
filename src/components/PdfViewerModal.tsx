@@ -44,7 +44,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   const fetchPresignedUrl = async (key: string, name: string) => {
     try {
       setIsLoadingUrl(true);
-      const res = await getPresignedDownloadUrl(key, name);
+      const res = await getPresignedDownloadUrl(key, name, true);
       setPresignedDownloadUrl(res.downloadUrl);
     } catch (err) {
       console.warn('Erro ao obter presigned download URL, fallback para preview_url local', err);

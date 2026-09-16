@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import multer from 'multer';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createClient } from '@supabase/supabase-js';
@@ -9,6 +10,13 @@ import { createServer as createViteServer } from 'vite';
 
 const app = express();
 const PORT = 3000;
+
+// Multer configured with memoryStorage for direct streaming to Cloudflare R2
+// NEVER writes files to local server directories (e.g. ./uploads, ./public/uploads, /tmp)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
+});
 
 // Raw body parsers for binary uploads MUST run before general json/urlencoded parsers
 app.use('/api/r2/upload-direct', express.raw({ type: () => true, limit: '100mb' }));
@@ -21,7 +29,7 @@ app.use('/api/r2/logo-image', express.raw({ type: () => true, limit: '10mb' }));
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
-// In-memory mock storage cache for demo/preview mode when R2 keys are not yet configured
+// In-memory mock storage cache for demo/preview mode fallback
 const inMemoryFileStore = new Map<string, { buffer: Buffer; mimeType: string; name: string }>();
 
 // Supabase Server Client (Service Role or Anon Key)
@@ -37,36 +45,36 @@ function getSupabaseServerClient() {
   }
 }
 
-// R2 Client Initialization (Lazy / Conditional)
-function getR2Client(): { client: S3Client | null; bucketName: string; isConfigured: boolean } {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucketName = process.env.R2_BUCKET_NAME || 'mvrjcontabil-ged';
+// R2 Client Initialization - strictly consumes the Cloudflare R2 environment variables
+function getR2Client(): { client: S3Client | null; bucketName: string; isConfigured: boolean; endpoint: string } {
+  const accessKeyId = (process.env.R2_ACCESS_KEY_ID || '').trim();
+  const secretAccessKey = (process.env.R2_SECRET_ACCESS_KEY || '').trim();
+  const bucketName = (process.env.R2_BUCKET_NAME || 'mvrjcontabil-docs').trim();
 
-  if (accountId && accessKeyId && secretAccessKey) {
-    let rawEndpoint = process.env.R2_ENDPOINT?.trim();
-    let endpoint: string;
+  let endpoint = (process.env.R2_ENDPOINT || '').trim();
+  const accountId = (process.env.R2_ACCOUNT_ID || '').trim();
 
-    // Se o R2_ENDPOINT não tiver .r2.cloudflarestorage.com ou for apenas o ID, formata para o domínio canônico oficial da Cloudflare
-    if (!rawEndpoint || !rawEndpoint.includes('.r2.cloudflarestorage.com')) {
-      endpoint = `https://${accountId.trim().replace(/^https?:\/\//, '')}.r2.cloudflarestorage.com`;
-    } else {
-      endpoint = rawEndpoint.startsWith('http') ? rawEndpoint : `https://${rawEndpoint}`;
+  if (!endpoint && accountId) {
+    endpoint = `https://${accountId.replace(/^https?:\/\//, '')}.r2.cloudflarestorage.com`;
+  } else if (endpoint) {
+    if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+      endpoint = `https://${endpoint}`;
     }
+  }
 
+  if (endpoint && accessKeyId && secretAccessKey) {
     const client = new S3Client({
       region: 'auto',
       endpoint,
       credentials: {
-        accessKeyId: accessKeyId.trim(),
-        secretAccessKey: secretAccessKey.trim(),
+        accessKeyId,
+        secretAccessKey,
       },
     });
-    return { client, bucketName, isConfigured: true };
+    return { client, bucketName, isConfigured: true, endpoint };
   }
 
-  return { client: null, bucketName, isConfigured: false };
+  return { client: null, bucketName, isConfigured: false, endpoint: endpoint || '' };
 }
 
 // ==============================================================================
@@ -182,10 +190,58 @@ app.post('/api/r2/presigned-upload', async (req: Request, res: Response) => {
   }
 });
 
-// 4. Generate Presigned GET URL for Secure Download/Preview
+// Helper to stream R2 object directly to response or fallback to memory store
+async function streamR2Object(
+  storageKey: string,
+  fileName: string,
+  mimeType: string,
+  disposition: 'inline' | 'attachment',
+  res: Response
+) {
+  const { client, bucketName, isConfigured } = getR2Client();
+
+  if (isConfigured && client) {
+    try {
+      const command = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: storageKey,
+      });
+      const r2Response = await client.send(command);
+
+      if (r2Response.Body) {
+        const cleanMime = mimeType || r2Response.ContentType || 'application/octet-stream';
+        res.setHeader('Content-Type', cleanMime);
+        res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName)}"`);
+        if (r2Response.ContentLength) {
+          res.setHeader('Content-Length', r2Response.ContentLength);
+        }
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+
+        const stream = r2Response.Body as NodeJS.ReadableStream;
+        return stream.pipe(res);
+      }
+    } catch (s3Err: any) {
+      console.warn(`[R2 Stream] Objeto ${storageKey} não encontrado no R2 (${s3Err.message}), verificando cache local`);
+    }
+  }
+
+  // Fallback to memory store if present
+  const cached = inMemoryFileStore.get(storageKey);
+  if (cached) {
+    res.setHeader('Content-Type', cached.mimeType || mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName || cached.name)}"`);
+    res.setHeader('Content-Length', cached.buffer.length);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(cached.buffer);
+  }
+
+  return res.status(404).json({ error: 'Arquivo não encontrado no Cloudflare R2' });
+}
+
+// 4. Generate Presigned GET URL for Secure Download/Preview (1 hour expiration)
 app.post('/api/r2/presigned-download', async (req: Request, res: Response) => {
   try {
-    const { storageKey, fileName } = req.body;
+    const { storageKey, fileName, inline } = req.body;
 
     if (!storageKey) {
       return res.status(400).json({ error: 'storageKey é obrigatório' });
@@ -194,28 +250,28 @@ app.post('/api/r2/presigned-download', async (req: Request, res: Response) => {
     const { client, bucketName, isConfigured } = getR2Client();
 
     if (isConfigured && client) {
-      // GERAÇÃO REAL DE PRESIGNED GET URL COM EXPIRAÇÃO DE 30 MINUTOS
+      const disposition = inline ? 'inline' : 'attachment';
       const command = new GetObjectCommand({
         Bucket: bucketName,
         Key: storageKey,
-        ResponseContentDisposition: fileName ? `inline; filename="${encodeURIComponent(fileName)}"` : undefined,
+        ResponseContentDisposition: fileName ? `${disposition}; filename="${encodeURIComponent(fileName)}"` : undefined,
       });
 
-      const presignedGetUrl = await getSignedUrl(client, command, { expiresIn: 1800 });
+      const presignedGetUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
 
       return res.json({
         downloadUrl: presignedGetUrl,
-        expiresInSeconds: 1800,
+        expiresInSeconds: 3600,
         provider: 'Cloudflare R2 (S3 API)',
         isSimulation: false,
       });
     }
 
     // Sandbox download URL
-    const simulatedDownloadUrl = `/api/r2/mock-download/${encodeURIComponent(storageKey)}`;
+    const simulatedDownloadUrl = `/api/r2/download?key=${encodeURIComponent(storageKey)}&name=${encodeURIComponent(fileName || 'arquivo')}`;
     return res.json({
       downloadUrl: simulatedDownloadUrl,
-      expiresInSeconds: 1800,
+      expiresInSeconds: 3600,
       provider: 'Local Sandbox R2 Emulator',
       isSimulation: true,
     });
@@ -225,7 +281,230 @@ app.post('/api/r2/presigned-download', async (req: Request, res: Response) => {
   }
 });
 
-// 5. Direct Resilient Upload Endpoint (Uploads directly to Cloudflare R2 from server, avoiding browser CORS blocks)
+// 4.1 Route to View file by ID or StorageKey (Streams directly from Cloudflare R2)
+app.get('/api/files/:id/view', async (req: Request, res: Response) => {
+  try {
+    const fileId = req.params.id;
+    const supabase = getSupabaseServerClient();
+    let fileRecord: any = null;
+
+    if (supabase && isValidUuid(fileId)) {
+      const { data } = await supabase.from('files').select('*').eq('id', fileId).single();
+      fileRecord = data;
+    }
+
+    if (!fileRecord && supabase) {
+      const { data } = await supabase.from('files').select('*').eq('storage_key', fileId).limit(1);
+      if (data && data[0]) fileRecord = data[0];
+    }
+
+    const storageKey = fileRecord?.storage_key || fileId;
+    const fileName = fileRecord?.name || path.basename(storageKey);
+    const mimeType = fileRecord?.mime_type || 'application/pdf';
+
+    await streamR2Object(storageKey, fileName, mimeType, 'inline', res);
+  } catch (error: any) {
+    console.error('Erro ao visualizar arquivo:', error);
+    res.status(500).json({ error: 'Erro ao visualizar arquivo', details: error.message });
+  }
+});
+
+// 4.2 Route to Download file by ID or StorageKey (Streams directly from Cloudflare R2)
+app.get('/api/files/:id/download', async (req: Request, res: Response) => {
+  try {
+    const fileId = req.params.id;
+    const supabase = getSupabaseServerClient();
+    let fileRecord: any = null;
+
+    if (supabase && isValidUuid(fileId)) {
+      const { data } = await supabase.from('files').select('*').eq('id', fileId).single();
+      fileRecord = data;
+    }
+
+    if (!fileRecord && supabase) {
+      const { data } = await supabase.from('files').select('*').eq('storage_key', fileId).limit(1);
+      if (data && data[0]) fileRecord = data[0];
+    }
+
+    const storageKey = fileRecord?.storage_key || fileId;
+    const fileName = fileRecord?.name || path.basename(storageKey);
+    const mimeType = fileRecord?.mime_type || 'application/octet-stream';
+
+    await streamR2Object(storageKey, fileName, mimeType, 'attachment', res);
+  } catch (error: any) {
+    console.error('Erro ao baixar arquivo:', error);
+    res.status(500).json({ error: 'Erro ao baixar arquivo', details: error.message });
+  }
+});
+
+// 4.3 General R2 Download Endpoint (Streams directly from Cloudflare R2 by key query param)
+app.get('/api/r2/download', async (req: Request, res: Response) => {
+  try {
+    const storageKey = req.query.key as string;
+    const fileName = (req.query.name as string) || path.basename(storageKey || 'download');
+    if (!storageKey) return res.status(400).json({ error: 'Parâmetro key é obrigatório' });
+
+    await streamR2Object(storageKey, fileName, 'application/octet-stream', 'attachment', res);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Erro ao transferir arquivo', details: error.message });
+  }
+});
+
+// 4.4 General R2 View Endpoint (Streams directly from Cloudflare R2 inline)
+app.get('/api/r2/view', async (req: Request, res: Response) => {
+  try {
+    const storageKey = req.query.key as string;
+    const fileName = (req.query.name as string) || path.basename(storageKey || 'document');
+    if (!storageKey) return res.status(400).json({ error: 'Parâmetro key é obrigatório' });
+
+    await streamR2Object(storageKey, fileName, 'application/pdf', 'inline', res);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Erro ao visualizar arquivo', details: error.message });
+  }
+});
+
+// 4.5 Standard Multipart Upload Endpoint using Multer MemoryStorage
+// Streams IMMEDIATELY to Cloudflare R2 via PutObjectCommand and registers in Supabase files table
+// NEVER saves files into local folders (./uploads, ./public/uploads, /tmp)
+app.post('/api/files/upload', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhum arquivo enviado no campo file (multipart/form-data)' });
+    }
+
+    const { folder_id, sector, uploaded_by, pages_count, tags } = req.body;
+    const file = req.file;
+    const cleanFileName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeSector = (sector || 'Geral').toLowerCase().replace(/\s+/g, '-');
+    const storageKey = `sectors/${safeSector}/${folder_id || 'root'}/${Date.now()}-${cleanFileName}`;
+
+    const { client, bucketName, isConfigured } = getR2Client();
+
+    if (!isConfigured || !client) {
+      return res.status(500).json({
+        error: 'Cloudflare R2 não está configurado no servidor.',
+        details: 'Verifique as variáveis R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY e R2_BUCKET_NAME.',
+      });
+    }
+
+    // Envia o buffer IMEDIATAMENTE para o Cloudflare R2
+    const putCommand = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: storageKey,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      Metadata: {
+        'client-name': 'MVRJCONTABIL-GED',
+        'uploaded-by': String(uploaded_by || 'admin'),
+        'original-name': encodeURIComponent(file.originalname),
+        'uploaded-at': new Date().toISOString(),
+      },
+    });
+
+    await client.send(putCommand);
+    console.log(`[Cloudflare R2 Multipart] Enviado com sucesso: ${storageKey} (${file.size} bytes) no bucket ${bucketName}`);
+
+    // Armazena no cache local também para preview ultra-rápido instantâneo
+    inMemoryFileStore.set(storageKey, {
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+      name: file.originalname,
+    });
+
+    // Registra o metadado na tabela files do Supabase para persistir o histórico para sempre
+    const supabase = getSupabaseServerClient();
+    let insertedDoc: any = null;
+
+    if (supabase) {
+      let resolvedFolderId = folder_id;
+      if (!isValidUuid(resolvedFolderId)) {
+        const { data: allFolders } = await supabase.from('folders').select('id, sector, name');
+        const matched = (allFolders || []).find(f => 
+          f.sector === sector || 
+          f.name.toLowerCase().includes(String(sector || '').toLowerCase())
+        );
+        resolvedFolderId = matched?.id || allFolders?.[0]?.id;
+      }
+
+      let resolvedUploaderId = isValidUuid(uploaded_by) ? uploaded_by : null;
+      if (!resolvedUploaderId) {
+        const { data: adminProfiles } = await supabase.from('profiles').select('id').eq('role', 'admin').limit(1);
+        if (adminProfiles && adminProfiles[0]) {
+          resolvedUploaderId = adminProfiles[0].id;
+        }
+      }
+
+      const parsedTags = Array.isArray(tags) ? tags : (typeof tags === 'string' ? JSON.parse(tags || '[]') : []);
+
+      const { data: dbData, error: dbError } = await supabase
+        .from('files')
+        .insert({
+          folder_id: resolvedFolderId,
+          name: file.originalname,
+          storage_key: storageKey,
+          mime_type: file.mimetype,
+          original_size: file.size,
+          optimized_size: file.size,
+          compression_ratio: 0,
+          pages_count: Number(pages_count) || 1,
+          tags: parsedTags,
+          uploaded_by: resolvedUploaderId,
+          updated_at: new Date().toISOString(),
+        })
+        .select('*, folders(name, sector)');
+
+      if (!dbError && dbData && dbData[0]) {
+        insertedDoc = dbData[0];
+        try {
+          await supabase.from('audit_logs').insert({
+            action: 'FILE_UPLOAD',
+            target_type: 'FILE',
+            target_id: insertedDoc.id,
+            profile_id: resolvedUploaderId,
+            user_name: 'Evandro (Administrador)',
+            sector: sector || 'Fiscal',
+            details: {
+              name: file.originalname,
+              storage_key: storageKey,
+              size: file.size,
+              r2_bucket: bucketName,
+            },
+          });
+        } catch {}
+      }
+    }
+
+    const docId = insertedDoc?.id || `r2-${Date.now()}`;
+    return res.status(201).json({
+      status: 'success',
+      file: {
+        id: docId,
+        name: file.originalname,
+        storage_key: storageKey,
+        mime_type: file.mimetype,
+        original_size: file.size,
+        optimized_size: file.size,
+        compression_ratio: 0,
+        pages_count: Number(pages_count) || 1,
+        folder_id: insertedDoc?.folder_id || folder_id,
+        sector: sector || 'Fiscal',
+        uploaded_by: insertedDoc?.uploaded_by || uploaded_by,
+        created_at: insertedDoc?.created_at || new Date().toISOString(),
+        preview_url: `/api/files/${docId}/view`,
+        download_url: `/api/files/${docId}/download`,
+      },
+      storageKey,
+      uploadedToR2: true,
+      bucket: bucketName,
+      message: 'Arquivo enviado e salvo permanentemente no Cloudflare R2',
+    });
+  } catch (error: any) {
+    console.error('Erro no upload multipart:', error);
+    res.status(500).json({ error: 'Falha ao processar upload para o Cloudflare R2', details: error.message });
+  }
+});
+
+// 5. Direct Resilient Upload Endpoint (Uploads directly to Cloudflare R2 from buffer, never saving to local disk)
 app.post('/api/r2/upload-direct', express.raw({ type: '*/*', limit: '100mb' }), async (req: Request, res: Response) => {
   try {
     // Validação estrita de Quota de Armazenamento R2
@@ -261,7 +540,7 @@ app.post('/api/r2/upload-direct', express.raw({ type: '*/*', limit: '100mb' }), 
       return res.status(400).json({ error: 'Conteúdo do arquivo está vazio' });
     }
 
-    // Armazena no cache seguro em memória para redundância e visualização rápida
+    // Armazena no cache em memória para preview ultra-rápido instantâneo
     inMemoryFileStore.set(storageKey, {
       buffer,
       mimeType,
@@ -287,14 +566,20 @@ app.post('/api/r2/upload-direct', express.raw({ type: '*/*', limit: '100mb' }), 
 
         await client.send(command);
         uploadedToR2 = true;
-        r2Message = `Enviado com sucesso para o bucket R2: ${bucketName}`;
-        console.log(`[R2 Backend Upload] Sucesso: ${storageKey} no bucket ${bucketName}`);
+        r2Message = `Enviado com sucesso para o Cloudflare R2 bucket: ${bucketName}`;
+        console.log(`[R2 Direct Upload] Sucesso: ${storageKey} no bucket ${bucketName}`);
       } catch (err: any) {
-        console.warn(`[R2 Backend Upload Aviso] Falha ao enviar para R2 (${err.message}). Arquivo salvo no cache seguro do GED.`, err);
-        r2Message = `Armazenado no buffer resiliente do GED (${err.message})`;
+        console.error(`[R2 Direct Upload Erro] Falha ao enviar para R2: ${err.message}`, err);
+        return res.status(500).json({
+          error: 'Falha ao salvar arquivo no Cloudflare R2',
+          details: err.message,
+        });
       }
     } else {
-      r2Message = 'Armazenado no buffer seguro local do GED';
+      return res.status(500).json({
+        error: 'Cloudflare R2 não está configurado.',
+        details: 'Defina as variáveis R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY e R2_BUCKET_NAME.',
+      });
     }
 
     return res.status(200).json({
@@ -302,7 +587,8 @@ app.post('/api/r2/upload-direct', express.raw({ type: '*/*', limit: '100mb' }), 
       storageKey,
       bytes: buffer.length,
       uploadedToR2,
-      provider: uploadedToR2 ? 'Cloudflare R2 (S3 API via Backend)' : 'GED Storage Resiliente',
+      provider: 'Cloudflare R2 (S3 API)',
+      bucket: bucketName,
       message: r2Message,
       timestamp: new Date().toISOString(),
     });
@@ -656,6 +942,180 @@ function savePersistedProfiles() {
 
 loadPersistedProfiles();
 
+// Cloudflare R2 Persistent Key for Profiles
+const R2_PROFILES_KEY = 'system/profiles.json';
+
+async function fetchR2Profiles(): Promise<StoredProfile[]> {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return [];
+  try {
+    const res = await client.send(new GetObjectCommand({
+      Bucket: bucketName,
+      Key: R2_PROFILES_KEY,
+    }));
+    if (res.Body) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as any) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    // Arquivo ainda não existe no R2
+  }
+  return [];
+}
+
+async function saveR2Profiles(profiles: StoredProfile[]) {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return;
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: R2_PROFILES_KEY,
+      Body: Buffer.from(JSON.stringify(profiles, null, 2), 'utf-8'),
+      ContentType: 'application/json',
+      Metadata: {
+        'system-sync': 'profiles',
+        'updated-at': new Date().toISOString(),
+      },
+    }));
+  } catch (err: any) {
+    console.warn('[R2 Profiles Save Aviso]', err.message);
+  }
+}
+
+// Reconstruct and unify profiles from R2, Supabase profiles, and Supabase audit_logs
+async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
+  const supabase = getSupabaseServerClient();
+  const profilesMap = new Map<string, StoredProfile>();
+
+  // 1. Carregar perfis do Cloudflare R2
+  const r2Profiles = await fetchR2Profiles();
+  for (const p of r2Profiles) {
+    if (p && p.email) {
+      profilesMap.set(p.email.toLowerCase().trim(), p);
+    }
+  }
+
+  // 2. Carregar perfis locais do arquivo storage/profiles.json
+  for (const p of persistedProfiles) {
+    if (p && p.email && !profilesMap.has(p.email.toLowerCase().trim())) {
+      profilesMap.set(p.email.toLowerCase().trim(), p);
+    }
+  }
+
+  // 3. Carregar da tabela profiles do Supabase
+  if (supabase) {
+    try {
+      const { data: dbProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: true });
+      if (Array.isArray(dbProfiles)) {
+        for (const p of dbProfiles) {
+          const emailKey = p.email?.toLowerCase().trim();
+          if (emailKey) {
+            const existing = profilesMap.get(emailKey);
+            profilesMap.set(emailKey, {
+              ...existing,
+              ...p,
+              status: p.status || existing?.status || 'active',
+            });
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Supabase Profiles Sync Aviso]', err.message);
+    }
+
+    // 4. Reconstrução vital de solicitações de acesso a partir de audit_logs
+    // Garante que solicitações de novos usuários (como Paulo) NUNCA se percam após reinício do Render
+    try {
+      const { data: auditLogs } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (Array.isArray(auditLogs)) {
+        const rejectedOrDeletedEmails = new Set<string>();
+        const rejectedOrDeletedIds = new Set<string>();
+        const approvedEmails = new Set<string>();
+
+        for (const log of auditLogs) {
+          if (log.action === 'USER_REJECTED' || log.action === 'USER_DELETED') {
+            if (log.target_id) rejectedOrDeletedIds.add(String(log.target_id));
+            if (log.details?.rejected_email) rejectedOrDeletedEmails.add(String(log.details.rejected_email).toLowerCase().trim());
+            if (log.details?.deleted_email) rejectedOrDeletedEmails.add(String(log.details.deleted_email).toLowerCase().trim());
+          }
+          if (log.action === 'USER_APPROVED') {
+            if (log.details?.approved_email) approvedEmails.add(String(log.details.approved_email).toLowerCase().trim());
+          }
+        }
+
+        for (const log of auditLogs) {
+          if (log.action === 'ACCESS_REQUEST') {
+            const email = (log.details?.email || '').toLowerCase().trim();
+            const id = log.target_id || log.profile_id;
+            const isMasterAdmin = email === 'evandro230655@gmail.com' || id === '57e1d483-669b-4791-b09e-7496570e63ea';
+
+            if (email && !isMasterAdmin && !rejectedOrDeletedEmails.has(email) && !rejectedOrDeletedIds.has(String(id))) {
+              const existing = profilesMap.get(email);
+              const currentStatus = existing?.status;
+              const isAlreadyActiveOrApproved = currentStatus === 'active' || currentStatus === 'approved' || approvedEmails.has(email);
+
+              if (!existing) {
+                profilesMap.set(email, {
+                  id: id || `usr-${Date.now()}`,
+                  email,
+                  full_name: log.details?.name || log.user_name || email.split('@')[0],
+                  sector: log.details?.sector || log.details?.requested_sector || log.sector || 'Fiscal',
+                  role: 'viewer',
+                  status: isAlreadyActiveOrApproved ? 'approved' : 'pending',
+                  created_at: log.created_at,
+                  updated_at: log.created_at,
+                });
+              } else if (!isAlreadyActiveOrApproved && existing.status !== 'blocked') {
+                existing.status = 'pending';
+              }
+            }
+          }
+        }
+      }
+    } catch (auditErr: any) {
+      console.warn('[Audit Logs Sync Aviso]', auditErr.message);
+    }
+  }
+
+  // Sempre assegurar integridade do Administrador Master (Evandro)
+  const masterAdminEmail = 'evandro230655@gmail.com';
+  if (profilesMap.has(masterAdminEmail)) {
+    const admin = profilesMap.get(masterAdminEmail)!;
+    admin.role = 'admin';
+    admin.status = 'active';
+  } else {
+    profilesMap.set(masterAdminEmail, {
+      id: '57e1d483-669b-4791-b09e-7496570e63ea',
+      email: masterAdminEmail,
+      full_name: 'Evandro (Administrador)',
+      sector: 'Diretoria',
+      role: 'admin',
+      status: 'active',
+      avatar_url: '/api/r2/avatar/57e1d483-669b-4791-b09e-7496570e63ea.webp?t=1789404217549',
+      created_at: '2026-09-14T16:21:34.630637+00:00',
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  const result = Array.from(profilesMap.values());
+  persistedProfiles = result;
+  savePersistedProfiles();
+  saveR2Profiles(result).catch(() => {});
+
+  return result;
+}
+
 // 10a. Create Profile / Access Request (POST /api/profiles)
 app.post('/api/profiles', async (req: Request, res: Response) => {
   try {
@@ -666,7 +1126,7 @@ app.post('/api/profiles', async (req: Request, res: Response) => {
 
     const cleanEmail = email.trim().toLowerCase();
     const existingIndex = persistedProfiles.findIndex(p => p.email.toLowerCase() === cleanEmail);
-    const resolvedId = (id && isValidUuid(id)) ? id : (existingIndex >= 0 ? persistedProfiles[existingIndex].id : crypto.randomUUID());
+    const resolvedId = (id && isValidUuid(id)) ? id : (existingIndex >= 0 ? persistedProfiles[existingIndex].id : `usr-${Date.now()}`);
 
     const newProfile: StoredProfile = {
       id: resolvedId,
@@ -686,12 +1146,34 @@ app.post('/api/profiles', async (req: Request, res: Response) => {
       persistedProfiles = [newProfile, ...persistedProfiles];
     }
     savePersistedProfiles();
+    saveR2Profiles(persistedProfiles).catch(() => {});
 
-    // Sincroniza com Supabase se disponível
+    // Registra persistentemente no Supabase
     const supabase = getSupabaseServerClient();
     if (supabase) {
+      // 1. Grava no audit_logs para recuperação definitiva
       try {
-        const { error: insertError } = await supabase.from('profiles').upsert({
+        await supabase.from('audit_logs').insert({
+          action: 'ACCESS_REQUEST',
+          target_type: 'USER',
+          target_id: newProfile.id,
+          user_name: newProfile.full_name,
+          sector: newProfile.sector,
+          details: {
+            email: newProfile.email,
+            name: newProfile.full_name,
+            sector: newProfile.sector,
+            role: newProfile.role,
+            status: newProfile.status,
+          },
+        });
+      } catch (logErr: any) {
+        console.warn('[Audit Log Access Request Aviso]', logErr.message);
+      }
+
+      // 2. Tenta inserir na tabela profiles
+      try {
+        await supabase.from('profiles').upsert({
           id: newProfile.id,
           email: newProfile.email,
           full_name: newProfile.full_name,
@@ -701,10 +1183,6 @@ app.post('/api/profiles', async (req: Request, res: Response) => {
           avatar_url: newProfile.avatar_url,
           updated_at: new Date().toISOString()
         }, { onConflict: 'email' });
-
-        if (insertError) {
-          console.warn('[Supabase Profiles] Aviso ao salvar perfil no Supabase:', insertError.message);
-        }
       } catch (dbErr: any) {
         console.warn('[Supabase Profiles] Erro não impeditivo ao gravar no Supabase:', dbErr.message);
       }
@@ -716,7 +1194,7 @@ app.post('/api/profiles', async (req: Request, res: Response) => {
   }
 });
 
-// 10b. Update Profile metadata in Supabase & Disk (PUT /api/profiles/:userId)
+// 10b. Update Profile metadata (PUT /api/profiles/:userId)
 app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
   try {
     const userId = req.params.userId;
@@ -734,9 +1212,10 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
     } = req.body;
 
     const normalizedRole = role === 'User' ? 'viewer' : role;
+    const cleanEmail = email ? email.trim().toLowerCase() : null;
 
-    // Atualiza armazenamento em disco
-    const idx = persistedProfiles.findIndex(p => p.id === userId || (email && p.email.toLowerCase() === email.trim().toLowerCase()));
+    // Atualiza armazenamento em memória e disco
+    const idx = persistedProfiles.findIndex(p => p.id === userId || (cleanEmail && p.email.toLowerCase() === cleanEmail));
     if (idx >= 0) {
       if (full_name !== undefined) persistedProfiles[idx].full_name = full_name;
       if (avatar_url !== undefined) persistedProfiles[idx].avatar_url = avatar_url;
@@ -749,12 +1228,36 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
       if (lgpd_terms_version !== undefined) persistedProfiles[idx].lgpd_terms_version = lgpd_terms_version;
       persistedProfiles[idx].updated_at = new Date().toISOString();
       savePersistedProfiles();
+      saveR2Profiles(persistedProfiles).catch(() => {});
     }
 
-    // Atualiza Supabase
+    // Registra aprovação em audit_logs caso tenha sido aprovado
+    const targetEmail = cleanEmail || (idx >= 0 ? persistedProfiles[idx].email : '');
     const supabase = getSupabaseServerClient();
     let updatedSupabaseProfile: any = null;
+
     if (supabase) {
+      if (status === 'approved') {
+        try {
+          await supabase.from('audit_logs').insert({
+            action: 'USER_APPROVED',
+            target_type: 'USER',
+            target_id: userId,
+            user_name: 'Evandro (Administrador)',
+            sector: sector || 'Diretoria',
+            details: {
+              approved_email: targetEmail,
+              user_id: userId,
+              role: normalizedRole || 'viewer',
+              sector,
+              approved_at: new Date().toISOString(),
+            },
+          });
+        } catch (auditErr: any) {
+          console.warn('[Audit Log User Approved Aviso]', auditErr.message);
+        }
+      }
+
       try {
         const payload: any = { updated_at: new Date().toISOString() };
         if (full_name !== undefined) payload.full_name = full_name;
@@ -773,11 +1276,11 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
           .eq('id', userId)
           .select();
 
-        if ((error || !data || data.length === 0) && email) {
+        if ((error || !data || data.length === 0) && targetEmail) {
           const emailRes = await supabase
             .from('profiles')
             .update(payload)
-            .eq('email', email.trim().toLowerCase())
+            .eq('email', targetEmail)
             .select();
           data = emailRes.data;
         }
@@ -809,20 +1312,42 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'O perfil do Administrador Master não pode ser excluído.' });
     }
 
-    // Remove do disco local
-    persistedProfiles = persistedProfiles.filter(p => p.id !== userId && (!email || p.email.toLowerCase() !== email));
-    savePersistedProfiles();
+    // Localiza email antes de remover para logar
+    const foundProfile = persistedProfiles.find(p => p.id === userId || (email && p.email.toLowerCase() === email));
+    const targetEmail = email || foundProfile?.email || '';
 
-    // Deleta do Supabase (tabela profiles e opcionalmente auth.users)
+    // Remove da memória e disco local
+    persistedProfiles = persistedProfiles.filter(p => p.id !== userId && (!targetEmail || p.email.toLowerCase() !== targetEmail));
+    savePersistedProfiles();
+    saveR2Profiles(persistedProfiles).catch(() => {});
+
+    // Deleta do Supabase e registra no audit_logs
     const supabase = getSupabaseServerClient();
     if (supabase) {
       try {
+        await supabase.from('audit_logs').insert({
+          action: 'USER_DELETED',
+          target_type: 'USER',
+          target_id: userId,
+          user_name: 'Evandro (Administrador)',
+          sector: 'Diretoria',
+          details: {
+            deleted_email: targetEmail,
+            rejected_email: targetEmail,
+            user_id: userId,
+            deleted_at: new Date().toISOString(),
+          },
+        });
+      } catch (auditErr: any) {
+        console.warn('[Audit Log User Delete Aviso]', auditErr.message);
+      }
+
+      try {
         let { error } = await supabase.from('profiles').delete().eq('id', userId);
-        if (error && email) {
-          await supabase.from('profiles').delete().eq('email', email);
+        if (error && targetEmail) {
+          await supabase.from('profiles').delete().eq('email', targetEmail);
         }
 
-        // Tenta remover também de auth.users caso tenha conta de login
         if (isValidUuid(userId)) {
           try {
             await supabase.auth.admin.deleteUser(userId);
@@ -841,40 +1366,11 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
   }
 });
 
-// 11. Fetch Profiles from Supabase & Disk Unified
+// 11. Fetch Profiles Unified (Supabase + Cloudflare R2 + Audit Logs Reconstructed)
 app.get('/api/profiles', async (req: Request, res: Response) => {
   try {
-    const supabase = getSupabaseServerClient();
-    let supabaseProfiles: any[] = [];
-
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: true });
-      if (!error && Array.isArray(data)) {
-        supabaseProfiles = data;
-      }
-    }
-
-    // Unifica com os perfis salvos em disco (garante que solicitações pendentes apareçam sempre)
-    const mergedMap = new Map<string, any>();
-
-    // Insere primeiro os perfis locais
-    for (const p of persistedProfiles) {
-      mergedMap.set(p.email.toLowerCase(), p);
-    }
-
-    // Sobrescreve com os dados do Supabase
-    for (const p of supabaseProfiles) {
-      mergedMap.set(p.email.toLowerCase(), {
-        ...mergedMap.get(p.email.toLowerCase()),
-        ...p
-      });
-    }
-
-    const unifiedList = Array.from(mergedMap.values());
-    return res.status(200).json({ profiles: unifiedList, source: supabaseProfiles.length > 0 ? 'unified' : 'local' });
+    const unifiedList = await getAllUnifiedProfiles();
+    return res.status(200).json({ profiles: unifiedList, source: 'unified' });
   } catch (error: any) {
     res.status(500).json({ error: 'Erro ao listar perfis', details: error.message });
   }
@@ -1012,32 +1508,70 @@ app.post('/api/folders', async (req: Request, res: Response) => {
 app.delete('/api/folders/:id', async (req: Request, res: Response) => {
   const folderId = req.params.id;
   const supabase = getSupabaseServerClient();
+  const { client, bucketName, isConfigured } = getR2Client();
 
   try {
     if (supabase) {
-      // 1. Remove arquivos associados à pasta
+      // 1. Busca arquivos dentro da pasta para remover seus objetos do Cloudflare R2
+      try {
+        const { data: folderFiles } = await supabase.from('files').select('id, storage_key, name').eq('folder_id', folderId);
+        if (Array.isArray(folderFiles) && isConfigured && client) {
+          for (const f of folderFiles) {
+            if (f.storage_key) {
+              try {
+                await client.send(new DeleteObjectCommand({
+                  Bucket: bucketName,
+                  Key: f.storage_key,
+                }));
+                inMemoryFileStore.delete(f.storage_key);
+              } catch (delObjErr: any) {
+                console.warn(`[Delete Folder R2 Aviso] ${f.storage_key}:`, delObjErr.message);
+              }
+            }
+          }
+        }
+      } catch (fFindErr) {
+        console.warn('[Delete Folder] Aviso ao buscar arquivos para limpeza:', fFindErr);
+      }
+
+      // 2. Remove arquivos associados à pasta do Supabase
       try {
         await supabase.from('files').delete().eq('folder_id', folderId);
       } catch (fErr) {
         console.warn('[Delete Folder] Aviso ao remover arquivos da pasta:', fErr);
       }
 
-      // 2. Remove subpastas filhas
+      // 3. Remove subpastas filhas
       try {
         await supabase.from('folders').delete().eq('parent_id', folderId);
       } catch (subErr) {
         console.warn('[Delete Folder] Aviso ao remover subpastas:', subErr);
       }
 
-      // 3. Executa DELETE na tabela folders
+      // 4. Executa DELETE na tabela folders
       const { error } = await supabase.from('folders').delete().eq('id', folderId);
       if (error) {
         console.warn('[Delete Folder] Erro ao deletar no Supabase:', error.message);
         return res.status(400).json({ error: error.message });
       }
+
+      // 5. Registra no audit_logs
+      try {
+        await supabase.from('audit_logs').insert({
+          action: 'FOLDER_DELETE',
+          target_type: 'FOLDER',
+          target_id: folderId,
+          user_name: 'Evandro (Administrador)',
+          sector: 'Diretoria',
+          details: {
+            folder_id: folderId,
+            deleted_at: new Date().toISOString(),
+          },
+        });
+      } catch {}
     }
 
-    res.json({ status: 'success', message: 'Pasta removida com sucesso' });
+    res.json({ status: 'success', message: 'Pasta e conteúdos removidos com sucesso do Supabase e Cloudflare R2' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
