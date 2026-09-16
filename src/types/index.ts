@@ -84,7 +84,8 @@ export type AuditAction =
   | 'FILE_DELETE'
   | 'FOLDER_CREATE'
   | 'BACKGROUND_IMAGE_CHANGED'
-  | 'AUTH_BANNER_CHANGED';
+  | 'AUTH_BANNER_CHANGED'
+  | 'USER_DELETED';
 
 export interface AuditLog {
   id: string;
