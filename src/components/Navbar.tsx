@@ -12,10 +12,15 @@ import {
   ScrollText,
   KeyRound,
   AlertOctagon,
-  Palette
+  Palette,
+  Eye,
+  EyeOff,
+  Globe,
+  Wrench
 } from 'lucide-react';
-import { UserProfile, UserRole, StorageMetrics } from '../types';
+import { UserProfile, UserRole, StorageMetrics, AuthHeaderConfig } from '../types';
 import { formatBytes } from '../lib/optimization';
+import { PortalsDrawer } from './PortalsDrawer';
 
 interface NavbarProps {
   currentUser: UserProfile | null;
@@ -31,6 +36,7 @@ interface NavbarProps {
   allProfiles: UserProfile[];
   r2Status?: { isConfigured: boolean; bucketName: string; mode: string };
   storageMetrics?: StorageMetrics | null;
+  authHeaderConfig?: AuthHeaderConfig;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -47,17 +53,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   allProfiles,
   r2Status,
   storageMetrics,
+  authHeaderConfig,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = React.useState(false);
+  const [showPortalsDrawer, setShowPortalsDrawer] = React.useState(false);
 
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
       case 'admin':
-        return <span className="px-1.5 py-0.2 text-[10px] font-semibold rounded bg-purple-50 text-purple-700 border border-purple-200/70">Admin</span>;
+        return <span className="bg-[#C59B4B]/15 text-[#C59B4B] border border-[#C59B4B]/30 font-medium text-[11px] px-2 py-0.5 rounded-full">Admin</span>;
       case 'editor':
-        return <span className="px-1.5 py-0.2 text-[10px] font-semibold rounded bg-blue-50 text-blue-700 border border-blue-200/70">Editor</span>;
+        return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-50 text-blue-700 border border-blue-200/70">Editor</span>;
       case 'viewer':
-        return <span className="px-1.5 py-0.2 text-[10px] font-semibold rounded bg-slate-100 text-slate-600 border border-slate-200/70">Leitor</span>;
+        return <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200/70">Leitor</span>;
     }
   };
 
@@ -73,16 +81,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center space-x-3 cursor-pointer group select-none" 
               onClick={() => onNavigate('drive')}
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 flex items-center justify-center text-white shadow-sm ring-1 ring-black/5 group-hover:scale-105 transition-transform duration-200">
-                <FolderLock className="w-5 h-5 text-white" />
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 flex items-center justify-center text-white shadow-sm ring-1 ring-black/5 group-hover:scale-105 transition-transform duration-200 overflow-hidden">
+                {authHeaderConfig?.logoType === 'image' && authHeaderConfig?.logoImageUrl ? (
+                  <img
+                    src={authHeaderConfig.logoImageUrl}
+                    alt="Logo"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <FolderLock className="w-5 h-5 text-white" />
+                )}
               </div>
               <div>
                 <div className="flex items-center space-x-1.5">
-                  <span className="font-extrabold text-lg tracking-tight text-slate-900">MVRJ</span>
-                  <span className="font-bold text-lg tracking-tight text-indigo-600">CONTÁBIL</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/60 rounded-md">GED</span>
+                  <span className="font-extrabold text-lg tracking-tight text-[#112354]">MVRJ</span>
+                  <span className="font-bold text-lg tracking-tight text-[#C59B4B]">CONTÁBIL</span>
                 </div>
-                <p className="text-[10px] text-slate-400 font-medium tracking-normal leading-none mt-0.5">Gestão Eletrônica de Documentos</p>
+                <p className="text-[11px] text-slate-500 font-medium tracking-normal leading-none mt-0.5">Gestão Eletrônica de Documentos</p>
               </div>
             </div>
 
@@ -138,6 +153,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Limite R2 Atingido (100%)</span>
               </div>
             )}
+            
+            {/* Portals Drawer Trigger */}
+            <button
+              onClick={() => setShowPortalsDrawer(true)}
+              className="bg-slate-100 hover:bg-slate-200 text-[#1B357B] font-medium text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all"
+            >
+              <Globe className="w-4 h-4" />
+              <span className="hidden sm:inline">Portais Fiscais</span>
+            </button>
+
+            {/* Utilities Page Trigger */}
+            <button
+              onClick={() => onNavigate('tools')}
+              className={`font-medium text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all ${
+                activeView === 'tools'
+                  ? 'bg-[#1B357B] text-white'
+                  : 'bg-slate-100 hover:bg-slate-200 text-[#1B357B]'
+              }`}
+            >
+              <Wrench className="w-4 h-4" />
+              <span className="hidden sm:inline">Ferramentas</span>
+            </button>
 
             {/* Current User Profile & Quick Switch Dropdown */}
             {currentUser ? (
@@ -180,10 +217,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* Dropdown Menu */}
                 {showUserDropdown && (
                   <div 
-                    className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                    className="absolute right-0 mt-2 min-w-[280px] bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200/80 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                   >
-                    <div className="px-4 py-2.5 border-b border-gray-100 flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-sm flex items-center justify-center shadow-xs shrink-0">
+                    <div className="bg-slate-50 border-b border-slate-100 p-3.5 rounded-t-xl flex items-center space-x-3 mb-1">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-[#112354] to-[#1B357B] text-white font-bold text-sm flex items-center justify-center shadow-xs shrink-0">
                         {currentUser.avatar_url ? (
                           <img 
                             src={currentUser.avatar_url} 
@@ -196,17 +233,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                         )}
                       </div>
                       <div className="truncate flex-1">
-                        <p className="text-xs font-bold text-gray-900 truncate">{currentUser.full_name}</p>
-                        <p className="text-[11px] text-gray-500 truncate">{currentUser.email}</p>
-                        <div className="flex items-center space-x-1.5 mt-1">
-                          <span className="text-[10px] text-gray-600 font-medium">{currentUser.sector}</span>
+                        <p className="font-semibold text-sm text-[#112354] truncate">{currentUser.full_name}</p>
+                        <p className="text-xs text-slate-500 truncate">{currentUser.email}</p>
+                        <div className="flex items-center space-x-1.5 mt-1.5">
+                          <span className="bg-slate-200 text-slate-700 text-[11px] px-2 py-0.5 rounded-full">{currentUser.sector}</span>
                           {getRoleBadge(currentUser.role)}
                         </div>
                       </div>
                     </div>
 
-                    {/* Edit Profile & Photo Action */}
-                    <div className="p-1.5 border-b border-gray-100 space-y-1">
+                    {/* Actions List */}
+                    <div className="space-y-0.5">
                       <button
                         id="open-edit-profile-btn"
                         type="button"
@@ -214,15 +251,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                           setShowUserDropdown(false);
                           onOpenProfileModal('profile');
                         }}
-                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50/80 hover:bg-blue-100 transition-colors flex items-center justify-between group"
+                        className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100/80 transition-all flex items-center space-x-3 group cursor-pointer"
                       >
-                        <span className="flex items-center space-x-2">
-                          <User className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
-                          <span>Meu Perfil & Foto</span>
-                        </span>
-                        <span className="text-[10px] bg-blue-200/70 text-blue-800 px-1.5 py-0.5 rounded font-bold">
-                          Perfil
-                        </span>
+                        <User className="w-4 h-4 text-slate-500 group-hover:text-[#1B357B] transition-colors" />
+                        <span>Meu Perfil</span>
                       </button>
 
                       <button
@@ -232,15 +264,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                           setShowUserDropdown(false);
                           onOpenProfileModal('security');
                         }}
-                        className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between group"
+                        className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100/80 transition-all flex items-center space-x-3 group cursor-pointer"
                       >
-                        <span className="flex items-center space-x-2">
-                          <KeyRound className="w-4 h-4 text-amber-600" />
-                          <span>Trocar Senha (No Perfil)</span>
-                        </span>
-                        <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-medium">
-                          Opcional
-                        </span>
+                        <KeyRound className="w-4 h-4 text-slate-500 group-hover:text-[#1B357B] transition-colors" />
+                        <span>Segurança & Senha</span>
                       </button>
 
                       {onOpenLgpdModal && (
@@ -250,15 +277,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setShowUserDropdown(false);
                             onOpenLgpdModal();
                           }}
-                          className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between group"
+                          className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100/80 transition-all flex items-center space-x-3 group cursor-pointer"
                         >
-                          <span className="flex items-center space-x-2">
-                            <ScrollText className="w-4 h-4 text-emerald-600" />
-                            <span>Termo de Acesso & LGPD</span>
-                          </span>
-                          <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">
-                            Ativo
-                          </span>
+                          <ScrollText className="w-4 h-4 text-slate-500 group-hover:text-[#1B357B] transition-colors" />
+                          <span>Termos & Conformidade LGPD</span>
                         </button>
                       )}
 
@@ -270,30 +292,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setShowUserDropdown(false);
                             onOpenBackgroundModal();
                           }}
-                          className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors flex items-center justify-between group cursor-pointer"
+                          className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100/80 transition-all flex items-center space-x-3 group cursor-pointer"
                         >
-                          <span className="flex items-center space-x-2">
-                            <Palette className="w-4 h-4 text-purple-600 group-hover:rotate-12 transition-transform" />
-                            <span>Aparência & Identidade Visual</span>
-                          </span>
-                          <span className="text-[10px] text-purple-800 bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded font-bold">
-                            Admin
-                          </span>
+                          <Palette className="w-4 h-4 text-slate-500 group-hover:text-[#1B357B] transition-colors" />
+                          <span>Identidade Visual</span>
                         </button>
                       )}
                     </div>
 
-                    <div className="px-2 pt-1 border-t border-gray-100">
+                    {/* Logout Item */}
+                    <div className="border-t border-slate-100 mt-1 pt-1">
                       <button
                         id="logout-btn"
                         onClick={() => {
                           setShowUserDropdown(false);
                           onLogout();
                         }}
-                        className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg flex items-center space-x-2 transition-colors"
+                        className="w-full text-left px-3 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-xl flex items-center gap-3 transition-colors cursor-pointer"
                       >
-                        <LogOut className="w-4 h-4" />
-                        <span>Sair da Conta (Logout)</span>
+                        <LogOut className="w-4 h-4 shrink-0" />
+                        <span>Sair da Conta</span>
                       </button>
                     </div>
                   </div>
@@ -311,6 +329,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
       </div>
+      <PortalsDrawer isOpen={showPortalsDrawer} onClose={() => setShowPortalsDrawer(false)} />
     </header>
   );
 };

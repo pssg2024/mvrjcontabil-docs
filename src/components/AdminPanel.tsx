@@ -17,7 +17,8 @@ import {
   CheckCircle2,
   ChevronRight,
   Palette,
-  Trash2
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
 import { 
   UserProfile, 
@@ -131,21 +132,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex border-b border-gray-200 space-x-8 mb-6 overflow-x-auto">
+      {/* Tabs Navigation - Executive Segmented Control */}
+      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/80 mb-6 max-w-full">
         <button
           id="tab-admin-pending"
           onClick={() => setActiveTab('pending')}
-          className={`py-3 text-sm font-semibold border-b-2 flex items-center space-x-2 whitespace-nowrap transition-colors ${
+          className={`px-4 py-2 text-xs font-medium flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl ${
             activeTab === 'pending'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
+              ? 'bg-[#1B357B] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <Clock className="w-4 h-4" />
-          <span>Solicitações Pendentes</span>
+          <Clock className={`w-4 h-4 ${activeTab === 'pending' ? 'text-[#DFB76C]' : 'text-slate-500'}`} />
+          <span>Solicitações</span>
           {pendingProfiles.length > 0 && (
-            <span className="px-2 py-0.5 text-xs bg-amber-500 text-white font-bold rounded-full">
+            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${activeTab === 'pending' ? 'bg-[#C59B4B] text-white' : 'bg-amber-500 text-white'}`}>
               {pendingProfiles.length}
             </span>
           )}
@@ -154,55 +155,55 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <button
           id="tab-admin-matrix"
           onClick={() => setActiveTab('matrix')}
-          className={`py-3 text-sm font-semibold border-b-2 flex items-center space-x-2 whitespace-nowrap transition-colors ${
+          className={`px-4 py-2 text-xs font-medium flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl ${
             activeTab === 'matrix'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
+              ? 'bg-[#1B357B] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <FolderLock className="w-4 h-4" />
-          <span>Matriz de Permissões Granular</span>
+          <FolderLock className={`w-4 h-4 ${activeTab === 'matrix' ? 'text-[#DFB76C]' : 'text-slate-500'}`} />
+          <span>Permissões</span>
         </button>
 
         <button
           id="tab-admin-users"
           onClick={() => setActiveTab('users')}
-          className={`py-3 text-sm font-semibold border-b-2 flex items-center space-x-2 whitespace-nowrap transition-colors ${
+          className={`px-4 py-2 text-xs font-medium flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl ${
             activeTab === 'users'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
+              ? 'bg-[#1B357B] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <UserCog className="w-4 h-4" />
-          <span>Equipe & Perfis Cadastrados</span>
+          <UserCog className={`w-4 h-4 ${activeTab === 'users' ? 'text-[#DFB76C]' : 'text-slate-500'}`} />
+          <span>Usuários</span>
         </button>
 
         <button
           id="tab-admin-audit"
           onClick={() => setActiveTab('audit')}
-          className={`py-3 text-sm font-semibold border-b-2 flex items-center space-x-2 whitespace-nowrap transition-colors ${
+          className={`px-4 py-2 text-xs font-medium flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl ${
             activeTab === 'audit'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
+              ? 'bg-[#1B357B] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <History className="w-4 h-4" />
-          <span>Trilha de Auditoria</span>
+          <History className={`w-4 h-4 ${activeTab === 'audit' ? 'text-[#DFB76C]' : 'text-slate-500'}`} />
+          <span>Auditoria</span>
         </button>
 
         <button
           id="tab-admin-appearance"
           onClick={() => setActiveTab('appearance')}
-          className={`py-3 text-sm font-semibold border-b-2 flex items-center space-x-2 whitespace-nowrap transition-colors ${
+          className={`px-4 py-2 text-xs font-medium flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl ${
             activeTab === 'appearance'
-              ? 'border-purple-600 text-purple-600 font-bold'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
+              ? 'bg-[#1B357B] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <Palette className="w-4 h-4 text-purple-600" />
-          <span>Aparência & Imagem de Fundo</span>
+          <Palette className={`w-4 h-4 ${activeTab === 'appearance' ? 'text-[#DFB76C]' : 'text-slate-500'}`} />
+          <span>Personalização</span>
           {siteBackgroundConfig?.enabled && (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs" title="Fundo personalizado ativo" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-xs" title="Fundo personalizado ativo" />
           )}
         </button>
       </div>
@@ -210,20 +211,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* TAB 1: PENDING ACCESS REQUESTS */}
       {activeTab === 'pending' && (
         <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start space-x-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="text-xs text-amber-900 leading-relaxed">
-              <strong className="font-bold">Diretriz de Segurança:</strong> Novos funcionários que se cadastram recebem status <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">status = 'pending'</code> na tabela <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">profiles</code> e ficam impossibilitados de visualizar pastas ou baixar documentos até que um Administrador aprove sua adesão e defina seu papel corporativo.
+          <div className="bg-blue-50/60 border border-blue-200/80 rounded-2xl p-4 flex items-start space-x-3">
+            <ShieldCheck className="w-5 h-5 text-[#1B357B] shrink-0 mt-0.5" />
+            <div className="text-xs text-slate-700 leading-relaxed font-medium">
+              Controle de Adesão: Novos cadastros de colaboradores permanecem retidos nesta fila até a aprovação formal e definição de setor pelo Administrador.
             </div>
           </div>
 
           {pendingProfiles.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-              <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-gray-900">Nenhuma solicitação pendente</h3>
-              <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                Todos os cadastros foram homologados. Novas solicitações de acesso via tela de login aparecerão automaticamente aqui.
+            <div className="rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm p-10 text-center">
+              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-xs">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-semibold text-[#112354]">Nenhuma solicitação pendente</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                Não há novos colaboradores aguardando liberação de acesso no momento.
               </p>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="inline-flex items-center space-x-2 text-xs font-medium text-[#1B357B] bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Atualizar Fila</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

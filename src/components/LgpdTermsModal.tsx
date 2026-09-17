@@ -62,7 +62,7 @@ export const LgpdTermsModal: React.FC<LgpdTermsModalProps> = ({
         </div>
 
         {/* Certificate Badge */}
-        <div className="px-6 py-3 bg-emerald-50/80 border-b border-emerald-100 flex items-center justify-between text-xs text-emerald-900">
+        <div className="bg-emerald-50/70 border border-emerald-200 text-emerald-800 rounded-xl p-3 m-4 flex items-center justify-between text-xs">
           <div className="flex items-center space-x-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
@@ -73,9 +73,9 @@ export const LgpdTermsModal: React.FC<LgpdTermsModalProps> = ({
             {formattedDate}
           </span>
         </div>
-
+        
         {/* Legal Text */}
-        <div className="p-6 overflow-y-auto space-y-4 text-xs text-slate-700 leading-relaxed font-sans select-text">
+        <div className="p-6 overflow-y-auto space-y-4 text-xs text-slate-700 leading-relaxed font-sans select-text scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2 text-center">
             <h4 className="font-black text-sm text-slate-900 uppercase">
               MVRJCONTÁBIL ASSESSORIA & GESTÃO CONTÁBIL
@@ -131,7 +131,7 @@ export const LgpdTermsModal: React.FC<LgpdTermsModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs"
+            className="px-5 py-2 bg-[#1B357B] hover:bg-[#112354] text-white rounded-xl text-xs font-medium shadow-sm transition-colors"
           >
             Fechar
           </button>

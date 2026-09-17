@@ -1,4 +1,4 @@
-import { DocumentFile, Folder, Sector, SiteBackgroundConfig, AuthHeaderConfig, AuditLog, FolderPermission, PermissionLevel } from '../types';
+import { DocumentFile, Folder, Sector, SiteBackgroundConfig, AuthHeaderConfig, AuditLog, FolderPermission, PermissionLevel, UserProfile } from '../types';
 
 export interface PresignedUploadResponse {
   storageKey: string;
@@ -946,4 +946,30 @@ export async function fetchSystemStatusFromApi(): Promise<{
   const res = await fetch('/api/system/status');
   if (!res.ok) throw new Error('Falha ao verificar status do sistema');
   return res.json();
+}
+
+/**
+ * Returns a permanent, non-expiring streaming URL through the server proxy for images and previews
+ */
+export function getPermanentViewUrl(storageKey: string, fileName?: string): string {
+  return `/api/r2/view?key=${encodeURIComponent(storageKey)}&name=${encodeURIComponent(fileName || '')}`;
+}
+
+/**
+ * Fetch unified user profiles with avatar URLs from the backend and R2
+ */
+export async function fetchProfilesFromApi(): Promise<UserProfile[]> {
+  try {
+    const res = await fetch('/api/profiles');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (Array.isArray(data.profiles)) {
+      localStorage.setItem('mvrj_profiles', JSON.stringify(data.profiles));
+      return data.profiles;
+    }
+  } catch (err) {
+    console.warn('[StorageService] Falha ao buscar perfis da API:', err);
+  }
+  const cached = localStorage.getItem('mvrj_profiles');
+  return cached ? JSON.parse(cached) : [];
 }

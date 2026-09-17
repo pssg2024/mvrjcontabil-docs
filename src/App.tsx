@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
 import { FileManager } from './components/FileManager';
+import { UtilitiesPage } from './components/UtilitiesPage';
 import { FileUploadModal } from './components/FileUploadModal';
 import { PdfViewerModal } from './components/PdfViewerModal';
 import { SqlSchemaViewerModal } from './components/SqlSchemaViewerModal';
@@ -10,6 +11,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { FirstAccessModal } from './components/FirstAccessModal';
 import { LgpdTermsModal } from './components/LgpdTermsModal';
 import { BackgroundModal } from './components/BackgroundModal';
+import { PasswordConfirmModal } from './components/PasswordConfirmModal';
 import { ShieldCheck } from 'lucide-react';
 import { 
   UserProfile, 
@@ -45,7 +47,8 @@ import {
   deleteFileInApi,
   saveAuditLogInApi,
   saveFolderPermissionToApi,
-  fetchSystemStatusFromApi
+  fetchSystemStatusFromApi,
+  fetchProfilesFromApi
 } from './lib/storage-service';
 
 export default function App() {
@@ -76,6 +79,18 @@ export default function App() {
         const parsed = JSON.parse(savedUserStr) as UserProfile;
         // Check if user is active (not pending or blocked or rejected)
         if (parsed && (parsed.status === 'active' || parsed.status === 'approved')) {
+          if (!parsed.avatar_url) {
+            try {
+              const savedProfiles = localStorage.getItem('mvrj_profiles');
+              if (savedProfiles) {
+                const plist = JSON.parse(savedProfiles) as UserProfile[];
+                const match = plist.find(p => p.id === parsed.id || p.email.toLowerCase() === parsed.email.toLowerCase());
+                if (match && match.avatar_url) {
+                  parsed.avatar_url = match.avatar_url;
+                }
+              }
+            } catch {}
+          }
           return parsed;
         }
       }
@@ -113,7 +128,7 @@ export default function App() {
   });
 
   // Navigation & Modals
-  const [activeView, setActiveView] = useState<'drive' | 'admin'>('drive');
+  const [activeView, setActiveView] = useState<'drive' | 'admin' | 'tools'>('drive');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -169,6 +184,12 @@ export default function App() {
 
   // Real-time Storage Usage Metrics (Used vs. Free)
   const [storageMetrics, setStorageMetrics] = useState<StorageMetrics | null>(null);
+  const [pendingDeleteAction, setPendingDeleteAction] = useState<{
+    type: 'file' | 'folder' | 'user';
+    id: string;
+    name?: string;
+    action: () => void;
+  } | null>(null);
 
   const fetchStorageMetrics = useCallback(() => {
     fetch('/api/storage/metrics')
@@ -272,15 +293,23 @@ export default function App() {
                 p.email.toLowerCase() === prevUser.email.toLowerCase() || p.id === prevUser.id
               );
               if (match) {
-                return {
+                const resolvedAvatar = match.avatar_url || prevUser.avatar_url;
+                const updated: UserProfile = {
                   ...prevUser,
                   id: match.id || prevUser.id,
                   full_name: match.full_name || prevUser.full_name,
                   role: match.role || prevUser.role,
                   status: match.status || prevUser.status,
                   sector: match.sector || prevUser.sector,
-                  avatar_url: match.avatar_url !== undefined ? (match.avatar_url || undefined) : prevUser.avatar_url,
+                  avatar_url: resolvedAvatar,
                 };
+                if (resolvedAvatar !== prevUser.avatar_url || match.full_name !== prevUser.full_name) {
+                  try {
+                    sessionStorage.setItem('mvrj_session_user', JSON.stringify(updated));
+                    localStorage.setItem('mvrj_session_user', JSON.stringify(updated));
+                  } catch {}
+                }
+                return updated;
               }
               return prevUser;
             });
@@ -351,17 +380,27 @@ export default function App() {
   const handleApproveUser = (userId: string, role: UserRole, sector?: Sector) => {
     const target = profiles.find(p => p.id === userId);
     const finalSector = sector || target?.sector || 'Fiscal';
-    setProfiles(prev => prev.map(p => p.id === userId ? { ...p, status: 'approved', role, sector: finalSector } : p));
+    const updatedProfiles = profiles.map(p => p.id === userId ? { ...p, status: 'approved' as const, role, sector: finalSector } : p);
+    setProfiles(updatedProfiles);
+    localStorage.setItem('mvrj_profiles', JSON.stringify(updatedProfiles));
+
     logAudit('USER_APPROVED', 'USER', userId, {
       approved_name: target?.full_name,
       approved_email: target?.email,
+      email: target?.email,
       assigned_role: role,
       assigned_sector: finalSector,
     });
     fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'approved', role, sector: finalSector, email: target?.email }),
+      body: JSON.stringify({ 
+        status: 'approved', 
+        role, 
+        sector: finalSector, 
+        email: target?.email,
+        full_name: target?.full_name 
+      }),
     }).catch(err => console.warn('Aviso ao sincronizar aprovação com Supabase:', err));
   };
 
@@ -385,26 +424,29 @@ export default function App() {
       alert('Você não pode excluir seu próprio perfil de administrador logado.');
       return;
     }
-    if (!confirm(`Tem certeza que deseja excluir permanentemente o usuário "${userName || userId}" da tabela profiles?`)) {
-      return;
-    }
-    setProfiles(prev => prev.filter(p => p.id !== userId));
-    logAudit('USER_DELETED', 'USER', userId, { deleted_name: userName });
-    try {
-      const res = await fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok && data.error) {
-        alert(`Erro: ${data.error}`);
-        // Recarregar perfis caso falhe
-        fetch('/api/profiles')
-          .then(r => r.json())
-          .then(d => { if (d && d.profiles) setProfiles(d.profiles); });
+    setPendingDeleteAction({
+      type: 'user',
+      id: userId,
+      name: userName || userId,
+      action: async () => {
+        setProfiles(prev => prev.filter(p => p.id !== userId));
+        logAudit('USER_DELETED', 'USER', userId, { deleted_name: userName });
+        try {
+          const res = await fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
+            method: 'DELETE',
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok && data.error) {
+            alert(`Erro: ${data.error}`);
+            fetch('/api/profiles')
+              .then(r => r.json())
+              .then(d => { if (d && d.profiles) setProfiles(d.profiles); });
+          }
+        } catch (err: any) {
+          console.warn('Erro ao excluir usuário no Supabase:', err);
+        }
       }
-    } catch (err: any) {
-      console.warn('Erro ao excluir usuário no Supabase:', err);
-    }
+    });
   };
 
   const handleUpdateUserStatus = (userId: string, status: UserStatus) => {
@@ -503,36 +545,48 @@ export default function App() {
 
   const handleDeleteFile = async (fileId: string) => {
     const file = files.find(f => f.id === fileId);
-    if (confirm(`Tem certeza que deseja excluir o arquivo "${file?.name}"?`)) {
-      setFiles(prev => prev.filter(f => f.id !== fileId));
-      if (file) {
-        logAudit('FILE_DELETE', 'FILE', fileId, { name: file.name, storage_key: file.storage_key });
+    setPendingDeleteAction({
+      type: 'file',
+      id: fileId,
+      name: file?.name || fileId,
+      action: async () => {
+        setFiles(prev => prev.filter(f => f.id !== fileId));
+        if (file) {
+          logAudit('FILE_DELETE', 'FILE', fileId, { name: file.name, storage_key: file.storage_key });
+        }
+        try {
+          await deleteFileInApi(fileId);
+          fetchStorageMetrics();
+        } catch (err) {
+          console.warn('Erro ao excluir no Supabase/R2:', err);
+        }
       }
-      try {
-        await deleteFileInApi(fileId);
-        fetchStorageMetrics();
-      } catch (err) {
-        console.warn('Erro ao excluir no Supabase/R2:', err);
-      }
-    }
+    });
   };
 
   // 3. Exclusão de Pastas pelo Admin com deleção no Supabase (DELETE /api/folders/:id)
   const handleDeleteFolder = async (folderId: string) => {
     const folder = folders.find(f => f.id === folderId);
-    try {
-      await deleteFolderInApi(folderId);
-      // Remove pasta excluída e eventuais subpastas vinculadas
-      setFolders(prev => prev.filter(f => f.id !== folderId && f.parent_id !== folderId));
-      // Remove arquivos pertencentes a esta pasta da listagem local
-      setFiles(prev => prev.filter(file => file.folder_id !== folderId));
-      fetchStorageMetrics();
-      if (folder) {
-        logAudit('FOLDER_DELETE', 'FOLDER', folderId, { name: folder.name });
+    setPendingDeleteAction({
+      type: 'folder',
+      id: folderId,
+      name: folder?.name || folderId,
+      action: async () => {
+        try {
+          await deleteFolderInApi(folderId);
+          // Remove pasta excluída e eventuais subpastas vinculadas
+          setFolders(prev => prev.filter(f => f.id !== folderId && f.parent_id !== folderId));
+          // Remove arquivos pertencentes a esta pasta da listagem local
+          setFiles(prev => prev.filter(file => file.folder_id !== folderId));
+          fetchStorageMetrics();
+          if (folder) {
+            logAudit('FOLDER_DELETE', 'FOLDER', folderId, { name: folder.name });
+          }
+        } catch (err: any) {
+          alert(`Erro ao excluir pasta no Supabase: ${err.message || 'Falha na requisição'}`);
+        }
       }
-    } catch (err: any) {
-      alert(`Erro ao excluir pasta no Supabase: ${err.message || 'Falha na requisição'}`);
-    }
+    });
   };
 
   const handleSwitchUser = (user: UserProfile) => {
@@ -569,12 +623,26 @@ export default function App() {
     const updatedUser: UserProfile = {
       ...currentUser,
       full_name: updatedData.full_name,
-      avatar_url: updatedData.avatar_url,
+      avatar_url: updatedData.avatar_url !== undefined ? updatedData.avatar_url : currentUser.avatar_url,
       updated_at: new Date().toISOString(),
     };
 
     setCurrentUser(updatedUser);
-    setProfiles(prev => prev.map(p => (p.id === currentUser.id || p.email.toLowerCase() === currentUser.email.toLowerCase()) ? updatedUser : p));
+    try {
+      sessionStorage.setItem('mvrj_session_user', JSON.stringify(updatedUser));
+      localStorage.setItem('mvrj_session_user', JSON.stringify(updatedUser));
+      localStorage.setItem('mvrj_current_user', JSON.stringify(updatedUser));
+    } catch (e) {
+      console.warn('Erro ao persistir sessão do usuário:', e);
+    }
+
+    setProfiles(prev => {
+      const next = prev.map(p => (p.id === currentUser.id || p.email.toLowerCase() === currentUser.email.toLowerCase()) ? updatedUser : p);
+      try {
+        localStorage.setItem('mvrj_profiles', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     
     logAudit('PROFILE_UPDATED', 'USER', currentUser.id, {
       full_name: updatedData.full_name,
@@ -623,6 +691,11 @@ export default function App() {
 
     // 2. Atualizar perfil em memória e localStorage
     setCurrentUser(updatedUser);
+    try {
+      sessionStorage.setItem('mvrj_session_user', JSON.stringify(updatedUser));
+      localStorage.setItem('mvrj_session_user', JSON.stringify(updatedUser));
+      localStorage.setItem('mvrj_current_user', JSON.stringify(updatedUser));
+    } catch {}
     setProfiles(prev => prev.map(p => (p.id === updatedUser.id || p.email.toLowerCase() === updatedUser.email.toLowerCase()) ? updatedUser : p));
     setIsFirstAccessModalOpen(false);
 
@@ -703,6 +776,7 @@ export default function App() {
           allProfiles={profiles}
           r2Status={r2Status}
           storageMetrics={storageMetrics}
+          authHeaderConfig={authHeaderConfig}
         />
 
         {/* Main View Area */}
@@ -896,6 +970,32 @@ export default function App() {
           }}
         />
       )}
+
+      <PasswordConfirmModal
+        isOpen={pendingDeleteAction !== null}
+        onClose={() => setPendingDeleteAction(null)}
+        onConfirm={() => {
+          if (pendingDeleteAction) {
+            pendingDeleteAction.action();
+            setPendingDeleteAction(null);
+          }
+        }}
+        currentUser={currentUser}
+        actionTitle={
+          pendingDeleteAction?.type === 'file'
+            ? 'Confirmar Exclusão de Arquivo'
+            : pendingDeleteAction?.type === 'folder'
+            ? 'Confirmar Exclusão de Pasta'
+            : 'Confirmar Exclusão de Usuário'
+        }
+        itemDescription={
+          pendingDeleteAction?.type === 'file'
+            ? `Deseja realmente excluir permanentemente o arquivo "${pendingDeleteAction?.name || ''}"?`
+            : pendingDeleteAction?.type === 'folder'
+            ? `Deseja realmente excluir permanentemente a pasta "${pendingDeleteAction?.name || ''}" e todo o seu conteúdo?`
+            : `Deseja realmente excluir permanentemente o usuário "${pendingDeleteAction?.name || ''}"?`
+        }
+      />
     </div>
   );
 }

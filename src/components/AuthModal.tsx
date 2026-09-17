@@ -14,7 +14,9 @@ import {
   ShieldCheck,
   Landmark,
   FileText,
-  Palette
+  Palette,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Sector, UserProfile, AuthHeaderConfig } from '../types';
 
@@ -52,6 +54,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginStatusMessage, setLoginStatusMessage] = useState<{
     type: 'pending' | 'blocked' | 'error' | 'success';
     text: string;
@@ -62,6 +65,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [regFullName, setRegFullName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const [regSector, setRegSector] = useState<Sector>('Fiscal');
   const [registrationSubmitted, setRegistrationSubmitted] = useState<UserProfile | null>(null);
 
@@ -188,56 +192,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         
         {/* Header Visual */}
         <div 
-          className={`px-6 text-white text-center relative overflow-hidden transition-all duration-300 flex flex-col justify-center items-center ${
-            authHeaderConfig?.bgType === 'image' 
-              ? '' 
-              : bgGradient
-          } ${
-            authHeaderConfig?.headerHeight === 'compact'
-              ? 'min-h-[140px] py-4'
-              : authHeaderConfig?.headerHeight === 'tall'
-              ? 'min-h-[210px] py-6'
-              : authHeaderConfig?.headerHeight === 'banner'
-              ? 'min-h-[240px] py-6'
-              : (authHeaderConfig?.bgType === 'image' && !authHeaderConfig?.showIcon && !authHeaderConfig?.showTitle && !authHeaderConfig?.showSubtitle && !authHeaderConfig?.showBadge)
-              ? 'h-52 py-4'
-              : 'min-h-[180px] py-6'
-          }`}
-          style={
-            authHeaderConfig?.bgType === 'image'
-              ? { backgroundColor: authHeaderConfig?.bgColor || '#091830' }
-              : undefined
-          }
+          className="px-6 py-8 text-white text-center relative overflow-hidden flex flex-col justify-center items-center"
+          style={{
+            background: 'linear-gradient(135deg, #101F42 0%, #1B357B 100%)',
+          }}
         >
-          {/* Background Image Layer if bgType === 'image' */}
-          {authHeaderConfig?.bgType === 'image' && authHeaderConfig?.bgImageUrl && (
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 pointer-events-none transition-all duration-300"
-              style={{
-                backgroundImage: `url(${authHeaderConfig.bgImageUrl})`,
-                backgroundSize: authHeaderConfig.bgSize || 'contain',
-                backgroundPosition: authHeaderConfig.bgPosition || 'center',
-                backgroundRepeat: 'no-repeat',
-                opacity: (authHeaderConfig.bgOpacity ?? 100) / 100,
-                filter: authHeaderConfig.bgBlur ? `blur(${authHeaderConfig.bgBlur}px)` : 'none',
-                transform: (authHeaderConfig.bgBlur && authHeaderConfig.bgSize !== 'contain') ? 'scale(1.08)' : 'none',
-              }}
-            />
-          )}
-
-          {/* Overlay Layer for legibility */}
-          {authHeaderConfig?.bgType === 'image' && authHeaderConfig?.bgImageUrl && authHeaderConfig.bgOverlayType !== 'none' && (
-            <div
-              aria-hidden="true"
-              className={`absolute inset-0 pointer-events-none ${
-                authHeaderConfig.bgOverlayType === 'dark' ? 'bg-slate-950' : 'bg-white'
-              }`}
-              style={{
-                opacity: (authHeaderConfig.bgOverlayOpacity ?? 40) / 100,
-              }}
-            />
-          )}
 
           {/* Admin Customization Quick Trigger Button */}
           {isAdmin && onOpenHeaderCustomizer && (
@@ -256,17 +215,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {/* Foreground Visual Content */}
           {((authHeaderConfig?.showIcon ?? true) || 
             (authHeaderConfig?.showTitle ?? true) || 
-            (authHeaderConfig?.showSubtitle ?? true) || 
-            (authHeaderConfig?.showBadge ?? true)) && (
+            (authHeaderConfig?.showSubtitle ?? true)) && (
             <div className="relative z-10 w-full flex flex-col items-center">
-              {/* Central Logo or Icon Container */}
+              {/* Central Logo Container */}
               {(authHeaderConfig?.showIcon ?? true) && (
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 mb-3 shadow-inner overflow-hidden">
+                <div className="w-16 h-16 rounded-2xl bg-white shadow-md p-2.5 flex items-center justify-center mx-auto mb-3 border border-slate-100">
                   {authHeaderConfig?.logoType === 'image' && authHeaderConfig?.logoImageUrl ? (
                     <img
                       src={authHeaderConfig.logoImageUrl}
                       alt="Logo"
-                      className="max-h-10 max-w-10 object-contain"
+                      className="max-h-full max-w-full object-contain"
                     />
                   ) : (
                     renderHeaderIcon()
@@ -274,33 +232,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               )}
 
-              {/* Title */}
-              {(authHeaderConfig?.showTitle ?? true) && (
-                <h2 className="text-xl font-black tracking-tight text-white drop-shadow-xs">
-                  {authHeaderConfig?.title || 'MVRJ CONTÁBIL'}
-                </h2>
-              )}
-
-              {/* Subtitle */}
-              {(authHeaderConfig?.showSubtitle ?? true) && (
-                <p className="text-xs text-blue-200/90 mt-0.5 drop-shadow-xs">
-                  {authHeaderConfig?.subtitle || 'Gestão Eletrônica de Documentos Segura'}
-                </p>
-              )}
-
-              {/* Badge */}
-              {(authHeaderConfig?.showBadge ?? true) && (
-                <div className="inline-flex items-center space-x-1.5 mt-2 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-[11px] font-medium text-blue-200 border border-blue-400/30 backdrop-blur-xs">
-                  <ShieldAlert className="w-3 h-3 text-blue-300 shrink-0" />
-                  <span>{authHeaderConfig?.badgeText || 'Supabase RLS & Cloudflare R2'}</span>
-                </div>
-              )}
+              {/* Title & Subtitle */}
+              <h2 className="text-[18px] font-bold tracking-tight text-white leading-tight">
+                MVRJ <span className="text-[#C59B4B]">CONTÁBIL</span>
+              </h2>
+              
+              <p className="text-xs text-slate-300 mt-1 tracking-normal">
+                Gestão Eletrônica Contábil
+              </p>
             </div>
           )}
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-b border-gray-100 bg-gray-50/70 text-xs font-semibold">
+        <div className="flex border-b border-slate-100 bg-slate-50/70 text-[11px] font-semibold">
           <button
             id="tab-login"
             onClick={() => {
@@ -309,8 +254,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }}
             className={`flex-1 py-3 text-center transition-all ${
               activeTab === 'login'
-                ? 'bg-white text-blue-700 border-b-2 border-blue-600 font-bold'
-                : 'text-gray-500 hover:text-gray-900'
+                ? 'bg-white text-[#1B357B] border-b-2 border-[#C59B4B] font-bold'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Acessar Sistema
@@ -323,11 +268,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }}
             className={`flex-1 py-3 text-center transition-all ${
               activeTab === 'register'
-                ? 'bg-white text-blue-700 border-b-2 border-blue-600 font-bold'
-                : 'text-gray-500 hover:text-gray-900'
+                ? 'bg-white text-[#1B357B] border-b-2 border-[#C59B4B] font-bold'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            Solicitar Acesso (Cadastro)
+            Solicitar Acesso
           </button>
         </div>
 
@@ -341,14 +286,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   loginStatusMessage.type === 'pending'
                     ? 'bg-amber-50 border-amber-300 text-amber-900'
                     : loginStatusMessage.type === 'blocked'
-                    ? 'bg-red-50 border-red-300 text-red-900'
+                    ? 'bg-rose-50 border-rose-300 text-rose-900'
                     : 'bg-rose-50 border-rose-200 text-rose-800'
                 }`}>
                   <div className="flex items-start space-x-2.5">
                     {loginStatusMessage.type === 'pending' ? (
                       <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                     ) : (
-                      <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                      <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                     )}
                     <div>
                       <h4 className="font-bold text-sm mb-1">
@@ -368,9 +313,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail Corporativo</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">E-mail Corporativo</label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     <input
                       id="login-email-input"
                       type="email"
@@ -378,31 +323,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="usuario@mvrjcontabil.com.br"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden transition-all"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Senha de Acesso</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Senha de Acesso</label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       id="login-password-input"
-                      type="password"
+                      type={showLoginPassword ? "text" : "password"}
                       required
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden transition-all"
+                      className="w-full pl-10 pr-10 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPassword(!showLoginPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1B357B] p-1 transition-colors focus:outline-none"
+                      aria-label={showLoginPassword ? "Ocultar senha" : "Ver senha"}
+                    >
+                      {showLoginPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
                 <button
                   id="submit-login-btn"
                   type="submit"
-                  className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-lg shadow-sm transition-colors flex items-center justify-center space-x-2"
+                  className="w-full py-3 px-4 text-sm font-semibold text-white bg-[#C59B4B] hover:bg-[#B38A3A] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>Entrar no Drive</span>
                   <ArrowRight className="w-4 h-4" />
@@ -435,9 +392,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               ) : (
                 <form onSubmit={handleRegister} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Nome Completo</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Nome Completo</label>
                     <div className="relative">
-                      <User className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                      <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       <input
                         id="reg-fullname-input"
                         type="text"
@@ -445,15 +402,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         placeholder="Ex: João Ferreira da Silva"
                         value={regFullName}
                         onChange={(e) => setRegFullName(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-hidden"
+                        className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail Corporativo</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">E-mail Corporativo</label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       <input
                         id="reg-email-input"
                         type="email"
@@ -461,20 +418,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         placeholder="joao@mvrjcontabil.com.br"
                         value={regEmail}
                         onChange={(e) => setRegEmail(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-hidden"
+                        className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Setor Contábil Solicitado</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Setor Contábil Solicitado</label>
                     <div className="relative">
-                      <Building2 className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                      <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       <select
                         id="reg-sector-select"
                         value={regSector}
                         onChange={(e) => setRegSector(e.target.value as Sector)}
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-hidden bg-white"
+                        className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all bg-white"
                       >
                         <option value="Fiscal">Fiscal</option>
                         <option value="Departamento Pessoal">Departamento Pessoal</option>
@@ -486,30 +443,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Definir Senha</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Definir Senha</label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       <input
                         id="reg-password-input"
-                        type="password"
+                        type={showRegPassword ? "text" : "password"}
                         required
                         placeholder="Mínimo 6 caracteres"
                         minLength={6}
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-hidden"
+                        className="w-full pl-9 pr-10 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegPassword(!showRegPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none p-1 transition-colors"
+                        aria-label={showRegPassword ? "Ocultar senha" : "Ver senha"}
+                      >
+                        {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </div>
 
-                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600 leading-tight">
-                    🔒 Conforme a política de governança RBAC da MVRJCONTÁBIL, seu acesso inicial será cadastrado como <span className="font-semibold text-slate-900">Pendente</span> e passará por aprovação.
+                  <div className="bg-slate-50 border border-slate-200 text-slate-600 text-[11px] rounded-xl p-3 leading-relaxed">
+                    Segurança Institucional: Por diretriz interna da MVRJ Contábil, novos cadastros passam por aprovação prévia do Administrador antes da liberação de visualização das pastas.
                   </div>
 
                   <button
                     id="submit-register-btn"
                     type="submit"
-                    className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center justify-center space-x-2 mt-2"
+                    className="w-full py-3 px-4 text-sm font-semibold text-white bg-[#C59B4B] hover:bg-[#B38A3A] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Enviar Solicitação de Acesso</span>
                     <ArrowRight className="w-4 h-4" />

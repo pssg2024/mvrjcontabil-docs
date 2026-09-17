@@ -61,6 +61,8 @@ export const FileManager: React.FC<FileManagerProps> = ({
 }) => {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [selectedSector, setSelectedSector] = useState<Sector | 'ALL'>('ALL');
+  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+  const [selectedYear, setSelectedYear] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'size'>('date');
@@ -101,10 +103,14 @@ export const FileManager: React.FC<FileManagerProps> = ({
         (file.uploader_name && file.uploader_name.toLowerCase().includes(searchQuery.toLowerCase()))
       : true;
 
+    // Filter by competence if provided (assuming tags contain competence, e.g., 'Ref: 08/2026')
+    const matchesCompetence = (selectedMonth === 'ALL' || file.tags.some(t => t.includes(selectedMonth))) &&
+                              (selectedYear === 'ALL' || file.tags.some(t => t.includes(selectedYear)));
+
     if (searchQuery) {
       // Global search returns matching files the user has permission to see
       if (selectedSector !== 'ALL' && file.sector !== selectedSector) return false;
-      return matchesSearch && (file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true);
+      return matchesSearch && matchesCompetence && (file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true);
     }
 
     // In regular navigation, show files in current folder strictly
@@ -113,7 +119,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
       : (!file.folder_id || file.folder_id === null || file.folder_id === 'root');
     if (!isInCurrentFolder) return false;
     if (selectedSector !== 'ALL' && file.sector !== selectedSector) return false;
-    return matchesSearch && (file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true);
+    return matchesSearch && matchesCompetence && (file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true);
   });
 
   // Sorting
@@ -142,6 +148,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const usedPercentValue = totalQuotaBytes > 0 
     ? Number(((effectiveUsedBytes / totalQuotaBytes) * 100).toFixed(2)) 
     : 0;
+  const remainingBytes = Math.max(0, totalQuotaBytes - effectiveUsedBytes);
 
   // Permissions for current folder (Bloqueado se cota de armazenamento estourada)
   const isApprovedOrActive = currentUser.status === 'active' || currentUser.status === 'approved';
@@ -176,52 +183,46 @@ export const FileManager: React.FC<FileManagerProps> = ({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
       {/* Top Storage & Bandwidth Optimization Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 rounded-2xl p-6 sm:p-7 text-white shadow-md relative overflow-hidden border border-slate-800/60">
+      <div className="bg-gradient-to-r from-[#112354] via-[#1B357B] to-[#112354] rounded-2xl p-6 sm:p-7 text-white shadow-md relative overflow-hidden border border-[#C59B4B]/30">
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="space-y-2 max-w-xl">
             <div className="flex items-center space-x-2">
-              <span className="px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 text-[11px] font-medium tracking-wide">
+              <span className="px-3.5 py-1 rounded-full bg-[#1B357B]/60 text-[#E2B963] border border-[#C59B4B]/40 text-[11px] font-semibold tracking-wide shadow-xs">
                 DRIVE CORPORATIVO MVRJCONTÁBIL
               </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white leading-tight">
               Gestão Eletrônica de Documentos Contábeis
             </h2>
-            <p className="text-sm text-slate-300/80 leading-relaxed">
+            <p className="text-sm text-slate-200/90 leading-relaxed">
               Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais.
             </p>
           </div>
 
           {/* Clean & Minimalist Metrics Cards */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 shrink-0">
-            {/* Card 1 - Total de Arquivos */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-white/10 shadow-xs min-w-[125px] sm:min-w-[135px]">
-              <span className="text-[11px] font-medium text-slate-300 tracking-wide block">
-                Documentos
-              </span>
-              <strong className="text-2xl sm:text-3xl font-black text-white tracking-tight block mt-0.5">
-                {currentFilesCount}
-              </strong>
-            </div>
-
-            {/* Card 2 - Espaço Utilizado com barra fina de progresso */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-white/10 shadow-xs min-w-[185px] sm:min-w-[205px]">
+            {/* Card 1 - Total de Arquivos / Capacidade */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-[#C59B4B]/30 shadow-xs min-w-[200px] sm:min-w-[220px]">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[11px] font-medium text-slate-300 tracking-wide block">
-                  Espaço Utilizado
+                <span className="text-[11px] font-medium text-slate-200 tracking-wide block">
+                  Documentos
                 </span>
-                <span className="text-[10px] text-slate-400 font-medium">
-                  de {formatBytes(totalQuotaBytes)}
+                <span className="text-[10px] text-[#E2B963] font-semibold">
+                  {Math.min(100, Number(((currentFilesCount / 10000) * 100).toFixed(2)))}% usado
                 </span>
               </div>
               <strong className="text-2xl sm:text-3xl font-black text-white tracking-tight block mt-0.5">
-                {formatBytes(effectiveUsedBytes)}
+                {currentFilesCount.toLocaleString('pt-BR')} / 10.000
               </strong>
-              {/* Barra de progresso fina e discreta */}
-              <div className="w-full bg-white/15 h-1.5 rounded-full overflow-hidden mt-2.5">
+              <div className="flex items-center justify-between text-[10px] text-slate-300 font-medium mt-1">
+                <span className="text-[#E2B963]">{(10000 - currentFilesCount).toLocaleString('pt-BR')} disponíveis</span>
+                <span>Limite: 10k</span>
+              </div>
+              {/* Barra de progresso com gradiente dourado da marca */}
+              <div className="w-full bg-white/15 h-1.5 rounded-full overflow-hidden mt-2">
                 <div 
-                  className="bg-indigo-400 h-full rounded-full transition-all duration-500" 
-                  style={{ width: `${Math.max(effectiveUsedBytes > 0 ? 2 : 0, Math.min(100, usedPercentValue))}%` }}
+                  className="bg-gradient-to-r from-[#C59B4B] to-[#E2B963] h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.max(currentFilesCount > 0 ? 2 : 0, Math.min(100, (currentFilesCount / 10000) * 100))}%` }}
                 />
               </div>
             </div>
@@ -314,23 +315,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               </button>
             )}
 
-            {currentFolderId && currentFolder && currentUser.role === 'admin' && onDeleteFolder && (
-              <button
-                id="delete-current-folder-btn"
-                type="button"
-                onClick={() => {
-                  if (confirm(`Tem certeza que deseja excluir a pasta "${currentFolder.name}" e todo o seu conteúdo do Supabase?`)) {
-                    onDeleteFolder(currentFolder.id);
-                    setCurrentFolderId(currentFolder.parent_id || null);
-                  }
-                }}
-                className="px-3 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl flex items-center space-x-1.5 transition-colors shadow-2xs"
-                title="Excluir esta pasta permanentemente (Admin)"
-              >
-                <Trash2 className="w-4 h-4 text-rose-600" />
-                <span className="hidden sm:inline">Excluir Pasta</span>
-              </button>
-            )}
+
 
             {isQuotaExceeded ? (
               <button
@@ -346,9 +331,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
               <button
                 id="upload-doc-btn"
                 onClick={() => onOpenUploadModal(currentFolderId)}
-                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-xs flex items-center space-x-1.5 transition-colors"
+                className="px-4 py-2 text-xs font-bold text-slate-950 bg-[#C59B4B] hover:bg-[#b0873b] active:bg-[#9e7732] rounded-xl shadow-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
               >
-                <UploadCloud className="w-4 h-4" />
+                <UploadCloud className="w-4 h-4 text-slate-950" />
                 <span>Upload de Documento</span>
               </button>
             ) : (
@@ -359,17 +344,17 @@ export const FileManager: React.FC<FileManagerProps> = ({
             )}
 
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-white shadow-2xs text-blue-600' : 'text-gray-500 hover:text-gray-900'}`}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#1B357B] text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
                 title="Visualização em Grade"
               >
                 <Grid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-1.5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-white shadow-2xs text-blue-600' : 'text-gray-500 hover:text-gray-900'}`}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-[#1B357B] text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
                 title="Visualização em Lista"
               >
                 <List className="w-4 h-4" />
@@ -378,26 +363,43 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
         </div>
 
-        {/* Sector Filter Chips */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto pt-1 pb-1">
-          <span className="text-xs font-bold text-gray-400 mr-1 flex items-center space-x-1">
-            <Filter className="w-3 h-3" />
-            <span>Setor:</span>
-          </span>
-          {(['ALL', 'Fiscal', 'Departamento Pessoal', 'Contábil', 'Diretoria', 'Financeiro'] as const).map(sec => (
-            <button
-              key={sec}
-              onClick={() => setSelectedSector(sec)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
-                selectedSector === sec
-                  ? 'bg-blue-600 text-white shadow-2xs'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-              }`}
+          {/* Sector Filter Chips + Competence Selectors */}
+          <div className="flex items-center space-x-1.5 overflow-x-auto pt-1 pb-1">
+            <span className="text-xs font-bold text-slate-400 mr-1 flex items-center space-x-1">
+              <Filter className="w-3 h-3" />
+              <span>Filtros:</span>
+            </span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="rounded-xl border-slate-200 text-xs text-slate-700 bg-white focus:border-[#1B357B] py-1.5"
             >
-              {sec === 'ALL' ? 'Todos os Setores' : sec}
-            </button>
-          ))}
-        </div>
+              <option value="ALL">Todos os Meses</option>
+              {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="rounded-xl border-slate-200 text-xs text-slate-700 bg-white focus:border-[#1B357B] py-1.5"
+            >
+              <option value="ALL">Todos os Anos</option>
+              {['2024', '2025', '2026', '2027'].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <div className="h-4 w-px bg-slate-200 mx-2" />
+            {(['ALL', 'Fiscal', 'Departamento Pessoal', 'Contábil', 'Diretoria', 'Financeiro'] as const).map(sec => (
+              <button
+                key={sec}
+                onClick={() => setSelectedSector(sec)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
+                  selectedSector === sec
+                    ? 'bg-[#1B357B] text-white shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                {sec === 'ALL' ? 'Todos os Setores' : sec}
+              </button>
+            ))}
+          </div>
       </div>
 
       {/* Inline Create Folder Input */}
@@ -435,21 +437,21 @@ export const FileManager: React.FC<FileManagerProps> = ({
       )}
 
       {/* Breadcrumbs Navigation */}
-      <nav className="flex items-center space-x-2 text-xs font-medium text-gray-500 bg-white px-4 py-2.5 rounded-xl border border-gray-200 overflow-x-auto">
+      <nav className="flex items-center space-x-2 text-xs font-medium text-slate-600 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200/70 overflow-x-auto">
         <button
           onClick={() => setCurrentFolderId(null)}
-          className={`flex items-center space-x-1 hover:text-blue-600 transition-colors ${!currentFolderId ? 'font-bold text-blue-700' : ''}`}
+          className={`flex items-center space-x-1.5 hover:text-[#1B357B] transition-colors cursor-pointer ${!currentFolderId ? 'font-bold text-[#112354]' : ''}`}
         >
-          <Home className="w-4 h-4" />
+          <Home className="w-4 h-4 text-[#1B357B]" />
           <span>Drive Raiz</span>
         </button>
 
         {breadcrumbs.map((crumb, idx) => (
           <React.Fragment key={crumb.id}>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+            <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
             <button
               onClick={() => setCurrentFolderId(crumb.id)}
-              className={`hover:text-blue-600 transition-colors whitespace-nowrap ${idx === breadcrumbs.length - 1 ? 'font-bold text-gray-900' : ''}`}
+              className={`hover:text-[#1B357B] transition-colors whitespace-nowrap cursor-pointer ${idx === breadcrumbs.length - 1 ? 'font-bold text-slate-900' : ''}`}
             >
               {crumb.name}
             </button>
@@ -457,7 +459,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
         ))}
 
         {searchQuery && (
-          <span className="ml-auto text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
+          <span className="ml-auto text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200 shrink-0">
             Filtro de busca: "{searchQuery}"
           </span>
         )}
@@ -466,43 +468,42 @@ export const FileManager: React.FC<FileManagerProps> = ({
       {/* FOLDERS SECTION */}
       {!searchQuery && visibleFolders.length > 0 && (
         <section className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Pastas no Nível Atual</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Pastas no Nível Atual</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {visibleFolders.map(folder => (
               <div
                 key={folder.id}
                 onClick={() => setCurrentFolderId(folder.id)}
-                className="p-3.5 rounded-xl border border-gray-200 hover:border-blue-400 bg-white hover:bg-blue-50/40 cursor-pointer transition-all group shadow-2xs hover:shadow-sm"
+                className="p-4 rounded-2xl border border-slate-200/80 hover:border-[#C59B4B]/50 bg-white hover:bg-slate-50/80 cursor-pointer transition-all group shadow-2xs hover:shadow-md flex items-center justify-between"
               >
-                <div className="flex items-start space-x-3">
-                  <div className="p-2.5 bg-blue-100 group-hover:bg-blue-600 text-blue-700 group-hover:text-white rounded-xl transition-colors shrink-0">
+                <div className="flex items-center space-x-3.5 min-w-0 flex-1">
+                  <div className="p-2.5 bg-[#1B357B]/10 group-hover:bg-[#1B357B] text-[#1B357B] group-hover:text-white rounded-xl transition-colors shrink-0">
                     <FolderIcon className="w-5 h-5" />
                   </div>
-                  <div className="truncate flex-1">
-                    <h4 className="font-bold text-xs text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+                  <div className="truncate flex-1 min-w-0">
+                    <h4 className="font-bold text-xs sm:text-sm text-slate-900 truncate group-hover:text-[#112354] transition-colors">
                       {folder.name}
                     </h4>
-                    <p className="text-[11px] text-gray-500 mt-0.5">{folder.sector}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 truncate">{folder.sector}</p>
                   </div>
+                </div>
 
+                <div className="flex items-center space-x-1 shrink-0 ml-2">
                   {currentUser.role === 'admin' && onDeleteFolder && (
                     <button
                       type="button"
                       id={`btn-delete-folder-${folder.id}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`Tem certeza que deseja excluir a pasta "${folder.name}" e todo seu conteúdo do Supabase?`)) {
-                          onDeleteFolder(folder.id);
-                        }
+                        onDeleteFolder(folder.id);
                       }}
-                      className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                       title="Excluir Pasta (Admin)"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
-
-                  <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-600 shrink-0 mt-1" />
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#1B357B] transition-colors" />
                 </div>
               </div>
             ))}
@@ -513,16 +514,16 @@ export const FileManager: React.FC<FileManagerProps> = ({
       {/* FILES SECTION */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
             {searchQuery ? `Documentos Encontrados (${sortedFiles.length})` : `Arquivos na Pasta (${sortedFiles.length})`}
           </h3>
           
-          <div className="flex items-center space-x-2 text-xs text-gray-500">
+          <div className="flex items-center space-x-2 text-xs text-slate-500">
             <ArrowUpDown className="w-3.5 h-3.5" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-transparent border-0 font-semibold text-gray-700 text-xs focus:ring-0 cursor-pointer"
+              className="bg-transparent border-0 font-semibold text-slate-700 text-xs focus:ring-0 cursor-pointer"
             >
               <option value="date">Ordenar por Data</option>
               <option value="name">Ordenar por Nome</option>
@@ -532,18 +533,18 @@ export const FileManager: React.FC<FileManagerProps> = ({
         </div>
 
         {sortedFiles.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center">
-            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h4 className="text-sm font-bold text-gray-700">Nenhum documento encontrado</h4>
-            <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
+          <div className="bg-white/90 rounded-2xl border border-slate-200/80 py-12 px-6 text-center shadow-sm">
+            <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <h4 className="text-sm font-bold text-slate-800">Nenhum documento encontrado</h4>
+            <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
               {currentFolderId 
-                ? 'Esta pasta ainda não possui arquivos armazenados no Cloudflare R2.' 
+                ? 'Esta pasta ainda não possui arquivos armazenados.' 
                 : 'Nenhum arquivo na raiz. Selecione uma pasta acima ou faça o upload de um documento.'}
             </p>
             {isQuotaExceeded ? (
               <button
                 onClick={() => setShowBlockedLimitModal(true)}
-                className="mt-4 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold inline-flex items-center space-x-1.5 transition-colors"
+                className="mt-4 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold inline-flex items-center space-x-1.5 transition-colors cursor-pointer"
               >
                 <AlertOctagon className="w-4 h-4" />
                 <span>Upload Bloqueado (Limite de Quota Atingido)</span>
@@ -551,9 +552,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
             ) : canUpload ? (
               <button
                 onClick={() => onOpenUploadModal(currentFolderId)}
-                className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center space-x-1.5 transition-colors"
+                className="mt-4 px-4 py-2.5 bg-[#C59B4B] hover:bg-[#b0873b] active:bg-[#9e7732] text-slate-950 font-bold rounded-xl shadow-xs inline-flex items-center space-x-1.5 transition-colors cursor-pointer"
               >
-                <UploadCloud className="w-4 h-4" />
+                <UploadCloud className="w-4 h-4 text-slate-950" />
                 <span>Upload de Arquivo</span>
               </button>
             ) : null}
@@ -593,10 +594,15 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       >
                         {file.name}
                       </h4>
-                      <p className="text-[11px] text-gray-500 mt-0.5 flex items-center space-x-1">
+                      <p className="text-[11px] text-gray-500 mt-0.5 flex items-center space-x-1 flex-wrap">
                         <span>{file.sector}</span>
                         {file.pages_count && file.pages_count > 1 && (
                           <span>• {file.pages_count} págs</span>
+                        )}
+                        {file.tags.find(t => t.startsWith('Ref: ')) && (
+                          <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-md font-medium">
+                            {file.tags.find(t => t.startsWith('Ref: '))}
+                          </span>
                         )}
                       </p>
                     </div>
@@ -628,33 +634,44 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       {new Date(file.created_at).toLocaleDateString('pt-BR')}
                     </span>
 
-                    <div className="flex items-center space-x-1">
-                      <button
-                        onClick={() => onOpenFileViewer(file)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Visualizar no Leitor Seguro"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => handleDirectDownload(file)}
-                        className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Download com Presigned GET URL"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-
-                      {currentUser.role === 'admin' && (
+                      <div className="flex items-center space-x-1">
                         <button
-                          onClick={() => onDeleteFile(file.id)}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Excluir Arquivo (Admin)"
+                          onClick={() => onOpenFileViewer(file)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Visualizar no Leitor Seguro"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </button>
-                      )}
-                    </div>
+
+                        <button
+                          onClick={() => {
+                            const url = `https://wa.me/?text=${encodeURIComponent(`Olá! Segue o documento contábil solicitado referente aos serviços da MVRJ Contábil: ${file.name} - ${window.location.origin}/preview/${file.id}`)}`;
+                            window.open(url, '_blank');
+                          }}
+                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Enviar via WhatsApp"
+                        >
+                          <Phone className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => handleDirectDownload(file)}
+                          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          title="Download com Presigned GET URL"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+
+                        {currentUser.role === 'admin' && (
+                          <button
+                            onClick={() => onDeleteFile(file.id)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Excluir Arquivo (Admin)"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                   </div>
                 </div>
               );

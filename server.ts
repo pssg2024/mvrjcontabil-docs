@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import multer from 'multer';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadBucketCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadBucketCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createClient } from '@supabase/supabase-js';
 import { createServer as createViteServer } from 'vite';
@@ -190,6 +190,34 @@ app.post('/api/r2/presigned-upload', async (req: Request, res: Response) => {
   }
 });
 
+// Helper to accurately detect MIME types for images, documents, and spreadsheets
+function detectMimeType(fileNameOrKey: string, fallbackMime?: string): string {
+  const ext = path.extname(fileNameOrKey).toLowerCase();
+  switch (ext) {
+    case '.webp': return 'image/webp';
+    case '.png': return 'image/png';
+    case '.jpg':
+    case '.jpeg': return 'image/jpeg';
+    case '.gif': return 'image/gif';
+    case '.svg': return 'image/svg+xml';
+    case '.bmp': return 'image/bmp';
+    case '.ico': return 'image/x-icon';
+    case '.pdf': return 'application/pdf';
+    case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case '.xls': return 'application/vnd.ms-excel';
+    case '.docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case '.doc': return 'application/msword';
+    case '.txt': return 'text/plain; charset=utf-8';
+    case '.csv': return 'text/csv; charset=utf-8';
+    case '.json': return 'application/json';
+    default:
+      if (fallbackMime && fallbackMime !== 'application/octet-stream') {
+        return fallbackMime;
+      }
+      return 'application/octet-stream';
+  }
+}
+
 // Helper to stream R2 object directly to response or fallback to memory store
 async function streamR2Object(
   storageKey: string,
@@ -199,6 +227,7 @@ async function streamR2Object(
   res: Response
 ) {
   const { client, bucketName, isConfigured } = getR2Client();
+  const cleanMime = detectMimeType(fileName || storageKey, mimeType);
 
   if (isConfigured && client) {
     try {
@@ -209,13 +238,16 @@ async function streamR2Object(
       const r2Response = await client.send(command);
 
       if (r2Response.Body) {
-        const cleanMime = mimeType || r2Response.ContentType || 'application/octet-stream';
-        res.setHeader('Content-Type', cleanMime);
-        res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName)}"`);
+        const finalMime = (cleanMime !== 'application/octet-stream')
+          ? cleanMime
+          : (r2Response.ContentType || 'application/octet-stream');
+
+        res.setHeader('Content-Type', finalMime);
+        res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName || path.basename(storageKey))}"`);
         if (r2Response.ContentLength) {
           res.setHeader('Content-Length', r2Response.ContentLength);
         }
-        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
 
         const stream = r2Response.Body as NodeJS.ReadableStream;
         return stream.pipe(res);
@@ -228,17 +260,17 @@ async function streamR2Object(
   // Fallback to memory store if present
   const cached = inMemoryFileStore.get(storageKey);
   if (cached) {
-    res.setHeader('Content-Type', cached.mimeType || mimeType || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName || cached.name)}"`);
+    res.setHeader('Content-Type', cleanMime !== 'application/octet-stream' ? cleanMime : (cached.mimeType || 'application/octet-stream'));
+    res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName || cached.name || path.basename(storageKey))}"`);
     res.setHeader('Content-Length', cached.buffer.length);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
     return res.send(cached.buffer);
   }
 
   return res.status(404).json({ error: 'Arquivo não encontrado no Cloudflare R2' });
 }
 
-// 4. Generate Presigned GET URL for Secure Download/Preview (1 hour expiration)
+// 4. Generate Presigned GET URL for Secure Download/Preview (7 days expiration with resilient proxy fallback)
 app.post('/api/r2/presigned-download', async (req: Request, res: Response) => {
   try {
     const { storageKey, fileName, inline } = req.body;
@@ -248,32 +280,45 @@ app.post('/api/r2/presigned-download', async (req: Request, res: Response) => {
     }
 
     const { client, bucketName, isConfigured } = getR2Client();
+    const effectiveFileName = fileName || path.basename(storageKey);
+    const serverProxyUrl = inline
+      ? `/api/r2/view?key=${encodeURIComponent(storageKey)}&name=${encodeURIComponent(effectiveFileName)}`
+      : `/api/r2/download?key=${encodeURIComponent(storageKey)}&name=${encodeURIComponent(effectiveFileName)}`;
 
     if (isConfigured && client) {
-      const disposition = inline ? 'inline' : 'attachment';
-      const command = new GetObjectCommand({
-        Bucket: bucketName,
-        Key: storageKey,
-        ResponseContentDisposition: fileName ? `${disposition}; filename="${encodeURIComponent(fileName)}"` : undefined,
-      });
+      try {
+        const disposition = inline ? 'inline' : 'attachment';
+        const cleanMime = detectMimeType(effectiveFileName);
+        const command = new GetObjectCommand({
+          Bucket: bucketName,
+          Key: storageKey,
+          ResponseContentDisposition: `${disposition}; filename="${encodeURIComponent(effectiveFileName)}"`,
+          ResponseContentType: cleanMime !== 'application/octet-stream' ? cleanMime : undefined,
+        });
 
-      const presignedGetUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
+        // 7 dias de expiração (604800 segundos) para prevenir expiração prematura
+        const presignedGetUrl = await getSignedUrl(client, command, { expiresIn: 604800 });
 
-      return res.json({
-        downloadUrl: presignedGetUrl,
-        expiresInSeconds: 3600,
-        provider: 'Cloudflare R2 (S3 API)',
-        isSimulation: false,
-      });
+        return res.json({
+          downloadUrl: inline ? serverProxyUrl : presignedGetUrl,
+          directR2Url: presignedGetUrl,
+          serverProxyUrl,
+          expiresInSeconds: 604800,
+          provider: 'Cloudflare R2 (S3 API)',
+          isSimulation: false,
+        });
+      } catch (signErr: any) {
+        console.warn('[R2 Presigned Download] Fallback para servidor streaming proxy:', signErr.message);
+      }
     }
 
-    // Sandbox download URL
-    const simulatedDownloadUrl = `/api/r2/download?key=${encodeURIComponent(storageKey)}&name=${encodeURIComponent(fileName || 'arquivo')}`;
+    // Sandbox / fallback download URL
     return res.json({
-      downloadUrl: simulatedDownloadUrl,
-      expiresInSeconds: 3600,
-      provider: 'Local Sandbox R2 Emulator',
-      isSimulation: true,
+      downloadUrl: serverProxyUrl,
+      serverProxyUrl,
+      expiresInSeconds: 604800,
+      provider: 'MVRJ Server Stream Proxy',
+      isSimulation: !isConfigured,
     });
   } catch (error: any) {
     console.error('Erro ao gerar Presigned GET URL:', error);
@@ -344,20 +389,22 @@ app.get('/api/r2/download', async (req: Request, res: Response) => {
     const fileName = (req.query.name as string) || path.basename(storageKey || 'download');
     if (!storageKey) return res.status(400).json({ error: 'Parâmetro key é obrigatório' });
 
-    await streamR2Object(storageKey, fileName, 'application/octet-stream', 'attachment', res);
+    const mime = detectMimeType(fileName || storageKey);
+    await streamR2Object(storageKey, fileName, mime, 'attachment', res);
   } catch (error: any) {
     res.status(500).json({ error: 'Erro ao transferir arquivo', details: error.message });
   }
 });
 
-// 4.4 General R2 View Endpoint (Streams directly from Cloudflare R2 inline)
+// 4.4 General R2 View Endpoint (Streams directly from Cloudflare R2 inline with proper MIME)
 app.get('/api/r2/view', async (req: Request, res: Response) => {
   try {
     const storageKey = req.query.key as string;
     const fileName = (req.query.name as string) || path.basename(storageKey || 'document');
     if (!storageKey) return res.status(400).json({ error: 'Parâmetro key é obrigatório' });
 
-    await streamR2Object(storageKey, fileName, 'application/pdf', 'inline', res);
+    const mime = detectMimeType(fileName || storageKey);
+    await streamR2Object(storageKey, fileName, mime, 'inline', res);
   } catch (error: any) {
     res.status(500).json({ error: 'Erro ao visualizar arquivo', details: error.message });
   }
@@ -665,6 +712,16 @@ app.post('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
       name: `${userId}.webp`,
     });
 
+    // Salvar também em cache em disco local para persistência permanente entre reinicializações
+    try {
+      const avatarDiskPath = path.join(process.cwd(), 'storage', 'avatars', `${userId}.webp`);
+      const dir = path.dirname(avatarDiskPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(avatarDiskPath, buffer);
+    } catch (diskErr: any) {
+      console.warn('[Avatar Disk Cache Aviso]', diskErr.message);
+    }
+
     const { client, bucketName, isConfigured } = getR2Client();
     let uploadedToR2 = false;
 
@@ -690,6 +747,33 @@ app.post('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
 
     // URL pública do avatar (com cache-buster timestamp para recarregar no navegador)
     const avatarUrl = `/api/r2/avatar/${userId}.webp?t=${Date.now()}`;
+
+    // Sincronizar com persistedProfiles em memória, disco e R2
+    try {
+      const targetIdx = persistedProfiles.findIndex(
+        p => p.id === userId || (userEmail && p.email && p.email.toLowerCase() === userEmail.toLowerCase())
+      );
+      if (targetIdx !== -1) {
+        persistedProfiles[targetIdx].avatar_url = avatarUrl;
+        persistedProfiles[targetIdx].updated_at = new Date().toISOString();
+      } else if (userEmail) {
+        persistedProfiles.push({
+          id: userId,
+          email: userEmail.toLowerCase(),
+          full_name: 'Usuário',
+          sector: 'Diretoria',
+          role: 'editor',
+          status: 'approved',
+          avatar_url: avatarUrl,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+      savePersistedProfiles();
+      saveR2Profiles(persistedProfiles).catch(() => {});
+    } catch (profErr: any) {
+      console.warn('[Avatar Profiles Sync Aviso]', profErr.message);
+    }
 
     // Sincronizar com a tabela public.profiles no Supabase
     const supabase = getSupabaseServerClient();
@@ -742,7 +826,7 @@ app.post('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
   }
 });
 
-// 8. Avatar Serve/Download Endpoint (Serves optimized WebP from R2 or Cache)
+// 8. Avatar Serve/Download Endpoint (Serves optimized WebP from Cache, Disk, or R2)
 app.get('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
   try {
     const rawUserId = req.params.userId;
@@ -758,7 +842,24 @@ app.get('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
       return res.send(cached.buffer);
     }
 
-    // 2. Se não estiver em cache, buscar no Cloudflare R2
+    // 2. Verificar cache permanente em disco local
+    const avatarDiskPath = path.join(process.cwd(), 'storage', 'avatars', `${userId}.webp`);
+    if (fs.existsSync(avatarDiskPath)) {
+      try {
+        const diskBuf = fs.readFileSync(avatarDiskPath);
+        inMemoryFileStore.set(storageKey, {
+          buffer: diskBuf,
+          mimeType: 'image/webp',
+          name: `${userId}.webp`,
+        });
+        res.setHeader('Content-Type', 'image/webp');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Content-Length', diskBuf.length);
+        return res.send(diskBuf);
+      } catch (e) {}
+    }
+
+    // 3. Se não estiver em cache local, buscar no Cloudflare R2
     const { client, bucketName, isConfigured } = getR2Client();
     if (isConfigured && client) {
       try {
@@ -775,12 +876,17 @@ app.get('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
           }
           const buffer = Buffer.concat(chunks);
 
-          // Salvar em cache para próximas requisições
+          // Salvar em cache em memória e em disco para requisições subsequentes
           inMemoryFileStore.set(storageKey, {
             buffer,
             mimeType: 'image/webp',
             name: `${userId}.webp`,
           });
+          try {
+            const dir = path.dirname(avatarDiskPath);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(avatarDiskPath, buffer);
+          } catch (e) {}
 
           res.setHeader('Content-Type', 'image/webp');
           res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -799,7 +905,7 @@ app.get('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
   }
 });
 
-// 9. Avatar Deletion Endpoint (Removes from R2 and sets avatar_url to NULL in Supabase)
+// 9. Avatar Deletion Endpoint (Removes from R2, Disk, Cache and clears avatar_url)
 app.delete('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
   try {
     const rawUserId = req.params.userId;
@@ -807,8 +913,12 @@ app.delete('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
     const storageKey = `avatars/${userId}.webp`;
     const userEmail = (req.query.email || req.headers['x-user-email']) as string;
 
-    // 1. Remover do cache local
+    // 1. Remover do cache local em memória e em disco
     inMemoryFileStore.delete(storageKey);
+    try {
+      const avatarDiskPath = path.join(process.cwd(), 'storage', 'avatars', `${userId}.webp`);
+      if (fs.existsSync(avatarDiskPath)) fs.unlinkSync(avatarDiskPath);
+    } catch (e) {}
 
     // 2. Excluir do Cloudflare R2
     const { client, bucketName, isConfigured } = getR2Client();
@@ -828,7 +938,20 @@ app.delete('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
       }
     }
 
-    // 3. Atualizar no Supabase (definir avatar_url = null)
+    // 3. Atualizar persistedProfiles
+    try {
+      const targetIdx = persistedProfiles.findIndex(
+        p => p.id === userId || (userEmail && p.email && p.email.toLowerCase() === userEmail.toLowerCase())
+      );
+      if (targetIdx !== -1) {
+        persistedProfiles[targetIdx].avatar_url = undefined;
+        persistedProfiles[targetIdx].updated_at = new Date().toISOString();
+        savePersistedProfiles();
+        saveR2Profiles(persistedProfiles).catch(() => {});
+      }
+    } catch (e) {}
+
+    // 4. Atualizar no Supabase (definir avatar_url = null)
     const supabase = getSupabaseServerClient();
     let updatedSupabase = false;
     if (supabase) {
@@ -1021,6 +1144,7 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
             profilesMap.set(emailKey, {
               ...existing,
               ...p,
+              avatar_url: p.avatar_url || existing?.avatar_url || (existing as any)?.avatarUrl || (p.id ? `/api/r2/avatar/${p.id}.webp` : undefined),
               status: p.status || existing?.status || 'active',
             });
           }
@@ -1031,7 +1155,7 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
     }
 
     // 4. Reconstrução vital de solicitações de acesso a partir de audit_logs
-    // Garante que solicitações de novos usuários (como Paulo) NUNCA se percam após reinício do Render
+    // Garante que solicitações de novos usuários NUNCA se percam após reinício do Render
     try {
       const { data: auditLogs } = await supabase
         .from('audit_logs')
@@ -1042,28 +1166,35 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
         const rejectedOrDeletedEmails = new Set<string>();
         const rejectedOrDeletedIds = new Set<string>();
         const approvedEmails = new Set<string>();
+        const approvedIds = new Set<string>();
 
         for (const log of auditLogs) {
           if (log.action === 'USER_REJECTED' || log.action === 'USER_DELETED') {
-            if (log.target_id) rejectedOrDeletedIds.add(String(log.target_id));
+            if (log.target_id) rejectedOrDeletedIds.add(String(log.target_id).toLowerCase().trim());
             if (log.details?.rejected_email) rejectedOrDeletedEmails.add(String(log.details.rejected_email).toLowerCase().trim());
             if (log.details?.deleted_email) rejectedOrDeletedEmails.add(String(log.details.deleted_email).toLowerCase().trim());
           }
           if (log.action === 'USER_APPROVED') {
             if (log.details?.approved_email) approvedEmails.add(String(log.details.approved_email).toLowerCase().trim());
+            if (log.details?.email) approvedEmails.add(String(log.details.email).toLowerCase().trim());
+            if (log.target_id) approvedIds.add(String(log.target_id).toLowerCase().trim());
+            if (log.details?.user_id) approvedIds.add(String(log.details.user_id).toLowerCase().trim());
           }
         }
 
         for (const log of auditLogs) {
           if (log.action === 'ACCESS_REQUEST') {
             const email = (log.details?.email || '').toLowerCase().trim();
-            const id = log.target_id || log.profile_id;
+            const id = String(log.target_id || log.profile_id || '').toLowerCase().trim();
             const isMasterAdmin = email === 'evandro230655@gmail.com' || id === '57e1d483-669b-4791-b09e-7496570e63ea';
 
-            if (email && !isMasterAdmin && !rejectedOrDeletedEmails.has(email) && !rejectedOrDeletedIds.has(String(id))) {
+            if (email && !isMasterAdmin && !rejectedOrDeletedEmails.has(email) && !rejectedOrDeletedIds.has(id)) {
               const existing = profilesMap.get(email);
-              const currentStatus = existing?.status;
-              const isAlreadyActiveOrApproved = currentStatus === 'active' || currentStatus === 'approved' || approvedEmails.has(email);
+              const isAlreadyActiveOrApproved = 
+                existing?.status === 'active' || 
+                existing?.status === 'approved' || 
+                approvedEmails.has(email) || 
+                (id && approvedIds.has(id));
 
               if (!existing) {
                 profilesMap.set(email, {
@@ -1076,8 +1207,10 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
                   created_at: log.created_at,
                   updated_at: log.created_at,
                 });
-              } else if (!isAlreadyActiveOrApproved && existing.status !== 'blocked') {
-                existing.status = 'pending';
+              } else if (isAlreadyActiveOrApproved) {
+                if (existing.status !== 'active') {
+                  existing.status = 'approved';
+                }
               }
             }
           }
@@ -1227,9 +1360,26 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
       if (password_changed_at !== undefined) persistedProfiles[idx].password_changed_at = password_changed_at;
       if (lgpd_terms_version !== undefined) persistedProfiles[idx].lgpd_terms_version = lgpd_terms_version;
       persistedProfiles[idx].updated_at = new Date().toISOString();
-      savePersistedProfiles();
-      saveR2Profiles(persistedProfiles).catch(() => {});
+    } else {
+      const newProfile: StoredProfile = {
+        id: userId,
+        email: cleanEmail || '',
+        full_name: full_name || (cleanEmail ? cleanEmail.split('@')[0] : 'Usuário'),
+        sector: sector || 'Fiscal',
+        role: normalizedRole || 'viewer',
+        status: status || 'approved',
+        avatar_url: avatar_url || null,
+        first_access_completed: first_access_completed || false,
+        lgpd_accepted_at: lgpd_accepted_at || null,
+        password_changed_at: password_changed_at || null,
+        lgpd_terms_version: lgpd_terms_version || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      persistedProfiles.push(newProfile);
     }
+    savePersistedProfiles();
+    saveR2Profiles(persistedProfiles).catch(() => {});
 
     // Registra aprovação em audit_logs caso tenha sido aprovado
     const targetEmail = cleanEmail || (idx >= 0 ? persistedProfiles[idx].email : '');
@@ -1247,6 +1397,7 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
             sector: sector || 'Diretoria',
             details: {
               approved_email: targetEmail,
+              email: targetEmail,
               user_id: userId,
               role: normalizedRole || 'viewer',
               sector,
@@ -1259,31 +1410,26 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
       }
 
       try {
-        const payload: any = { updated_at: new Date().toISOString() };
-        if (full_name !== undefined) payload.full_name = full_name;
+        const payload: any = { 
+          id: userId,
+          email: targetEmail,
+          full_name: full_name || (idx >= 0 ? persistedProfiles[idx]?.full_name : targetEmail.split('@')[0]),
+          sector: sector || 'Fiscal',
+          role: normalizedRole || 'viewer',
+          status: status || 'approved',
+          updated_at: new Date().toISOString() 
+        };
         if (avatar_url !== undefined) payload.avatar_url = avatar_url;
-        if (sector !== undefined) payload.sector = sector;
-        if (normalizedRole !== undefined) payload.role = normalizedRole;
-        if (status !== undefined) payload.status = status;
         if (first_access_completed !== undefined) payload.first_access_completed = first_access_completed;
         if (lgpd_accepted_at !== undefined) payload.lgpd_accepted_at = lgpd_accepted_at;
         if (password_changed_at !== undefined) payload.password_changed_at = password_changed_at;
         if (lgpd_terms_version !== undefined) payload.lgpd_terms_version = lgpd_terms_version;
 
-        let { error, data } = await supabase
+        let { data } = await supabase
           .from('profiles')
-          .update(payload)
-          .eq('id', userId)
+          .upsert(payload, { onConflict: 'email' })
           .select();
 
-        if ((error || !data || data.length === 0) && targetEmail) {
-          const emailRes = await supabase
-            .from('profiles')
-            .update(payload)
-            .eq('email', targetEmail)
-            .select();
-          data = emailRes.data;
-        }
         if (data && data[0]) updatedSupabaseProfile = data[0];
       } catch (err: any) {
         console.warn('[Supabase Profiles] Erro na sincronização:', err.message);
@@ -1617,7 +1763,7 @@ app.get('/api/files', async (req: Request, res: Response) => {
         is_archived: f.is_archived || false,
         created_at: f.created_at,
         updated_at: f.updated_at,
-        preview_url: `/api/r2/download?key=${encodeURIComponent(f.storage_key)}&name=${encodeURIComponent(f.name)}`,
+        preview_url: `/api/r2/view?key=${encodeURIComponent(f.storage_key)}&name=${encodeURIComponent(f.name)}`,
       };
     });
 
@@ -2008,6 +2154,8 @@ interface ServerSiteBackgroundConfig {
 }
 
 const SETTINGS_FILE = path.join(process.cwd(), 'storage', 'system_settings.json');
+const ASSETS_DIR = path.join(process.cwd(), 'storage', 'assets');
+const R2_SETTINGS_KEY = 'system/settings.json';
 
 let siteBackgroundConfig: ServerSiteBackgroundConfig = {
   enabled: false,
@@ -2024,6 +2172,46 @@ let siteBackgroundConfig: ServerSiteBackgroundConfig = {
 
 function loadPersistedSettings() {
   try {
+    if (!fs.existsSync(ASSETS_DIR)) {
+      fs.mkdirSync(ASSETS_DIR, { recursive: true });
+    }
+    const defaultLogoPath = path.join(ASSETS_DIR, 'company-logo.img');
+    const defaultLogoMeta = path.join(ASSETS_DIR, 'company-logo.meta.json');
+    if (!fs.existsSync(defaultLogoPath)) {
+      const defaultLogoSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1b315e"/>
+      <stop offset="100%" stop-color="#0d1b33"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d4af37"/>
+      <stop offset="50%" stop-color="#f3e5ab"/>
+      <stop offset="100%" stop-color="#aa7c11"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#bg)"/>
+  <g transform="translate(100, 70)">
+    <path d="M50 200 L50 100 L120 60 L120 200 Z" fill="#ffffff" opacity="0.9"/>
+    <path d="M135 200 L135 40 L205 20 L205 200 Z" fill="#ffffff"/>
+    <path d="M220 200 L220 80 L290 100 L290 200 Z" fill="#ffffff" opacity="0.85"/>
+    <path d="M 20 200 C 20 240, 320 240, 320 200 Z" fill="#e2e8f0" opacity="0.95"/>
+    <path d="M 15 190 Q 160 20, 325 15" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round"/>
+    <polygon points="310,5 335,14 315,33" fill="url(#gold)"/>
+  </g>
+  <text x="250" y="340" font-family="Georgia, serif" font-size="32" font-weight="bold" fill="url(#gold)" text-anchor="middle" letter-spacing="3">MVRJ CONTÁBIL</text>
+  <text x="250" y="380" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#cbd5e1" text-anchor="middle" letter-spacing="1">GESTÃO ELETRÔNICA DE DOCUMENTOS</text>
+  <text x="250" y="415" font-family="Arial, sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">E-MAIL: MVRJCONTABIL@GMAIL.COM</text>
+  <text x="250" y="440" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">TEL: 21 97075-4216 / 99243-9469</text>
+</svg>`;
+      fs.writeFileSync(defaultLogoPath, defaultLogoSvg, 'utf-8');
+      fs.writeFileSync(defaultLogoMeta, JSON.stringify({ mimeType: 'image/svg+xml' }), 'utf-8');
+      if (authHeaderConfig.logoType === 'icon' || !authHeaderConfig.logoImageUrl) {
+        authHeaderConfig.logoType = 'image';
+        authHeaderConfig.logoImageUrl = '/api/r2/logo-image';
+      }
+    }
+
     if (fs.existsSync(SETTINGS_FILE)) {
       const raw = fs.readFileSync(SETTINGS_FILE, 'utf-8');
       const data = JSON.parse(raw);
@@ -2046,13 +2234,62 @@ function savePersistedSettings() {
   }
 }
 
+async function saveR2Settings() {
+  savePersistedSettings();
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return;
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: R2_SETTINGS_KEY,
+      Body: Buffer.from(JSON.stringify({ siteBackgroundConfig, authHeaderConfig }, null, 2), 'utf-8'),
+      ContentType: 'application/json',
+      Metadata: {
+        'system-sync': 'settings',
+        'updated-at': new Date().toISOString(),
+      },
+    }));
+  } catch (err: any) {
+    console.warn('[R2 Settings Save Aviso]', err.message);
+  }
+}
+
+async function syncPersistedSettingsWithR2() {
+  loadPersistedSettings();
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return;
+  try {
+    const res = await client.send(new GetObjectCommand({
+      Bucket: bucketName,
+      Key: R2_SETTINGS_KEY,
+    }));
+    if (res.Body) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as any) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+      if (parsed.siteBackgroundConfig) {
+        siteBackgroundConfig = { ...siteBackgroundConfig, ...parsed.siteBackgroundConfig };
+      }
+      if (parsed.authHeaderConfig) {
+        authHeaderConfig = { ...authHeaderConfig, ...parsed.authHeaderConfig };
+      }
+      savePersistedSettings();
+      console.log('[Settings] Configurações sincronizadas do Cloudflare R2 com sucesso');
+    }
+  } catch (err) {
+    // Arquivo não existe no R2 ou erro temporário
+  }
+}
+
 // 13.1 Get current background config
 app.get('/api/settings/background', (req: Request, res: Response) => {
   res.json(siteBackgroundConfig);
 });
 
 // 13.2 Update background configuration
-app.post('/api/settings/background', (req: Request, res: Response) => {
+app.post('/api/settings/background', async (req: Request, res: Response) => {
   try {
     const { enabled, imageUrl, presetId, opacity, blur, overlayType, overlayOpacity, position, updatedBy } = req.body;
     siteBackgroundConfig = {
@@ -2068,14 +2305,14 @@ app.post('/api/settings/background', (req: Request, res: Response) => {
       updatedAt: new Date().toISOString(),
       ...(updatedBy ? { updatedBy: String(updatedBy) } : {}),
     };
-    savePersistedSettings();
+    await saveR2Settings();
     return res.json({ status: 'success', config: siteBackgroundConfig });
   } catch (err: any) {
     res.status(500).json({ error: 'Falha ao atualizar configurações de fundo', details: err.message });
   }
 });
 
-// 13.3 Upload custom background image directly to Cloudflare R2 / Server Cache
+// 13.3 Upload custom background image directly to Cloudflare R2 / Server Cache / Disk
 app.post('/api/r2/background-image', express.raw({ type: '*/*', limit: '25mb' }), async (req: Request, res: Response) => {
   try {
     const mimeType = (req.headers['content-type'] as string) || 'image/jpeg';
@@ -2109,13 +2346,23 @@ app.post('/api/r2/background-image', express.raw({ type: '*/*', limit: '25mb' })
     const storageKey = 'system/site-background.img';
     const cleanMime = mimeType.startsWith('image/') ? mimeType : 'image/jpeg';
 
-    // Armazenar em cache em memória
+    // 1. Armazenar em cache em memória
     inMemoryFileStore.set(storageKey, {
       buffer,
       mimeType: cleanMime,
       name: 'site-background.img',
     });
 
+    // 2. Armazenar em cache em disco local permanente
+    try {
+      if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
+      fs.writeFileSync(path.join(ASSETS_DIR, 'site-background.img'), buffer);
+      fs.writeFileSync(path.join(ASSETS_DIR, 'site-background.meta.json'), JSON.stringify({ mimeType: cleanMime }));
+    } catch (e: any) {
+      console.warn('[Background Disk Cache Aviso]', e.message);
+    }
+
+    // 3. Upload para Cloudflare R2
     const { client, bucketName, isConfigured } = getR2Client();
     let uploadedToR2 = false;
 
@@ -2152,6 +2399,8 @@ app.post('/api/r2/background-image', express.raw({ type: '*/*', limit: '25mb' })
       updatedBy,
     };
 
+    await saveR2Settings();
+
     return res.status(200).json({
       status: 'success',
       imageUrl: publicUrl,
@@ -2165,18 +2414,44 @@ app.post('/api/r2/background-image', express.raw({ type: '*/*', limit: '25mb' })
   }
 });
 
-// 13.4 Serve background image
+// 13.4 Serve background image (Memory -> Disk -> R2)
 app.get('/api/r2/background-image', async (req: Request, res: Response) => {
   try {
     const storageKey = 'system/site-background.img';
+
+    // 1. Cache em memória
     const cached = inMemoryFileStore.get(storageKey);
     if (cached) {
       res.setHeader('Content-Type', cached.mimeType || 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
       res.setHeader('Content-Length', cached.buffer.length);
       return res.send(cached.buffer);
     }
 
+    // 2. Cache em disco
+    const diskPath = path.join(ASSETS_DIR, 'site-background.img');
+    const metaPath = path.join(ASSETS_DIR, 'site-background.meta.json');
+    if (fs.existsSync(diskPath)) {
+      try {
+        const diskBuf = fs.readFileSync(diskPath);
+        let diskMime = 'image/jpeg';
+        if (fs.existsSync(metaPath)) {
+          const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+          if (meta.mimeType) diskMime = meta.mimeType;
+        }
+        inMemoryFileStore.set(storageKey, {
+          buffer: diskBuf,
+          mimeType: diskMime,
+          name: 'site-background.img',
+        });
+        res.setHeader('Content-Type', diskMime);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Content-Length', diskBuf.length);
+        return res.send(diskBuf);
+      } catch (e) {}
+    }
+
+    // 3. Cloudflare R2
     const { client, bucketName, isConfigured } = getR2Client();
     if (isConfigured && client) {
       try {
@@ -2197,8 +2472,14 @@ app.get('/api/r2/background-image', async (req: Request, res: Response) => {
             mimeType,
             name: 'site-background.img',
           });
+          try {
+            if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
+            fs.writeFileSync(diskPath, buffer);
+            fs.writeFileSync(metaPath, JSON.stringify({ mimeType }));
+          } catch (e) {}
+
           res.setHeader('Content-Type', mimeType);
-          res.setHeader('Cache-Control', 'public, max-age=3600');
+          res.setHeader('Cache-Control', 'public, max-age=86400');
           res.setHeader('Content-Length', buffer.length);
           return res.send(buffer);
         }
@@ -2219,6 +2500,12 @@ app.delete('/api/settings/background', async (req: Request, res: Response) => {
     const updatedBy = (req.headers['x-admin-user'] || req.query.admin) as string || 'Administrador MVRJCONTÁBIL';
     const storageKey = 'system/site-background.img';
     inMemoryFileStore.delete(storageKey);
+    try {
+      const diskPath = path.join(ASSETS_DIR, 'site-background.img');
+      const metaPath = path.join(ASSETS_DIR, 'site-background.meta.json');
+      if (fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
+      if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+    } catch (e) {}
 
     const { client, bucketName, isConfigured } = getR2Client();
     if (isConfigured && client) {
@@ -2244,6 +2531,8 @@ app.delete('/api/settings/background', async (req: Request, res: Response) => {
       updatedAt: new Date().toISOString(),
       updatedBy,
     };
+
+    await saveR2Settings();
 
     return res.json({
       status: 'success',
@@ -2306,7 +2595,7 @@ app.get('/api/settings/auth-header', (req: Request, res: Response) => {
 });
 
 // 14.2 Update auth header configuration
-app.post('/api/settings/auth-header', (req: Request, res: Response) => {
+app.post('/api/settings/auth-header', async (req: Request, res: Response) => {
   try {
     const {
       title,
@@ -2360,7 +2649,7 @@ app.post('/api/settings/auth-header', (req: Request, res: Response) => {
       ...(updatedBy ? { updatedBy: String(updatedBy) } : {}),
     };
 
-    savePersistedSettings();
+    await saveR2Settings();
     return res.json({ status: 'success', config: authHeaderConfig });
   } catch (err: any) {
     res.status(500).json({ error: 'Falha ao atualizar cabeçalho de login', details: err.message });
@@ -2400,6 +2689,14 @@ app.post('/api/r2/auth-header-image', express.raw({ type: '*/*', limit: '25mb' }
       name: 'auth-header.img',
     });
 
+    try {
+      if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
+      fs.writeFileSync(path.join(ASSETS_DIR, 'auth-header.img'), buffer);
+      fs.writeFileSync(path.join(ASSETS_DIR, 'auth-header.meta.json'), JSON.stringify({ mimeType: cleanMime }));
+    } catch (e: any) {
+      console.warn('[Auth Header Disk Cache Aviso]', e.message);
+    }
+
     const { client, bucketName, isConfigured } = getR2Client();
     if (isConfigured && client) {
       try {
@@ -2429,6 +2726,8 @@ app.post('/api/r2/auth-header-image', express.raw({ type: '*/*', limit: '25mb' }
       updatedBy,
     };
 
+    await saveR2Settings();
+
     return res.json({
       status: 'success',
       imageUrl: publicUrl,
@@ -2440,15 +2739,36 @@ app.post('/api/r2/auth-header-image', express.raw({ type: '*/*', limit: '25mb' }
   }
 });
 
-// 14.4 Serve auth header image
+// 14.4 Serve auth header image (Memory -> Disk -> R2)
 app.get('/api/r2/auth-header-image', async (req: Request, res: Response) => {
   try {
     const storageKey = 'system/auth-header.img';
     const cached = inMemoryFileStore.get(storageKey);
     if (cached) {
       res.setHeader('Content-Type', cached.mimeType || 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
       return res.send(cached.buffer);
+    }
+
+    const diskPath = path.join(ASSETS_DIR, 'auth-header.img');
+    const metaPath = path.join(ASSETS_DIR, 'auth-header.meta.json');
+    if (fs.existsSync(diskPath)) {
+      try {
+        const diskBuf = fs.readFileSync(diskPath);
+        let diskMime = 'image/jpeg';
+        if (fs.existsSync(metaPath)) {
+          const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+          if (meta.mimeType) diskMime = meta.mimeType;
+        }
+        inMemoryFileStore.set(storageKey, {
+          buffer: diskBuf,
+          mimeType: diskMime,
+          name: 'auth-header.img',
+        });
+        res.setHeader('Content-Type', diskMime);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.send(diskBuf);
+      } catch (e) {}
     }
 
     const { client, bucketName, isConfigured } = getR2Client();
@@ -2466,13 +2786,20 @@ app.get('/api/r2/auth-header-image', async (req: Request, res: Response) => {
             return Buffer.concat(chunks);
           };
           const buf = await streamToBuffer(r2Res.Body);
+          const mimeType = r2Res.ContentType || 'image/jpeg';
           inMemoryFileStore.set(storageKey, {
             buffer: buf,
-            mimeType: r2Res.ContentType || 'image/jpeg',
+            mimeType,
             name: 'auth-header.img',
           });
-          res.setHeader('Content-Type', r2Res.ContentType || 'image/jpeg');
-          res.setHeader('Cache-Control', 'public, max-age=3600');
+          try {
+            if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
+            fs.writeFileSync(diskPath, buf);
+            fs.writeFileSync(metaPath, JSON.stringify({ mimeType }));
+          } catch (e) {}
+
+          res.setHeader('Content-Type', mimeType);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
           return res.send(buf);
         }
       } catch (err) {
@@ -2519,6 +2846,14 @@ app.post('/api/r2/logo-image', express.raw({ type: '*/*', limit: '10mb' }), asyn
       name: 'company-logo.img',
     });
 
+    try {
+      if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
+      fs.writeFileSync(path.join(ASSETS_DIR, 'company-logo.img'), buffer);
+      fs.writeFileSync(path.join(ASSETS_DIR, 'company-logo.meta.json'), JSON.stringify({ mimeType: cleanMime }));
+    } catch (e: any) {
+      console.warn('[Logo Disk Cache Aviso]', e.message);
+    }
+
     const { client, bucketName, isConfigured } = getR2Client();
     if (isConfigured && client) {
       try {
@@ -2548,7 +2883,7 @@ app.post('/api/r2/logo-image', express.raw({ type: '*/*', limit: '10mb' }), asyn
       updatedBy,
     };
 
-    savePersistedSettings();
+    await saveR2Settings();
 
     return res.json({
       status: 'success',
@@ -2561,15 +2896,36 @@ app.post('/api/r2/logo-image', express.raw({ type: '*/*', limit: '10mb' }), asyn
   }
 });
 
-// 14.6 Serve company logo
+// 14.6 Serve company logo (Memory -> Disk -> R2)
 app.get('/api/r2/logo-image', async (req: Request, res: Response) => {
   try {
     const storageKey = 'system/company-logo.img';
     const cached = inMemoryFileStore.get(storageKey);
     if (cached) {
       res.setHeader('Content-Type', cached.mimeType || 'image/png');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
       return res.send(cached.buffer);
+    }
+
+    const diskPath = path.join(ASSETS_DIR, 'company-logo.img');
+    const metaPath = path.join(ASSETS_DIR, 'company-logo.meta.json');
+    if (fs.existsSync(diskPath)) {
+      try {
+        const diskBuf = fs.readFileSync(diskPath);
+        let diskMime = 'image/png';
+        if (fs.existsSync(metaPath)) {
+          const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+          if (meta.mimeType) diskMime = meta.mimeType;
+        }
+        inMemoryFileStore.set(storageKey, {
+          buffer: diskBuf,
+          mimeType: diskMime,
+          name: 'company-logo.img',
+        });
+        res.setHeader('Content-Type', diskMime);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.send(diskBuf);
+      } catch (e) {}
     }
 
     const { client, bucketName, isConfigured } = getR2Client();
@@ -2587,13 +2943,20 @@ app.get('/api/r2/logo-image', async (req: Request, res: Response) => {
             return Buffer.concat(chunks);
           };
           const buf = await streamToBuffer(r2Res.Body);
+          const mimeType = r2Res.ContentType || 'image/png';
           inMemoryFileStore.set(storageKey, {
             buffer: buf,
-            mimeType: r2Res.ContentType || 'image/png',
+            mimeType,
             name: 'company-logo.img',
           });
-          res.setHeader('Content-Type', r2Res.ContentType || 'image/png');
-          res.setHeader('Cache-Control', 'public, max-age=3600');
+          try {
+            if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
+            fs.writeFileSync(diskPath, buf);
+            fs.writeFileSync(metaPath, JSON.stringify({ mimeType }));
+          } catch (e) {}
+
+          res.setHeader('Content-Type', mimeType);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
           return res.send(buf);
         }
       } catch (err) {
@@ -2614,6 +2977,17 @@ app.delete('/api/settings/auth-header', async (req: Request, res: Response) => {
     inMemoryFileStore.delete('system/auth-header.img');
     inMemoryFileStore.delete('system/company-logo.img');
 
+    try {
+      const authImg = path.join(ASSETS_DIR, 'auth-header.img');
+      const authMeta = path.join(ASSETS_DIR, 'auth-header.meta.json');
+      const logoImg = path.join(ASSETS_DIR, 'company-logo.img');
+      const logoMeta = path.join(ASSETS_DIR, 'company-logo.meta.json');
+      if (fs.existsSync(authImg)) fs.unlinkSync(authImg);
+      if (fs.existsSync(authMeta)) fs.unlinkSync(authMeta);
+      if (fs.existsSync(logoImg)) fs.unlinkSync(logoImg);
+      if (fs.existsSync(logoMeta)) fs.unlinkSync(logoMeta);
+    } catch (e) {}
+
     authHeaderConfig = {
       title: 'MVRJ CONTÁBIL',
       subtitle: 'Gestão Eletrônica de Documentos Segura',
@@ -2633,7 +3007,7 @@ app.delete('/api/settings/auth-header', async (req: Request, res: Response) => {
       updatedBy,
     };
 
-    savePersistedSettings();
+    await saveR2Settings();
     return res.json({
       status: 'success',
       config: authHeaderConfig,
@@ -2649,6 +3023,13 @@ app.delete('/api/settings/auth-header', async (req: Request, res: Response) => {
 // ==============================================================================
 
 async function startServer() {
+  // Sincroniza configurações e assets do Cloudflare R2 na inicialização
+  try {
+    await syncPersistedSettingsWithR2();
+  } catch (syncErr: any) {
+    console.warn('[Startup Sync Aviso]', syncErr.message);
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
