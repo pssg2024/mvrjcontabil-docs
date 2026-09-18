@@ -3,7 +3,6 @@ import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
 import { FileManager } from './components/FileManager';
-import { UtilitiesPage } from './components/UtilitiesPage';
 import { FileUploadModal } from './components/FileUploadModal';
 import { PdfViewerModal } from './components/PdfViewerModal';
 import { SqlSchemaViewerModal } from './components/SqlSchemaViewerModal';
@@ -128,7 +127,7 @@ export default function App() {
   });
 
   // Navigation & Modals
-  const [activeView, setActiveView] = useState<'drive' | 'admin' | 'tools'>('drive');
+  const [activeView, setActiveView] = useState<'drive' | 'admin'>('drive');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);

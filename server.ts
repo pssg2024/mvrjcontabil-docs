@@ -190,10 +190,19 @@ app.post('/api/r2/presigned-upload', async (req: Request, res: Response) => {
   }
 });
 
-// Helper to accurately detect MIME types for images, documents, and spreadsheets
+// Helper to accurately detect MIME types for images, documents, certificates, and spreadsheets
 function detectMimeType(fileNameOrKey: string, fallbackMime?: string): string {
   const ext = path.extname(fileNameOrKey).toLowerCase();
   switch (ext) {
+    case '.pfx':
+    case '.p12': return 'application/x-pkcs12';
+    case '.cer':
+    case '.crt': return 'application/x-x509-ca-cert';
+    case '.key': return 'application/pkcs8';
+    case '.xml':
+    case '.nfe':
+    case '.cte':
+    case '.sped': return 'application/xml';
     case '.webp': return 'image/webp';
     case '.png': return 'image/png';
     case '.jpg':
@@ -207,9 +216,13 @@ function detectMimeType(fileNameOrKey: string, fallbackMime?: string): string {
     case '.xls': return 'application/vnd.ms-excel';
     case '.docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     case '.doc': return 'application/msword';
+    case '.zip': return 'application/zip';
+    case '.rar': return 'application/x-rar-compressed';
+    case '.7z': return 'application/x-7z-compressed';
     case '.txt': return 'text/plain; charset=utf-8';
     case '.csv': return 'text/csv; charset=utf-8';
     case '.json': return 'application/json';
+    case '.ofx': return 'application/x-ofx';
     default:
       if (fallbackMime && fallbackMime !== 'application/octet-stream') {
         return fallbackMime;

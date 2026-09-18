@@ -24,7 +24,11 @@ import {
   ArrowUpDown,
   FileSpreadsheet,
   AlertOctagon,
-  Phone
+  Phone,
+  KeyRound,
+  FileCode,
+  FileArchive,
+  File as FileGenericIcon
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -563,8 +567,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
           /* GRID VIEW */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {sortedFiles.map(file => {
-              const isPdf = file.mime_type.includes('pdf') || file.name.endsWith('.pdf');
-              const isImage = file.mime_type.includes('image') || /\.(webp|png|jpe?g)$/i.test(file.name);
+              const lowerName = file.name.toLowerCase();
+              const isPfx = file.mime_type.includes('pkcs12') || /\.(pfx|p12|cer|crt|key)$/i.test(lowerName);
+              const isPdf = file.mime_type.includes('pdf') || /\.pdf$/i.test(lowerName);
+              const isImage = file.mime_type.includes('image') || /\.(webp|png|jpe?g|gif|svg|bmp)$/i.test(lowerName);
+              const isSpreadsheet = /\.(xlsx|xls|csv|ods)$/i.test(lowerName) || file.mime_type.includes('spreadsheet') || file.mime_type.includes('excel') || file.mime_type.includes('csv');
+              const isXml = /\.(xml|nfe|cte|sped|ofx|rem|ret)$/i.test(lowerName) || file.mime_type.includes('xml');
+              const isZip = /\.(zip|rar|7z|tar|gz)$/i.test(lowerName) || file.mime_type.includes('zip') || file.mime_type.includes('compressed');
 
               return (
                 <div
@@ -575,14 +584,35 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     {/* Header with Type icon & Savings Badge */}
                     <div className="flex items-start justify-between">
                       <div className={`p-2.5 rounded-xl text-white shadow-xs ${
-                        isPdf ? 'bg-red-600' : isImage ? 'bg-blue-600' : 'bg-emerald-600'
+                        isPfx ? 'bg-purple-600' :
+                        isPdf ? 'bg-red-600' :
+                        isImage ? 'bg-blue-600' :
+                        isSpreadsheet ? 'bg-emerald-600' :
+                        isXml ? 'bg-amber-600' :
+                        isZip ? 'bg-teal-600' : 'bg-[#1B357B]'
                       }`}>
-                        {isPdf ? <FileText className="w-5 h-5" /> : isImage ? <ImageIcon className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
+                        {isPfx ? <KeyRound className="w-5 h-5" /> :
+                         isPdf ? <FileText className="w-5 h-5" /> :
+                         isImage ? <ImageIcon className="w-5 h-5" /> :
+                         isSpreadsheet ? <FileSpreadsheet className="w-5 h-5" /> :
+                         isXml ? <FileCode className="w-5 h-5" /> :
+                         isZip ? <FileArchive className="w-5 h-5" /> :
+                         <FileGenericIcon className="w-5 h-5" />}
                       </div>
 
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        -{file.compression_ratio}% Otimizado
-                      </span>
+                      {file.compression_ratio > 0 ? (
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          -{file.compression_ratio}% Otimizado
+                        </span>
+                      ) : isPfx ? (
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-50 text-purple-800 border border-purple-200">
+                          Certificado Digital
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                          Íntegro
+                        </span>
+                      )}
                     </div>
 
                     {/* File Title & Sector */}
@@ -693,53 +723,90 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {sortedFiles.map(file => (
-                  <tr key={file.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-3 font-medium text-gray-900">
-                      <div className="flex items-center space-x-2.5">
-                        <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-                        <span 
-                          onClick={() => onOpenFileViewer(file)}
-                          className="font-bold hover:text-blue-600 cursor-pointer truncate max-w-xs"
-                        >
-                          {file.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-gray-600">{file.sector}</td>
-                    <td className="p-3 font-mono text-gray-400 line-through">{formatBytes(file.original_size)}</td>
-                    <td className="p-3 font-mono font-bold text-gray-800">{formatBytes(file.optimized_size)}</td>
-                    <td className="p-3 font-bold text-emerald-600">-{file.compression_ratio}%</td>
-                    <td className="p-3 text-gray-500">{new Date(file.created_at).toLocaleDateString('pt-BR')}</td>
-                    <td className="p-3 text-right">
-                      <div className="flex items-center justify-end space-x-1">
-                        <button
-                          onClick={() => onOpenFileViewer(file)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                          title="Visualizar"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDirectDownload(file)}
-                          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg"
-                          title="Download Seguro"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        {currentUser.role === 'admin' && (
-                          <button
-                            onClick={() => onDeleteFile(file.id)}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                            title="Excluir"
+                {sortedFiles.map(file => {
+                  const lowerName = file.name.toLowerCase();
+                  const isPfx = file.mime_type.includes('pkcs12') || /\.(pfx|p12|cer|crt|key)$/i.test(lowerName);
+                  const isPdf = file.mime_type.includes('pdf') || /\.pdf$/i.test(lowerName);
+                  const isImage = file.mime_type.includes('image') || /\.(webp|png|jpe?g|gif|svg|bmp)$/i.test(lowerName);
+                  const isSpreadsheet = /\.(xlsx|xls|csv|ods)$/i.test(lowerName) || file.mime_type.includes('spreadsheet') || file.mime_type.includes('excel') || file.mime_type.includes('csv');
+                  const isXml = /\.(xml|nfe|cte|sped|ofx|rem|ret)$/i.test(lowerName) || file.mime_type.includes('xml');
+                  const isZip = /\.(zip|rar|7z|tar|gz)$/i.test(lowerName) || file.mime_type.includes('zip') || file.mime_type.includes('compressed');
+
+                  return (
+                    <tr key={file.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-3 font-medium text-gray-900">
+                        <div className="flex items-center space-x-2.5">
+                          <div className={`p-1.5 rounded-lg text-white ${
+                            isPfx ? 'bg-purple-600' :
+                            isPdf ? 'bg-red-600' :
+                            isImage ? 'bg-blue-600' :
+                            isSpreadsheet ? 'bg-emerald-600' :
+                            isXml ? 'bg-amber-600' :
+                            isZip ? 'bg-teal-600' : 'bg-[#1B357B]'
+                          }`}>
+                            {isPfx ? <KeyRound className="w-3.5 h-3.5" /> :
+                             isPdf ? <FileText className="w-3.5 h-3.5" /> :
+                             isImage ? <ImageIcon className="w-3.5 h-3.5" /> :
+                             isSpreadsheet ? <FileSpreadsheet className="w-3.5 h-3.5" /> :
+                             isXml ? <FileCode className="w-3.5 h-3.5" /> :
+                             isZip ? <FileArchive className="w-3.5 h-3.5" /> :
+                             <FileGenericIcon className="w-3.5 h-3.5" />}
+                          </div>
+                          <span 
+                            onClick={() => onOpenFileViewer(file)}
+                            className="font-bold hover:text-blue-600 cursor-pointer truncate max-w-xs"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {file.name}
+                          </span>
+                          {isPfx && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
+                              PFX
+                            </span>
+                          )}
+                          {isXml && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                              XML
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3 text-gray-600">{file.sector}</td>
+                      <td className="p-3 font-mono text-gray-400 line-through">{formatBytes(file.original_size)}</td>
+                      <td className="p-3 font-mono font-bold text-gray-800">{formatBytes(file.optimized_size)}</td>
+                      <td className="p-3 font-bold text-emerald-600">
+                        {file.compression_ratio > 0 ? `-${file.compression_ratio}%` : '100% Íntegro'}
+                      </td>
+                      <td className="p-3 text-gray-500">{new Date(file.created_at).toLocaleDateString('pt-BR')}</td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end space-x-1">
+                          <button
+                            onClick={() => onOpenFileViewer(file)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                            title="Visualizar"
+                          >
+                            <Eye className="w-4 h-4" />
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <button
+                            onClick={() => handleDirectDownload(file)}
+                            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg"
+                            title="Download Seguro"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                          {currentUser.role === 'admin' && (
+                            <button
+                              onClick={() => onDeleteFile(file.id)}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                              title="Excluir"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

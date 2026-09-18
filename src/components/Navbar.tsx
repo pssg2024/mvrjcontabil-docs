@@ -15,8 +15,7 @@ import {
   Palette,
   Eye,
   EyeOff,
-  Globe,
-  Wrench
+  Globe
 } from 'lucide-react';
 import { UserProfile, UserRole, StorageMetrics, AuthHeaderConfig } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -161,19 +160,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Globe className="w-4 h-4" />
               <span className="hidden sm:inline">Portais Fiscais</span>
-            </button>
-
-            {/* Utilities Page Trigger */}
-            <button
-              onClick={() => onNavigate('tools')}
-              className={`font-medium text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all ${
-                activeView === 'tools'
-                  ? 'bg-[#1B357B] text-white'
-                  : 'bg-slate-100 hover:bg-slate-200 text-[#1B357B]'
-              }`}
-            >
-              <Wrench className="w-4 h-4" />
-              <span className="hidden sm:inline">Ferramentas</span>
             </button>
 
             {/* Current User Profile & Quick Switch Dropdown */}

@@ -200,6 +200,45 @@ export async function optimizePdf(file: File): Promise<OptimizationResult> {
 }
 
 /**
+ * Detects appropriate MIME type for any file extension
+ */
+export function getMimeTypeFromFileName(fileName: string, fallback?: string): string {
+  const ext = fileName.slice((fileName.lastIndexOf(".") - 1 >>> 0) + 2).toLowerCase();
+  switch (ext) {
+    case 'pfx':
+    case 'p12': return 'application/x-pkcs12';
+    case 'cer':
+    case 'crt': return 'application/x-x509-ca-cert';
+    case 'key': return 'application/pkcs8';
+    case 'xml':
+    case 'nfe':
+    case 'cte':
+    case 'sped': return 'application/xml';
+    case 'pdf': return 'application/pdf';
+    case 'png': return 'image/png';
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg';
+    case 'webp': return 'image/webp';
+    case 'gif': return 'image/gif';
+    case 'svg': return 'image/svg+xml';
+    case 'bmp': return 'image/bmp';
+    case 'ico': return 'image/x-icon';
+    case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'xls': return 'application/vnd.ms-excel';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'doc': return 'application/msword';
+    case 'zip': return 'application/zip';
+    case 'rar': return 'application/x-rar-compressed';
+    case '7z': return 'application/x-7z-compressed';
+    case 'csv': return 'text/csv';
+    case 'txt': return 'text/plain';
+    case 'json': return 'application/json';
+    case 'ofx': return 'application/x-ofx';
+    default: return fallback || 'application/octet-stream';
+  }
+}
+
+/**
  * Universal file optimization router
  */
 export async function optimizeFile(file: File): Promise<OptimizationResult> {
@@ -214,13 +253,14 @@ export async function optimizeFile(file: File): Promise<OptimizationResult> {
     return optimizePdf(file);
   }
 
-  // Arquivos genéricos (ex: XLSX, CSV, DOCX) mantidos intactos com métricas
+  // Arquivos genéricos (ex: PFX, P12, XML, XLSX, CSV, DOCX, ZIP) mantidos intactos com métricas
+  const detectedMime = file.type || getMimeTypeFromFileName(file.name);
   return {
     file,
     originalSize: file.size,
     optimizedSize: file.size,
     reductionPercentage: 0,
-    mimeType: file.type || 'application/octet-stream',
+    mimeType: detectedMime,
     pagesCount: 1,
   };
 }

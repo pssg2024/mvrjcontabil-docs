@@ -16,7 +16,12 @@ import {
   HardDrive,
   AlertOctagon,
   Phone,
-  Calendar
+  Calendar,
+  KeyRound,
+  FileCode,
+  FileSpreadsheet,
+  FileArchive,
+  File as FileGenericIcon
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, StorageMetrics } from '../types';
 import { optimizeFile, formatBytes, computeChecksum } from '../lib/optimization';
@@ -229,8 +234,8 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               <UploadCloud className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-gray-900 leading-tight">Upload & Otimização de Documento</h3>
-              <p className="text-xs text-gray-500">Pipeline automático: Compressão de PDF/WebP + Cloudflare R2</p>
+              <h3 className="font-bold text-base text-gray-900 leading-tight">Upload de Documentos & Certificados</h3>
+              <p className="text-xs text-gray-500">Aceita qualquer formato: Certificados (.PFX, .P12), PDFs, Imagens, XMLs e Planilhas</p>
             </div>
           </div>
           <button
@@ -360,7 +365,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx"
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
@@ -371,43 +375,82 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-3">
                 <UploadCloud className="w-6 h-6" />
               </div>
-              <p className="text-xs font-bold text-gray-800">Clique para selecionar ou arraste o arquivo aqui</p>
-              <p className="text-[11px] text-gray-500 mt-1">PDFs, Imagens digitalizadas (PNG, JPG) ou Planilhas</p>
-              <div className="mt-3 flex items-center justify-center space-x-2 text-[10px] text-gray-400">
-                <span className="px-2 py-0.5 bg-gray-200/70 rounded">PDF</span>
-                <span className="px-2 py-0.5 bg-gray-200/70 rounded">PNG</span>
-                <span className="px-2 py-0.5 bg-gray-200/70 rounded">JPG</span>
-                <span className="px-2 py-0.5 bg-gray-200/70 rounded">WebP</span>
+              <p className="text-xs font-bold text-gray-800">Clique para selecionar ou arraste qualquer arquivo aqui</p>
+              <p className="text-[11px] text-gray-500 mt-1">Aceita todos os formatos e extensões sem exceção</p>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-medium text-gray-500">
+                <span className="px-2 py-0.5 bg-purple-100 text-purple-800 border border-purple-200 rounded-md font-semibold">.PFX / .P12</span>
+                <span className="px-2 py-0.5 bg-red-100 text-red-800 border border-red-200 rounded-md">PDF</span>
+                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-md">XML / NFe</span>
+                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md">XLSX / CSV</span>
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 border border-blue-200 rounded-md">PNG / JPG</span>
+                <span className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md font-semibold">+ Todos</span>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Selected File Card */}
-              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-xs">
-                    {selectedFile.type.includes('image') ? <ImageIcon className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-xs text-gray-900 truncate max-w-[280px]">{selectedFile.name}</h4>
-                    <p className="text-[11px] text-gray-500">Tamanho Original: <strong>{formatBytes(selectedFile.size)}</strong></p>
-                    {selectedFile.type.includes('image') && (
-                      <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                        <Sparkles className="w-3 h-3 mr-1" /> Otimização Máxima Ativa (WebP + Downscale OCR)
-                      </span>
+              {(() => {
+                const lowerName = selectedFile.name.toLowerCase();
+                const isPfx = /\.(pfx|p12|cer|crt|key)$/i.test(lowerName);
+                const isPdf = selectedFile.type.includes('pdf') || /\.pdf$/i.test(lowerName);
+                const isImg = selectedFile.type.includes('image') || /\.(webp|png|jpe?g|bmp|gif|svg)$/i.test(lowerName);
+                const isSpreadsheet = /\.(xlsx|xls|csv|ods)$/i.test(lowerName);
+                const isXml = /\.(xml|nfe|cte|sped|ofx|rem|ret)$/i.test(lowerName);
+                const isZip = /\.(zip|rar|7z|tar|gz)$/i.test(lowerName);
+
+                return (
+                  <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`p-2.5 rounded-xl shadow-xs text-white ${
+                        isPfx ? 'bg-purple-600' :
+                        isPdf ? 'bg-red-600' :
+                        isImg ? 'bg-blue-600' :
+                        isSpreadsheet ? 'bg-emerald-600' :
+                        isXml ? 'bg-amber-600' :
+                        isZip ? 'bg-teal-600' : 'bg-[#1B357B]'
+                      }`}>
+                        {isPfx ? <KeyRound className="w-5 h-5" /> :
+                         isPdf ? <FileText className="w-5 h-5" /> :
+                         isImg ? <ImageIcon className="w-5 h-5" /> :
+                         isSpreadsheet ? <FileSpreadsheet className="w-5 h-5" /> :
+                         isXml ? <FileCode className="w-5 h-5" /> :
+                         isZip ? <FileArchive className="w-5 h-5" /> :
+                         <FileGenericIcon className="w-5 h-5" />}
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h4 className="font-bold text-xs text-gray-900 truncate max-w-[240px]">{selectedFile.name}</h4>
+                          {isPfx && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                              Certificado Digital
+                            </span>
+                          )}
+                          {isXml && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              XML / Fiscal
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-0.5">Tamanho: <strong>{formatBytes(selectedFile.size)}</strong></p>
+                        {isImg && (
+                          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                            <Sparkles className="w-3 h-3 mr-1" /> Otimização Máxima Ativa (WebP + Downscale OCR)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {!isProcessing && (
+                      <button
+                        onClick={() => setSelectedFile(null)}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium px-2 py-1"
+                      >
+                        Trocar Arquivo
+                      </button>
                     )}
                   </div>
-                </div>
-
-                {!isProcessing && (
-                  <button
-                    onClick={() => setSelectedFile(null)}
-                    className="text-xs text-red-600 hover:text-red-700 font-medium px-2 py-1"
-                  >
-                    Trocar Arquivo
-                  </button>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Tags input */}
               <div>

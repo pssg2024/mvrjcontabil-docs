@@ -19,6 +19,7 @@ const PORTAL_CATEGORIES: PortalCategory[] = [
       { name: 'Portal e-CAC', url: 'https://cav.receita.fazenda.gov.br/', desc: 'Receita Federal' },
       { name: 'Simples Nacional / PGDAS', url: 'https://www8.receita.fazenda.gov.br/SimplesNacional/', desc: 'Gestão de impostos' },
       { name: 'Portal Nacional NFS-e', url: 'https://www.nfse.gov.br/', desc: 'Notas Fiscais de Serviço' },
+      { name: 'Consulta IE', url: 'https://www.consultaie.com.br/', desc: 'Consulta Inscrição Estadual (Sintegra / CCC)' },
       { name: 'SEFAZ-RJ', url: 'https://www.fazenda.rj.gov.br/', desc: 'Receita Estadual' },
     ],
   },
