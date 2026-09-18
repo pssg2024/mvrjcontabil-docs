@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS public.files (
   pages_count INTEGER DEFAULT 1,
   tags TEXT[] DEFAULT '{}',
   checksum_sha256 TEXT,
+  due_date DATE,                    -- Data de vencimento da guia / obrigação
   is_archived BOOLEAN DEFAULT FALSE,
   uploaded_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

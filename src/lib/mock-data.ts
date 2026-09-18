@@ -199,6 +199,7 @@ export const INITIAL_FILES: DocumentFile[] = [
     uploader_name: 'Mariana Silva',
     sector: 'Fiscal',
     checksum_sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
+    due_date: '2026-09-10', // Vencido
     created_at: '2026-02-15T10:14:00Z',
     updated_at: '2026-02-15T10:14:00Z',
   },
@@ -217,6 +218,7 @@ export const INITIAL_FILES: DocumentFile[] = [
     uploader_name: 'Mariana Silva',
     sector: 'Fiscal',
     checksum_sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    due_date: '2026-09-20', // Vence em breve
     created_at: '2026-02-20T16:22:00Z',
     updated_at: '2026-02-20T16:22:00Z',
   },
@@ -235,6 +237,7 @@ export const INITIAL_FILES: DocumentFile[] = [
     uploader_name: 'Mariana Silva',
     sector: 'Fiscal',
     checksum_sha256: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
+    due_date: '2026-10-15', // No prazo
     created_at: '2026-02-22T11:05:00Z',
     updated_at: '2026-02-22T11:05:00Z',
   },

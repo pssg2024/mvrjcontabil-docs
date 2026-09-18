@@ -432,7 +432,7 @@ app.post('/api/files/upload', upload.single('file'), async (req: Request, res: R
       return res.status(400).json({ error: 'Nenhum arquivo enviado no campo file (multipart/form-data)' });
     }
 
-    const { folder_id, sector, uploaded_by, pages_count, tags } = req.body;
+    const { folder_id, sector, uploaded_by, pages_count, tags, due_date } = req.body;
     const file = req.file;
     const cleanFileName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
     const safeSector = (sector || 'Geral').toLowerCase().replace(/\s+/g, '-');
@@ -496,21 +496,26 @@ app.post('/api/files/upload', upload.single('file'), async (req: Request, res: R
 
       const parsedTags = Array.isArray(tags) ? tags : (typeof tags === 'string' ? JSON.parse(tags || '[]') : []);
 
+      const uploadPayload: any = {
+        folder_id: resolvedFolderId,
+        name: file.originalname,
+        storage_key: storageKey,
+        mime_type: file.mimetype,
+        original_size: file.size,
+        optimized_size: file.size,
+        compression_ratio: 0,
+        pages_count: Number(pages_count) || 1,
+        tags: parsedTags,
+        uploaded_by: resolvedUploaderId,
+        updated_at: new Date().toISOString(),
+      };
+      if (due_date) {
+        uploadPayload.due_date = due_date;
+      }
+
       const { data: dbData, error: dbError } = await supabase
         .from('files')
-        .insert({
-          folder_id: resolvedFolderId,
-          name: file.originalname,
-          storage_key: storageKey,
-          mime_type: file.mimetype,
-          original_size: file.size,
-          optimized_size: file.size,
-          compression_ratio: 0,
-          pages_count: Number(pages_count) || 1,
-          tags: parsedTags,
-          uploaded_by: resolvedUploaderId,
-          updated_at: new Date().toISOString(),
-        })
+        .insert(uploadPayload)
         .select('*, folders(name, sector)');
 
       if (!dbError && dbData && dbData[0]) {
@@ -528,6 +533,7 @@ app.post('/api/files/upload', upload.single('file'), async (req: Request, res: R
               storage_key: storageKey,
               size: file.size,
               r2_bucket: bucketName,
+              due_date: due_date || insertedDoc.due_date,
             },
           });
         } catch {}
@@ -549,6 +555,7 @@ app.post('/api/files/upload', upload.single('file'), async (req: Request, res: R
         folder_id: insertedDoc?.folder_id || folder_id,
         sector: sector || 'Fiscal',
         uploaded_by: insertedDoc?.uploaded_by || uploaded_by,
+        due_date: due_date || insertedDoc?.due_date || undefined,
         created_at: insertedDoc?.created_at || new Date().toISOString(),
         preview_url: `/api/files/${docId}/view`,
         download_url: `/api/files/${docId}/download`,
@@ -1773,6 +1780,7 @@ app.get('/api/files', async (req: Request, res: Response) => {
         uploader_name: 'Evandro (Administrador)',
         sector: folder?.sector || 'Fiscal',
         checksum_sha256: f.checksum_sha256,
+        due_date: f.due_date || undefined,
         is_archived: f.is_archived || false,
         created_at: f.created_at,
         updated_at: f.updated_at,
@@ -1805,6 +1813,7 @@ app.post('/api/files', async (req: Request, res: Response) => {
       tags,
       uploaded_by,
       checksum_sha256,
+      due_date,
       sector,
     } = req.body;
 
@@ -1837,7 +1846,7 @@ app.post('/api/files', async (req: Request, res: Response) => {
       }
     }
 
-    const payload = {
+    const payload: any = {
       folder_id: resolvedFolderId,
       name: name.trim(),
       storage_key,
@@ -1852,17 +1861,34 @@ app.post('/api/files', async (req: Request, res: Response) => {
       updated_at: new Date().toISOString(),
     };
 
+    if (due_date) {
+      payload.due_date = due_date;
+    }
+
+    let inserted: any = null;
     const { data, error } = await supabase
       .from('files')
       .insert(payload)
       .select('*, folders(name, sector)');
 
     if (error) {
-      console.error('[Supabase Files] Erro no insert:', error);
-      return res.status(400).json({ error: error.message });
+      // Se a coluna due_date não existir no Supabase, tenta novamente sem ela
+      if (due_date && (error.message.includes('due_date') || error.code === '42703')) {
+        delete payload.due_date;
+        const retry = await supabase.from('files').insert(payload).select('*, folders(name, sector)');
+        if (retry.error) {
+          console.error('[Supabase Files] Erro no retry insert:', retry.error);
+          return res.status(400).json({ error: retry.error.message });
+        }
+        inserted = retry.data?.[0];
+      } else {
+        console.error('[Supabase Files] Erro no insert:', error);
+        return res.status(400).json({ error: error.message });
+      }
+    } else {
+      inserted = data?.[0];
     }
 
-    const inserted = data[0];
     const folder = inserted.folders as any;
 
     // Auto-record audit log in Supabase
@@ -1880,6 +1906,7 @@ app.post('/api/files', async (req: Request, res: Response) => {
           original_size: inserted.original_size,
           optimized_size: inserted.optimized_size,
           compression_ratio: `${inserted.compression_ratio}%`,
+          due_date: due_date || inserted.due_date,
         },
       });
     } catch (auditErr) {
@@ -1901,6 +1928,7 @@ app.post('/api/files', async (req: Request, res: Response) => {
       uploader_name: 'Evandro (Administrador)',
       sector: folder?.sector || sector || 'Fiscal',
       checksum_sha256: inserted.checksum_sha256,
+      due_date: due_date || inserted.due_date || undefined,
       created_at: inserted.created_at,
       updated_at: inserted.updated_at,
       preview_url: `/api/r2/download?key=${encodeURIComponent(inserted.storage_key)}&name=${encodeURIComponent(inserted.name)}`,

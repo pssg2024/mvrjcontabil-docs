@@ -11,6 +11,8 @@ import {
 import { DocumentFile } from '../types';
 import { formatBytes } from '../lib/optimization';
 import { getPresignedDownloadUrl, getPermanentViewUrl } from '../lib/storage-service';
+import { getDueDateInfo } from '../lib/due-date-utils';
+import { AlertCircle, Clock, ShieldCheck } from 'lucide-react';
 
 interface PdfViewerModalProps {
   isOpen: boolean;
@@ -74,7 +76,21 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         {/* Top Control Bar */}
         <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
           <div>
-            <h3 className="font-bold text-sm text-[#112354]">{file.name}</h3>
+            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+              <h3 className="font-bold text-sm text-[#112354]">{file.name}</h3>
+              {file.due_date && (() => {
+                const dueInfo = getDueDateInfo(file.due_date);
+                if (!dueInfo) return null;
+                return (
+                  <span className={dueInfo.badgeClass} title={`Data de Vencimento: ${dueInfo.formattedDate}`}>
+                    {dueInfo.status === 'expired' && <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />}
+                    {dueInfo.status === 'soon' && <Clock className="w-3 h-3 text-amber-600 shrink-0" />}
+                    {dueInfo.status === 'ok' && <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />}
+                    <span>{dueInfo.label}</span>
+                  </span>
+                );
+              })()}
+            </div>
             <p className="text-[10px] text-slate-500 mt-0.5">
               {file.sector} • {new Date(file.created_at).toLocaleDateString('pt-BR')}
             </p>

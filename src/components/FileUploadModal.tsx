@@ -58,6 +58,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       setSelectedFolderId(allFolders[0].id);
     }
   }, [isOpen, currentFolder, allFolders]);
+  const [dueDate, setDueDate] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>(['Contábil', '2026']);
 
@@ -196,6 +197,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         uploader_name: currentUser.full_name,
         sector: targetFolder.sector,
         checksum_sha256: checksum,
+        due_date: dueDate ? dueDate : undefined,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         preview_url: optResult.dataUrl,
@@ -255,7 +257,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
             </div>
           )}
 
-          {/* Folder Target Selector & Competence */}
+          {/* Folder Target Selector, Competence & Due Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">Pasta de Destino no GED</label>
@@ -296,6 +298,27 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                 </select>
               </div>
             </div>
+          </div>
+
+          {/* Due Date Field (Vencimento da Guia / Obrigação) */}
+          <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
+            <label className="block text-xs font-semibold text-gray-800 mb-1 flex items-center justify-between">
+              <span className="flex items-center space-x-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#1B357B]" />
+                <span>Data de Vencimento da Guia / Obrigação</span>
+              </span>
+              <span className="text-[10px] text-slate-500 font-normal bg-slate-200/70 px-1.5 py-0.5 rounded">Opcional</span>
+            </label>
+            <input
+              type="date"
+              disabled={isProcessing}
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white font-medium text-gray-800 focus:ring-2 focus:ring-[#1B357B] focus:border-blue-600 outline-hidden transition-all shadow-2xs"
+            />
+            <p className="text-[11px] text-slate-500">
+              Opcional. Usado para destacar prazos de tributos, parcelamentos e certidões.
+            </p>
           </div>
 
           {/* Storage Quota Warning or Tracker */}
