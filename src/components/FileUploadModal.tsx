@@ -8,10 +8,6 @@ import {
   Sparkles, 
   ArrowRight, 
   AlertCircle,
-  Hash,
-  Layers,
-  Cpu,
-  ShieldCheck,
   FolderTree,
   HardDrive,
   AlertOctagon,
@@ -51,13 +47,29 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     currentFolder ? currentFolder.id : (allFolders[0]?.id || '')
   );
 
+  const resetForm = () => {
+    setSelectedFile(null);
+    setDueDate('');
+    setTags(['Contábil', '2026']);
+    setTagInput('');
+    setIsProcessing(false);
+    setOptimizationStage('idle');
+    setUploadProgress(0);
+    setErrorMessage(null);
+  };
+
   React.useEffect(() => {
-    if (currentFolder?.id) {
-      setSelectedFolderId(currentFolder.id);
-    } else if (allFolders.length > 0 && !allFolders.some(f => f.id === selectedFolderId)) {
-      setSelectedFolderId(allFolders[0].id);
+    if (isOpen) {
+      if (currentFolder?.id) {
+        setSelectedFolderId(currentFolder.id);
+      } else if (allFolders.length > 0 && !allFolders.some(f => f.id === selectedFolderId)) {
+        setSelectedFolderId(allFolders[0].id);
+      }
+    } else {
+      resetForm();
     }
   }, [isOpen, currentFolder, allFolders]);
+
   const [dueDate, setDueDate] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>(['Contábil', '2026']);
@@ -65,14 +77,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   // Pipeline execution state
   const [isProcessing, setIsProcessing] = useState(false);
   const [optimizationStage, setOptimizationStage] = useState<'idle' | 'optimizing' | 'requesting-url' | 'uploading-r2' | 'finished'>('idle');
-  const [optimizationStats, setOptimizationStats] = useState<{
-    originalSize: number;
-    optimizedSize: number;
-    reductionPercentage: number;
-    mimeType: string;
-    checksum: string;
-    pagesCount: number;
-  } | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -105,7 +109,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       return;
     }
     setSelectedFile(file);
-    setOptimizationStats(null);
     setOptimizationStage('idle');
     setErrorMessage(null);
 
@@ -155,7 +158,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         checksum,
         pagesCount: optResult.pagesCount || 1,
       };
-      setOptimizationStats(stats);
 
       // ETAPA 2: SOLICITAÇÃO DA PRESIGNED URL AO BACKEND
       setOptimizationStage('requesting-url');
@@ -213,61 +215,64 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         console.warn('Falha ao registrar documento no Supabase, mantendo cópia em memória:', dbErr);
       }
 
+      // Notifica sucesso imediatamente e fecha o modal após 1 segundo
+      onUploadSuccess(finalDoc);
       setTimeout(() => {
-        onUploadSuccess(finalDoc);
         onClose();
+        resetForm();
       }, 1000);
 
     } catch (err: any) {
       console.error('Falha no pipeline de upload:', err);
       setErrorMessage(err.message || 'Erro durante o processamento do documento.');
       setIsProcessing(false);
+      setOptimizationStage('idle');
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
-      <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden animate-in fade-in zoom-in-95 duration-150 p-5 sm:p-6">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
-          <div className="flex items-center space-x-2">
-            <div className="p-2 bg-blue-100 rounded-lg text-blue-700">
+        <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-[#1B357B]/10 text-[#1B357B] p-2.5 rounded-xl shrink-0">
               <UploadCloud className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-gray-900 leading-tight">Upload de Documentos & Certificados</h3>
-              <p className="text-xs text-gray-500">Aceita qualquer formato: Certificados (.PFX, .P12), PDFs, Imagens, XMLs e Planilhas</p>
+              <h3 className="text-slate-900 font-bold text-base leading-tight">Upload de Documentos & Certificados</h3>
+              <p className="text-slate-500 text-xs mt-0.5">Aceita qualquer formato: Certificados (PFX, P12), PDFs, Imagens, XMLs e Planilhas</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            disabled={isProcessing}
-            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            disabled={isProcessing && optimizationStage !== 'finished'}
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="pt-4 space-y-4">
           {errorMessage && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-start space-x-2">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
 
-          {/* Folder Target Selector, Competence & Due Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Folder Target Selector & Competence */}
+          <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Pasta de Destino no GED</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Pasta de Destino no GED</label>
               <div className="relative">
-                <FolderTree className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                <FolderTree className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <select
                   disabled={isProcessing}
                   value={selectedFolderId}
                   onChange={(e) => setSelectedFolderId(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-lg bg-white font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-hidden"
+                  className="w-full py-2.5 px-3.5 pl-9 text-xs text-slate-700 bg-slate-50/60 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/15 outline-none transition-all font-medium"
                 >
                   {allFolders.map(folder => (
                     <option key={folder.id} value={folder.id}>
@@ -278,9 +283,9 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Competência (Mês/Ano)</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Competência (Mês/Ano)</label>
               <div className="relative">
-                <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <select
                   disabled={isProcessing}
                   onChange={(e) => {
@@ -289,7 +294,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                       if (!tags.includes(comp)) setTags([...tags, comp]);
                     }
                   }}
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-lg bg-white font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 outline-hidden"
+                  className="w-full py-2.5 px-3.5 pl-9 text-xs text-slate-700 bg-slate-50/60 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/15 outline-none transition-all font-medium"
                 >
                   <option value="NONE">Selecione...</option>
                   {['01/2026', '02/2026', '03/2026', '04/2026', '05/2026', '06/2026', '07/2026', '08/2026'].map(c => (
@@ -302,22 +307,22 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
           {/* Due Date Field (Vencimento da Guia / Obrigação) */}
           <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
-            <label className="block text-xs font-semibold text-gray-800 mb-1 flex items-center justify-between">
+            <label className="block text-xs font-semibold text-slate-800 mb-1 flex items-center justify-between">
               <span className="flex items-center space-x-1.5">
                 <Calendar className="w-3.5 h-3.5 text-[#1B357B]" />
                 <span>Data de Vencimento da Guia / Obrigação</span>
               </span>
-              <span className="text-[10px] text-slate-500 font-normal bg-slate-200/70 px-1.5 py-0.5 rounded">Opcional</span>
+              <span className="bg-slate-100 text-slate-500 text-[10px] font-medium px-2 py-0.5 rounded-full">(Opcional)</span>
             </label>
             <input
               type="date"
               disabled={isProcessing}
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white font-medium text-gray-800 focus:ring-2 focus:ring-[#1B357B] focus:border-blue-600 outline-hidden transition-all shadow-2xs"
+              className="w-full py-2.5 px-3.5 text-xs text-slate-700 bg-slate-50/60 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/15 outline-none transition-all font-medium"
             />
-            <p className="text-[11px] text-slate-500">
-              Opcional. Usado para destacar prazos de tributos, parcelamentos e certidões.
+            <p className="text-slate-400 text-[11px] mt-1 flex items-center space-x-1">
+              <span>Usado para destacar prazos de tributos, parcelamentos e certidões.</span>
             </p>
           </div>
 
@@ -350,20 +355,23 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               </div>
             </div>
           ) : storageMetrics ? (
-            <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl space-y-1.5 text-xs">
-              <div className="flex items-center justify-between text-blue-900 font-semibold">
+            <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center justify-between text-slate-700 font-medium">
                 <span className="flex items-center space-x-1.5">
-                  <HardDrive className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Armazenamento</span>
+                  <HardDrive className="w-3.5 h-3.5 text-[#1B357B]" />
+                  <span>Armazenamento Cloudflare R2</span>
                 </span>
-                <span className="font-mono text-[11px] text-blue-800">
-                  {formatBytes(storageMetrics.usedBytes)} usados • <strong className="text-emerald-700">{formatBytes(storageMetrics.freeBytes)} livres</strong>
+                <span className="font-mono text-[11px] text-slate-500">
+                  {formatBytes(storageMetrics.usedBytes)} / {formatBytes(storageMetrics.totalCapacityBytes || (10 * 1024 * 1024 * 1024))}
                 </span>
               </div>
-              <div className="w-full h-1.5 bg-blue-200/60 rounded-full overflow-hidden">
+              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div 
-                  className="bg-blue-600 h-full rounded-full transition-all duration-300"
-                  style={{ width: `${Math.max(1, storageMetrics.usedPercent)}%` }}
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{ 
+                    width: `${Math.max(1, storageMetrics.usedPercent)}%`,
+                    backgroundColor: '#C59B4B' 
+                  }}
                 />
               </div>
             </div>
@@ -383,7 +391,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-300 hover:border-blue-500 rounded-2xl p-8 text-center cursor-pointer transition-colors bg-gray-50/50 hover:bg-blue-50/30"
+              className="border-2 border-dashed border-slate-200 hover:border-[#C59B4B] bg-slate-50/50 hover:bg-[#C59B4B]/5 rounded-2xl p-6 transition-all cursor-pointer flex flex-col items-center justify-center text-center group"
             >
               <input
                 ref={fileInputRef}
@@ -395,19 +403,9 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   }
                 }}
               />
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-3">
-                <UploadCloud className="w-6 h-6" />
-              </div>
-              <p className="text-xs font-bold text-gray-800">Clique para selecionar ou arraste qualquer arquivo aqui</p>
-              <p className="text-[11px] text-gray-500 mt-1">Aceita todos os formatos e extensões sem exceção</p>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-medium text-gray-500">
-                <span className="px-2 py-0.5 bg-purple-100 text-purple-800 border border-purple-200 rounded-md font-semibold">.PFX / .P12</span>
-                <span className="px-2 py-0.5 bg-red-100 text-red-800 border border-red-200 rounded-md">PDF</span>
-                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-md">XML / NFe</span>
-                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md">XLSX / CSV</span>
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 border border-blue-200 rounded-md">PNG / JPG</span>
-                <span className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md font-semibold">+ Todos</span>
-              </div>
+              <UploadCloud className="text-[#C59B4B] group-hover:scale-110 transition-transform w-10 h-10 mb-2" />
+              <p className="text-xs font-semibold text-slate-800">Clique para selecionar ou arraste o arquivo aqui</p>
+              <p className="text-[11px] text-slate-400 mt-1">Formatos suportados: PDFs, Imagens, XMLs, Planilhas e Certificados Digitais</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -422,11 +420,11 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                 const isZip = /\.(zip|rar|7z|tar|gz)$/i.test(lowerName);
 
                 return (
-                  <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2.5 rounded-xl shadow-xs text-white ${
+                  <div className="bg-slate-50/80 border border-slate-200/70 rounded-xl p-3 flex items-center justify-between">
+                    <div className="flex items-center space-x-3 overflow-hidden">
+                      <div className={`p-2.5 rounded-xl shadow-xs text-white shrink-0 ${
                         isPfx ? 'bg-purple-600' :
-                        isPdf ? 'bg-red-600' :
+                        isPdf ? 'bg-rose-600' :
                         isImg ? 'bg-blue-600' :
                         isSpreadsheet ? 'bg-emerald-600' :
                         isXml ? 'bg-amber-600' :
@@ -440,33 +438,28 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                          isZip ? <FileArchive className="w-5 h-5" /> :
                          <FileGenericIcon className="w-5 h-5" />}
                       </div>
-                      <div>
+                      <div className="overflow-hidden">
                         <div className="flex items-center space-x-2">
-                          <h4 className="font-bold text-xs text-gray-900 truncate max-w-[240px]">{selectedFile.name}</h4>
+                          <h4 className="text-xs font-semibold text-slate-800 truncate max-w-[180px] sm:max-w-xs">{selectedFile.name}</h4>
                           {isPfx && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                              Certificado Digital
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
+                              Certificado
                             </span>
                           )}
                           {isXml && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                              XML / Fiscal
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                              XML
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-gray-500 mt-0.5">Tamanho: <strong>{formatBytes(selectedFile.size)}</strong></p>
-                        {isImg && (
-                          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                            <Sparkles className="w-3 h-3 mr-1" /> Otimização Máxima Ativa (WebP + Downscale OCR)
-                          </span>
-                        )}
+                        <p className="text-[11px] text-slate-400 mt-0.5">Tamanho: <strong className="text-slate-600">{formatBytes(selectedFile.size)}</strong></p>
                       </div>
                     </div>
 
                     {!isProcessing && (
                       <button
                         onClick={() => setSelectedFile(null)}
-                        className="text-xs text-red-600 hover:text-red-700 font-medium px-2 py-1"
+                        className="text-xs font-medium text-[#1B357B] hover:text-[#C59B4B] hover:underline transition-colors shrink-0 ml-2"
                       >
                         Trocar Arquivo
                       </button>
@@ -477,13 +470,13 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
               {/* Tags input */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Tags do Documento</label>
-                <div className="flex flex-wrap gap-1.5 p-2 border border-gray-300 rounded-lg bg-white min-h-[38px] items-center">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Tags do Documento</label>
+                <div className="flex flex-wrap gap-1.5 p-2 border border-slate-200 rounded-xl bg-slate-50/50 min-h-[38px] items-center">
                   {tags.map(tag => (
-                    <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                    <span key={tag} className="bg-slate-100 text-slate-700 border border-slate-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1 font-medium">
                       #{tag}
                       {!isProcessing && (
-                        <button onClick={() => handleRemoveTag(tag)} className="ml-1 text-blue-400 hover:text-blue-700">
+                        <button onClick={() => handleRemoveTag(tag)} className="ml-1 text-slate-400 hover:text-slate-700">
                           <X className="w-3 h-3" />
                         </button>
                       )}
@@ -496,106 +489,83 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                       value={tagInput}
                       onChange={(e) => setTagInput(e.target.value)}
                       onKeyDown={handleAddTag}
-                      className="text-xs outline-hidden flex-1 min-w-[120px]"
+                      className="text-xs outline-hidden flex-1 min-w-[120px] bg-transparent text-slate-700 placeholder:text-slate-400"
                     />
                   )}
                 </div>
               </div>
 
-              {/* Optimization Preview Banner if ready */}
-              {optimizationStats && (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-900 flex items-center space-x-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
-                      <span>Otimização Concluída ({optimizationStats.reductionPercentage}% menor)</span>
+              {/* Processing Progress Status */}
+              {isProcessing && optimizationStage !== 'finished' && (
+                <div className="space-y-2 pt-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                    <span className="flex items-center space-x-2">
+                      <Sparkles className="w-4 h-4 text-[#1B357B] animate-spin" />
+                      <span>A processar e armazenar documento no Cloudflare R2...</span>
                     </span>
-                    <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
-                      Economia de {formatBytes(optimizationStats.originalSize - optimizationStats.optimizedSize)}
-                    </span>
+                    <span>{uploadProgress > 0 ? `${uploadProgress}%` : 'A processar...'}</span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1">
-                    <div className="bg-white p-2 rounded-lg border border-emerald-100">
-                      <span className="text-[10px] text-gray-400 block">Original</span>
-                      <span className="font-bold text-gray-700">{formatBytes(optimizationStats.originalSize)}</span>
-                    </div>
-                    <div className="bg-white p-2 rounded-lg border border-emerald-100">
-                      <span className="text-[10px] text-gray-400 block">Otimizado</span>
-                      <span className="font-bold text-emerald-700">{formatBytes(optimizationStats.optimizedSize)}</span>
-                    </div>
-                    <div className="bg-white p-2 rounded-lg border border-emerald-100">
-                      <span className="text-[10px] text-gray-400 block">Formato Final</span>
-                      <span className="font-bold text-blue-700">{optimizationStats.mimeType.split('/')[1]?.toUpperCase()}</span>
-                    </div>
-                  </div>
-
-                  <div className="text-[10px] font-mono text-emerald-800 truncate pt-1 flex items-center space-x-1">
-                    <Hash className="w-3 h-3 text-emerald-600 shrink-0" />
-                    <span className="truncate">SHA-256: {optimizationStats.checksum}</span>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ 
+                        backgroundColor: '#1B357B',
+                        width: optimizationStage === 'optimizing' ? '30%' :
+                                optimizationStage === 'requesting-url' ? '60%':
+                                `${Math.max(10, uploadProgress)}%`
+                      }}
+                    />
                   </div>
                 </div>
               )}
 
-              {/* Processing Progress Status */}
-              {isProcessing && (
-                <div className="space-y-2 pt-2">
-                  <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
-                    <span className="flex items-center space-x-2">
-                      <Cpu className="w-4 h-4 text-blue-600 animate-spin" />
-                      <span>
-                        {optimizationStage === 'optimizing' && 'Comprimindo e preparando documento...'}
-                        {optimizationStage === 'requesting-url' && 'Conectando ao armazenamento seguro...'}
-                        {optimizationStage === 'uploading-r2' && `Salvando arquivo (${uploadProgress}%)...`}
-                        {optimizationStage === 'finished' && 'Documento salvo com sucesso!'}
-                      </span>
-                    </span>
-                    {optimizationStage === 'uploading-r2' && <span>{uploadProgress}%</span>}
-                  </div>
-
-                  <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-blue-600 h-full transition-all duration-300"
-                      style={{ 
-                        width: optimizationStage === 'optimizing' ? '30%' :
-                               optimizationStage === 'requesting-url' ? '60%' :
-                               optimizationStage === 'uploading-r2' ? `${60 + (uploadProgress * 0.4)}%` : '100%' 
-                      }}
-                    />
-                  </div>
+              {/* Success Badge after completion */}
+              {optimizationStage === 'finished' && (
+                <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs py-2 px-3 rounded-xl flex items-center gap-2 font-medium animate-in fade-in duration-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>✓ Documento guardado e indexado com sucesso!</span>
                 </div>
               )}
             </div>
           )}
 
           {/* Action buttons */}
-          <div className="pt-3 border-t border-gray-100 flex items-center justify-end space-x-3">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
             <button
               type="button"
-              disabled={isProcessing}
+              disabled={isProcessing && optimizationStage !== 'finished'}
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 rounded-lg"
+              className="text-slate-500 hover:text-slate-800 text-xs font-medium px-4 py-2.5 rounded-xl hover:bg-slate-100 transition-colors"
             >
               Cancelar
             </button>
 
             {isQuotaExceeded ? (
               <div 
-                className="px-4 py-2 bg-rose-100 text-rose-800 rounded-lg text-xs font-bold flex items-center space-x-1.5"
+                className="px-4 py-2.5 bg-rose-100 text-rose-800 rounded-xl text-xs font-bold flex items-center space-x-1.5"
                 title="Armazenamento 100% atingido. Contate o suporte de TI (21) 97396-0077."
               >
                 <AlertOctagon className="w-4 h-4 text-rose-600" />
                 <span>Upload Bloqueado (Limite Atingido)</span>
               </div>
-            ) : selectedFile && !isProcessing && (
+            ) : !selectedFile ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-[#1B357B] hover:bg-[#112354] text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-all"
+              >
+                Selecionar Arquivo
+              </button>
+            ) : !isProcessing && (
               <button
                 id="start-pipeline-btn"
                 type="button"
                 onClick={handleExecutePipeline}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center space-x-2 transition-colors"
+                className="bg-[#1B357B] hover:bg-[#112354] text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all"
               >
                 <span>Otimizar e Salvar Documento</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 text-[#C59B4B]" />
               </button>
             )}
           </div>

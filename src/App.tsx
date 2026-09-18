@@ -249,6 +249,18 @@ export default function App() {
       })
       .catch(err => console.log('Erro ao carregar cabeçalho de login:', err));
 
+    // Polling interval to keep header/logo and background in sync across all devices and sessions
+    const configInterval = setInterval(() => {
+      getAuthHeaderConfig().then(authConfig => {
+        if (authConfig) setAuthHeaderConfig(authConfig);
+      }).catch(() => {});
+      getSiteBackgroundConfig().then(bgConfig => {
+        if (bgConfig) setSiteBackgroundConfig(bgConfig);
+      }).catch(() => {});
+    }, 10000);
+
+    return () => clearInterval(configInterval);
+
     // Sincronizar dados mestres persistidos no Supabase
     fetchFoldersFromApi().then(apiFolders => {
       if (apiFolders && apiFolders.length > 0) {
@@ -516,6 +528,11 @@ export default function App() {
       return [newDoc, ...filtered];
     });
     fetchStorageMetrics();
+    fetchFilesFromApi().then(apiFiles => {
+      if (apiFiles && apiFiles.length > 0) {
+        setFiles(apiFiles);
+      }
+    });
     logAudit('FILE_UPLOAD', 'FILE', newDoc.id, {
       name: newDoc.name,
       original_size: newDoc.original_size,

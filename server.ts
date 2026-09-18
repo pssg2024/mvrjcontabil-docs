@@ -2354,7 +2354,8 @@ async function syncPersistedSettingsWithR2() {
 }
 
 // 13.1 Get current background config
-app.get('/api/settings/background', (req: Request, res: Response) => {
+app.get('/api/settings/background', async (req: Request, res: Response) => {
+  await syncPersistedSettingsWithR2().catch(() => {});
   res.json(siteBackgroundConfig);
 });
 
@@ -2660,7 +2661,8 @@ let authHeaderConfig: ServerAuthHeaderConfig = {
 loadPersistedSettings();
 
 // 14.1 Get current auth header config
-app.get('/api/settings/auth-header', (req: Request, res: Response) => {
+app.get('/api/settings/auth-header', async (req: Request, res: Response) => {
+  await syncPersistedSettingsWithR2().catch(() => {});
   res.json(authHeaderConfig);
 });
 
