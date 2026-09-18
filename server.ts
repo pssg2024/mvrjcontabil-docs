@@ -1243,6 +1243,35 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
 
   // Sempre assegurar integridade do Administrador Master (Evandro)
   const masterAdminEmail = 'evandro230655@gmail.com';
+  
+  // Limpeza final implacável: remover qualquer perfil que tenha sido excluído ou rejeitado (via audit_logs)
+  // Isso garante que contas excluídas NUNCA retornem após reinício ou sincronização.
+  if (supabase) {
+    try {
+      const { data: latestAuditLogs } = await supabase
+        .from('audit_logs')
+        .select('*');
+      if (Array.isArray(latestAuditLogs)) {
+        for (const log of latestAuditLogs) {
+          if (log.action === 'USER_REJECTED' || log.action === 'USER_DELETED') {
+            const delEmail = (log.details?.deleted_email || log.details?.rejected_email || '').toLowerCase().trim();
+            const delId = String(log.target_id || '').toLowerCase().trim();
+            if (delEmail && delEmail !== masterAdminEmail) {
+              profilesMap.delete(delEmail);
+            }
+            if (delId) {
+              for (const [key, p] of profilesMap.entries()) {
+                if (p.id && p.id.toLowerCase().trim() === delId && p.email.toLowerCase() !== masterAdminEmail) {
+                  profilesMap.delete(key);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
   if (profilesMap.has(masterAdminEmail)) {
     const admin = profilesMap.get(masterAdminEmail)!;
     admin.role = 'admin';
@@ -1263,6 +1292,8 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
 
   const result = Array.from(profilesMap.values());
   persistedProfiles = result;
+  savePersistedProfiles();
+  await saveR2Profiles(result).catch(() => {});
   savePersistedProfiles();
   saveR2Profiles(result).catch(() => {});
 
@@ -1469,23 +1500,14 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
     const userId = req.params.userId;
     const email = (req.query.email as string)?.trim().toLowerCase();
 
-    // Proteção mandatória: não permite que o Administrador Master seja excluído
-    const isMasterAdmin = 
-      userId === '57e1d483-669b-4791-b09e-7496570e63ea' || 
-      email === 'evandro230655@gmail.com';
-
-    if (isMasterAdmin) {
-      return res.status(403).json({ error: 'O perfil do Administrador Master não pode ser excluído.' });
-    }
-
-    // Localiza email antes de remover para logar
+    // Localiza email antes de remover para logar e sincronizar
     const foundProfile = persistedProfiles.find(p => p.id === userId || (email && p.email.toLowerCase() === email));
     const targetEmail = email || foundProfile?.email || '';
 
     // Remove da memória e disco local
     persistedProfiles = persistedProfiles.filter(p => p.id !== userId && (!targetEmail || p.email.toLowerCase() !== targetEmail));
     savePersistedProfiles();
-    saveR2Profiles(persistedProfiles).catch(() => {});
+    await saveR2Profiles(persistedProfiles).catch(() => {});
 
     // Deleta do Supabase e registra no audit_logs
     const supabase = getSupabaseServerClient();
@@ -1495,7 +1517,7 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
           action: 'USER_DELETED',
           target_type: 'USER',
           target_id: userId,
-          user_name: 'Evandro (Administrador)',
+          user_name: 'Administrador MVRJ',
           sector: 'Diretoria',
           details: {
             deleted_email: targetEmail,
@@ -1509,8 +1531,15 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
       }
 
       try {
+        // Exclui permissões de pastas vinculadas ao usuário
+        await supabase.from('folder_permissions').delete().eq('user_id', userId);
+      } catch (permErr: any) {
+        console.warn('[Folder Permissions Delete Aviso]', permErr.message);
+      }
+
+      try {
         let { error } = await supabase.from('profiles').delete().eq('id', userId);
-        if (error && targetEmail) {
+        if (targetEmail) {
           await supabase.from('profiles').delete().eq('email', targetEmail);
         }
 
@@ -2756,13 +2785,12 @@ app.post('/api/r2/auth-header-image', express.raw({ type: '*/*', limit: '25mb' }
       }
     }
 
-    const timestamp = Date.now();
-    const publicUrl = `/api/r2/auth-header-image?t=${timestamp}`;
+    const dataUrl = `data:${cleanMime};base64,${buffer.toString('base64')}`;
 
     authHeaderConfig = {
       ...authHeaderConfig,
       bgType: 'image',
-      bgImageUrl: publicUrl,
+      bgImageUrl: dataUrl,
       updatedAt: new Date().toISOString(),
       updatedBy,
     };
@@ -2771,7 +2799,7 @@ app.post('/api/r2/auth-header-image', express.raw({ type: '*/*', limit: '25mb' }
 
     return res.json({
       status: 'success',
-      imageUrl: publicUrl,
+      imageUrl: dataUrl,
       config: authHeaderConfig,
       message: 'Imagem do cabeçalho de login enviada com sucesso',
     });
@@ -2913,13 +2941,12 @@ app.post('/api/r2/logo-image', express.raw({ type: '*/*', limit: '10mb' }), asyn
       }
     }
 
-    const timestamp = Date.now();
-    const publicUrl = `/api/r2/logo-image?t=${timestamp}`;
+    const logoDataUrl = `data:${cleanMime};base64,${buffer.toString('base64')}`;
 
     authHeaderConfig = {
       ...authHeaderConfig,
       logoType: 'image',
-      logoImageUrl: publicUrl,
+      logoImageUrl: logoDataUrl,
       updatedAt: new Date().toISOString(),
       updatedBy,
     };
@@ -2928,7 +2955,7 @@ app.post('/api/r2/logo-image', express.raw({ type: '*/*', limit: '10mb' }), asyn
 
     return res.json({
       status: 'success',
-      imageUrl: publicUrl,
+      imageUrl: logoDataUrl,
       config: authHeaderConfig,
       message: 'Logotipo atualizado com sucesso',
     });

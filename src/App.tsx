@@ -417,29 +417,33 @@ export default function App() {
     }
   };
 
-  // 2. Exclusão de Usuários da tabela profiles (exceto o próprio perfil logado)
+  // 2. Exclusão de Usuários da tabela profiles
   const handleDeleteUser = async (userId: string, userName?: string) => {
-    if (currentUser && (currentUser.id === userId || currentUser.email.toLowerCase() === userName?.toLowerCase())) {
-      alert('Você não pode excluir seu próprio perfil de administrador logado.');
-      return;
-    }
+    const targetUser = profiles.find(p => p.id === userId);
+    const targetEmail = targetUser?.email;
+    const displayName = userName || targetUser?.full_name || targetEmail || userId;
+
     setPendingDeleteAction({
       type: 'user',
       id: userId,
-      name: userName || userId,
+      name: displayName,
       action: async () => {
-        setProfiles(prev => prev.filter(p => p.id !== userId));
-        logAudit('USER_DELETED', 'USER', userId, { deleted_name: userName });
+        setProfiles(prev => prev.filter(p => p.id !== userId && (!targetEmail || p.email.toLowerCase() !== targetEmail.toLowerCase())));
+        logAudit('USER_DELETED', 'USER', userId, { deleted_name: displayName, deleted_email: targetEmail });
         try {
-          const res = await fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
+          const deleteUrl = `/api/profiles/${encodeURIComponent(userId)}${targetEmail ? `?email=${encodeURIComponent(targetEmail)}` : ''}`;
+          const res = await fetch(deleteUrl, {
             method: 'DELETE',
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok && data.error) {
-            alert(`Erro: ${data.error}`);
-            fetch('/api/profiles')
-              .then(r => r.json())
-              .then(d => { if (d && d.profiles) setProfiles(d.profiles); });
+            alert(`Erro ao excluir: ${data.error}`);
+          }
+          // Atualiza lista unificada de perfis do servidor
+          const refreshRes = await fetch('/api/profiles');
+          const refreshData = await refreshRes.json().catch(() => ({}));
+          if (refreshData && Array.isArray(refreshData.profiles)) {
+            setProfiles(refreshData.profiles);
           }
         } catch (err: any) {
           console.warn('Erro ao excluir usuário no Supabase:', err);

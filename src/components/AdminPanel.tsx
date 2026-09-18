@@ -529,18 +529,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <option value="rejected">Status: Recusado</option>
                   </select>
 
-                  {/* Botão de Exclusão de Usuário (exceto o próprio usuário logado) */}
-                  {profile.id !== currentUser.id && profile.email.toLowerCase() !== currentUser.email.toLowerCase() && (
-                    <button
-                      type="button"
-                      id={`delete-user-${profile.id}`}
-                      onClick={() => onDeleteUser(profile.id, profile.full_name)}
-                      className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200"
-                      title="Excluir perfil permanentemente da tabela profiles"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  {/* Botão de Exclusão de Usuário */}
+                  <button
+                    type="button"
+                    id={`delete-user-${profile.id}`}
+                    onClick={() => onDeleteUser(profile.id, profile.full_name || profile.email)}
+                    className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors border border-rose-100 hover:border-rose-300"
+                    title={`Excluir ${profile.full_name || profile.email} permanentemente`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}

@@ -102,30 +102,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Critérios de força da nova senha
-  const hasMinLength = newPasswordInput.length >= 8;
-  const hasUppercase = /[A-Z]/.test(newPasswordInput);
-  const hasLowercase = /[a-z]/.test(newPasswordInput);
-  const hasNumber = /[0-9]/.test(newPasswordInput);
-  const hasSpecialChar = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(newPasswordInput);
+  // Critérios de força da nova senha (flexível: min 4 caracteres, com qualquer combinação de letras, números e símbolos)
+  const hasMinLength = newPasswordInput.length >= 4;
   const passwordsMatch = newPasswordInput.length > 0 && newPasswordInput === confirmPasswordInput;
 
-  const strengthScore = [
-    hasMinLength,
-    hasUppercase,
-    hasLowercase,
-    hasNumber,
-    hasSpecialChar
-  ].filter(Boolean).length;
+  const strengthScore = newPasswordInput.length >= 8 ? 3 : newPasswordInput.length >= 4 ? 2 : 1;
 
   const getStrengthLabel = () => {
     if (newPasswordInput.length === 0) return { label: 'Não digitada', color: 'bg-gray-200 text-gray-500' };
-    if (strengthScore <= 2) return { label: 'Fraca', color: 'bg-rose-500 text-white' };
-    if (strengthScore === 3 || strengthScore === 4) return { label: 'Média / Boa', color: 'bg-amber-500 text-white' };
-    return { label: 'Excelente / Forte', color: 'bg-emerald-600 text-white' };
+    if (newPasswordInput.length < 4) return { label: 'Muito curta', color: 'bg-rose-500 text-white' };
+    if (newPasswordInput.length < 8) return { label: 'Boa', color: 'bg-amber-500 text-white' };
+    return { label: 'Forte', color: 'bg-emerald-600 text-white' };
   };
 
-  const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar && passwordsMatch;
+  const isPasswordValid = hasMinLength && passwordsMatch;
 
   const handleUpdatePassword = (e: React.FormEvent) => {
     e.preventDefault();
@@ -809,37 +799,24 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </div>
               )}
 
-              {/* Critérios Obrigatórios para a nova senha */}
+              {/* Critérios da nova senha */}
               <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                 <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Requisitos de Segurança:
+                  Requisitos da Senha:
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
                   <div className={`flex items-center space-x-1.5 ${hasMinLength ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
                     <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${hasMinLength ? 'text-emerald-600' : 'text-slate-300'}`} />
-                    <span>Mínimo de 8 caracteres</span>
-                  </div>
-                  <div className={`flex items-center space-x-1.5 ${hasUppercase ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
-                    <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${hasUppercase ? 'text-emerald-600' : 'text-slate-300'}`} />
-                    <span>Uma letra maiúscula (A-Z)</span>
-                  </div>
-                  <div className={`flex items-center space-x-1.5 ${hasLowercase ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
-                    <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${hasLowercase ? 'text-emerald-600' : 'text-slate-300'}`} />
-                    <span>Uma letra minúscula (a-z)</span>
-                  </div>
-                  <div className={`flex items-center space-x-1.5 ${hasNumber ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
-                    <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${hasNumber ? 'text-emerald-600' : 'text-slate-300'}`} />
-                    <span>Pelo menos um número (0-9)</span>
-                  </div>
-                  <div className={`flex items-center space-x-1.5 ${hasSpecialChar ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
-                    <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${hasSpecialChar ? 'text-emerald-600' : 'text-slate-300'}`} />
-                    <span>Caractere especial (!@#$%&*)</span>
+                    <span>Mínimo de 4 caracteres</span>
                   </div>
                   <div className={`flex items-center space-x-1.5 ${passwordsMatch ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
                     <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${passwordsMatch ? 'text-emerald-600' : 'text-slate-300'}`} />
-                    <span>Senhas coincidem</span>
+                    <span>Senhas coincidem exatamente</span>
                   </div>
                 </div>
+                <p className="text-[11px] text-slate-500 mt-2">
+                  💡 Você pode criar sua senha livremente combinando letras, números e símbolos como preferir.
+                </p>
               </div>
 
               <div className="flex justify-end pt-1">
