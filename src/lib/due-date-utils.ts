@@ -47,7 +47,7 @@ export function getDueDateInfo(dueDateStr?: string | null): DueDateInfo | null {
       };
     }
 
-    if (diffDays <= 5) {
+    if (diffDays <= 7) {
       let label = `Vence em ${diffDays} dias (${shortDate})`;
       if (diffDays === 0) label = `Vence hoje (${shortDate})`;
       else if (diffDays === 1) label = `Vence amanhã (${shortDate})`;
