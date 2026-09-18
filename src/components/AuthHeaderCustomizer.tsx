@@ -259,7 +259,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
       const res = await uploadAuthHeaderImage(file, currentUser.full_name, (percent) => {
         setUploadHeaderProgress(percent);
       });
-      const updated: AuthHeaderConfig = {
+      const updated: AuthHeaderConfig = res.config || {
         ...config,
         bgType: 'image',
         bgImageUrl: res.imageUrl,
@@ -269,7 +269,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
       onConfigChange(updated);
       setFeedbackMessage({
         type: 'success',
-        text: 'Imagem do cabeçalho enviada com sucesso para o Cloudflare R2!',
+        text: 'Imagem do cabeçalho enviada e salva permanentemente!',
       });
     } catch (err: any) {
       setFeedbackMessage({
@@ -295,7 +295,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
       const res = await uploadCompanyLogo(file, currentUser.full_name, (percent) => {
         setUploadLogoProgress(percent);
       });
-      const updated: AuthHeaderConfig = {
+      const updated: AuthHeaderConfig = res.config || {
         ...config,
         logoType: 'image',
         logoImageUrl: res.imageUrl,
@@ -305,7 +305,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
       onConfigChange(updated);
       setFeedbackMessage({
         type: 'success',
-        text: 'Logotipo atualizado e enviado para o Cloudflare R2 com sucesso!',
+        text: 'Logotipo atualizado e salvo permanentemente com sucesso!',
       });
     } catch (err: any) {
       setFeedbackMessage({
