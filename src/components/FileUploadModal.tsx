@@ -49,6 +49,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
   const resetForm = () => {
     setSelectedFile(null);
+    setDueDate('');
     setTags(['Contábil', '2026']);
     setTagInput('');
     setIsProcessing(false);
@@ -69,6 +70,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     }
   }, [isOpen, currentFolder, allFolders]);
 
+  const [dueDate, setDueDate] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>(['Contábil', '2026']);
 
@@ -197,6 +199,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         uploader_name: currentUser.full_name,
         sector: targetFolder.sector,
         checksum_sha256: checksum,
+        due_date: dueDate || undefined,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         preview_url: optResult.dataUrl,
@@ -280,24 +283,16 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Competência (Mês/Ano)</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Data de Vencimento</label>
               <div className="relative">
                 <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                <select
+                <input
+                  type="date"
                   disabled={isProcessing}
-                  onChange={(e) => {
-                    const comp = e.target.value;
-                    if (comp !== 'NONE') {
-                      if (!tags.includes(comp)) setTags([...tags, comp]);
-                    }
-                  }}
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
                   className="w-full py-2.5 px-3.5 pl-9 text-xs text-slate-700 bg-slate-50/60 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/15 outline-none transition-all font-medium"
-                >
-                  <option value="NONE">Selecione...</option>
-                  {['01/2026', '02/2026', '03/2026', '04/2026', '05/2026', '06/2026', '07/2026', '08/2026'].map(c => (
-                    <option key={c} value={`Ref: ${c}`}>{c}</option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
           </div>

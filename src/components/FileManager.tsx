@@ -28,11 +28,15 @@ import {
   KeyRound,
   FileCode,
   FileArchive,
-  File as FileGenericIcon
+  File as FileGenericIcon,
+  AlertTriangle,
+  FileUp,
+  ExternalLink
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
 import { getPresignedDownloadUrl } from '../lib/storage-service';
+import { getDueDateInfo } from '../lib/due-date-utils';
 import { StorageStatsWidget } from './StorageStatsCard';
 import { StorageLimitModal } from './StorageLimitModal';
 
@@ -279,6 +283,46 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
         </div>
       )}
+
+      {/* ALERT BANNER: Due dates */}
+      {(() => {
+        const expiringFiles = files.filter(f => f.due_date).map(f => ({ ...f, dueInfo: getDueDateInfo(f.due_date!) })).filter(f => f.dueInfo) as (DocumentFile & { dueInfo: NonNullable<ReturnType<typeof getDueDateInfo>> })[];
+        
+        if (expiringFiles.length === 0) return null;
+
+        return (
+          <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-4 shadow-sm backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-start space-x-3 mb-4">
+              <AlertTriangle className="text-[#C59B4B] w-5 h-5 flex-shrink-0 mt-0.5" />
+              <h3 className="text-amber-950 font-bold text-xs sm:text-sm">Atenção: Existem guias com prazo iminente ou vencidas</h3>
+            </div>
+            
+            <div className="space-y-2">
+              {expiringFiles.slice(0, 3).map(file => (
+                <div key={file.id} className="flex items-center justify-between p-2.5 rounded-lg bg-white/50 border border-amber-100">
+                  <div className="flex items-center space-x-2 overflow-hidden">
+                    <FileUp className="w-4 h-4 text-slate-500" />
+                    <span className="font-semibold text-slate-800 text-xs truncate">{file.name}</span>
+                  </div>
+                  <div className="flex items-center space-x-3 ml-4">
+                    <span className={`text-[11px] font-bold ${file.dueInfo.status === 'expired' ? 'text-rose-600' : 'text-amber-700'}`}>{file.dueInfo.label}</span>
+                    <button 
+                      onClick={() => onOpenFileViewer(file)}
+                      className="text-[#1B357B] hover:text-[#C59B4B] p-1 rounded hover:bg-[#1B357B]/10 transition-colors"
+                      title="Abrir Documento"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {expiringFiles.length > 3 && (
+                <p className="text-[10px] text-slate-500 italic px-2">+ {expiringFiles.length - 3} outros documentos pendentes</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Painel de Armazenamento & Capacidade R2: Oculto por padrão, só aparece quando o limite for atingido */}
       {isQuotaExceeded && (
