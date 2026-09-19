@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Folder as FolderIcon, 
   FolderPlus, 
@@ -31,7 +31,13 @@ import {
   File as FileGenericIcon,
   AlertTriangle,
   FileUp,
-  ExternalLink
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Bell,
+  Clock,
+  XCircle,
+  CheckCircle2
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -115,10 +121,15 @@ export const FileManager: React.FC<FileManagerProps> = ({
     const matchesCompetence = (selectedMonth === 'ALL' || file.tags.some(t => t.includes(selectedMonth))) &&
                               (selectedYear === 'ALL' || file.tags.some(t => t.includes(selectedYear)));
 
+    const matchesSector = selectedSector === 'ALL' || file.sector === selectedSector;
+    if (!matchesSector) return false;
+
+    const hasPerm = file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true;
+    if (!hasPerm) return false;
+
     if (searchQuery) {
       // Global search returns matching files the user has permission to see
-      if (selectedSector !== 'ALL' && file.sector !== selectedSector) return false;
-      return matchesSearch && matchesCompetence && (file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true);
+      return matchesSearch && matchesCompetence;
     }
 
     // In regular navigation, show files in current folder strictly
@@ -126,8 +137,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
       ? file.folder_id === currentFolderId 
       : (!file.folder_id || file.folder_id === null || file.folder_id === 'root');
     if (!isInCurrentFolder) return false;
-    if (selectedSector !== 'ALL' && file.sector !== selectedSector) return false;
-    return matchesSearch && matchesCompetence && (file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true);
+    return matchesSearch && matchesCompetence;
   });
 
   // Sorting
@@ -284,51 +294,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
         </div>
       )}
 
-      {/* ALERT BANNER: Due dates */}
-      {(() => {
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-
-        const documentosEmAlerta = files.filter((doc) => {
-          const dataVenc = doc.due_date || doc.dataVencimento;
-          if (!dataVenc) return false;
-
-          const [ano, mes, dia] = dataVenc.split('-').map(Number);
-          const dataDoc = new Date(ano, mes - 1, dia);
-
-          const diffDias = Math.ceil((dataDoc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-          return diffDias <= 5;
-        });
-
-        if (documentosEmAlerta.length === 0) return null;
-
-        return (
-          <div className="bg-amber-50/95 border border-amber-200/80 rounded-2xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="text-[#C59B4B] w-6 h-6 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="text-amber-950 font-bold text-xs sm:text-sm mb-1">Atenção: Guias com vencimento próximo ou vencidas</h3>
-                <div className="flex flex-wrap gap-2">
-                  {documentosEmAlerta.slice(0, 2).map(doc => (
-                    <span key={doc.id} className="text-xs text-amber-800 bg-amber-100/50 px-2 py-1 rounded-md font-medium">
-                      ⚠️ {doc.name} - Vence em {doc.due_date || doc.dataVencimento}
-                    </span>
-                  ))}
-                  {documentosEmAlerta.length > 2 && (
-                    <span className="text-xs text-amber-800 italic">...e outros {documentosEmAlerta.length - 2}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <button 
-              onClick={() => { /* Implementar filtro ou visualização se necessário */ }}
-              className="bg-[#1B357B] text-white text-xs px-4 py-2 rounded-lg font-semibold hover:bg-[#1B357B]/90 transition-colors whitespace-nowrap"
-            >
-              Ver Pendências
-            </button>
-          </div>
-        );
-      })()}
       {isQuotaExceeded && (
         <StorageStatsWidget 
           files={files} 
@@ -701,6 +666,23 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       </p>
                     </div>
 
+                    {/* Due Date Indicator Badge */}
+                    {(() => {
+                      const dueInfo = getDueDateInfo(file.due_date || (file as any).dataVencimento);
+                      if (!dueInfo) return null;
+                      return (
+                        <div className={`px-2.5 py-1.5 rounded-xl border text-[11px] flex items-center justify-between gap-1.5 ${dueInfo.cardClass}`}>
+                          <span className="flex items-center gap-1.5 font-medium text-slate-700">
+                            <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span>Vencimento:</span>
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold ${dueInfo.badgeClass}`}>
+                            {dueInfo.badgeText}
+                          </span>
+                        </div>
+                      );
+                    })()}
+
                     {/* Size Comparison Widget */}
                     <div className="p-2 bg-gray-50 rounded-lg text-[11px] flex justify-between items-center text-gray-600">
                       <span className="text-gray-400">Tamanho:</span>
@@ -779,6 +761,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
                   <th className="p-3">Nome do Documento</th>
                   <th className="p-3">Setor</th>
+                  <th className="p-3">Vencimento</th>
                   <th className="p-3">Tamanho Original</th>
                   <th className="p-3">Tamanho Otimizado</th>
                   <th className="p-3">Economia R2</th>
@@ -795,6 +778,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                   const isSpreadsheet = /\.(xlsx|xls|csv|ods)$/i.test(lowerName) || file.mime_type.includes('spreadsheet') || file.mime_type.includes('excel') || file.mime_type.includes('csv');
                   const isXml = /\.(xml|nfe|cte|sped|ofx|rem|ret)$/i.test(lowerName) || file.mime_type.includes('xml');
                   const isZip = /\.(zip|rar|7z|tar|gz)$/i.test(lowerName) || file.mime_type.includes('zip') || file.mime_type.includes('compressed');
+                  const dueInfo = getDueDateInfo(file.due_date || (file as any).dataVencimento);
 
                   return (
                     <tr key={file.id} className="hover:bg-gray-50 transition-colors">
@@ -835,6 +819,16 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         </div>
                       </td>
                       <td className="p-3 text-gray-600">{file.sector}</td>
+                      <td className="p-3 whitespace-nowrap">
+                        {dueInfo ? (
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[10px] font-bold ${dueInfo.badgeClass}`}>
+                            <Calendar className="w-3 h-3 shrink-0" />
+                            <span>{dueInfo.badgeText}</span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-[11px]">—</span>
+                        )}
+                      </td>
                       <td className="p-3 font-mono text-gray-400 line-through">{formatBytes(file.original_size)}</td>
                       <td className="p-3 font-mono font-bold text-gray-800">{formatBytes(file.optimized_size)}</td>
                       <td className="p-3 font-bold text-emerald-600">
