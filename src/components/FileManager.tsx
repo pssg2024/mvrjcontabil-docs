@@ -413,6 +413,23 @@ export const FileManager: React.FC<FileManagerProps> = ({
             </select>
             <div className="h-4 w-px bg-slate-200 mx-1.5" />
             
+            {/* Clear Filters Button */}
+            {(selectedSector !== 'ALL' || selectedMonth !== 'ALL' || selectedYear !== 'ALL' || dueFilter !== 'ALL') && (
+              <button
+                onClick={() => {
+                  setSelectedSector('ALL');
+                  setSelectedMonth('ALL');
+                  setSelectedYear('ALL');
+                  setDueFilter('ALL');
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                Limpar Filtros
+              </button>
+            )}
+
+            <div className="h-4 w-px bg-slate-200 mx-1.5" />
+            
             {/* Quick Filter: Perto de Vencer */}
             <button
               id="filter-expiring-btn"

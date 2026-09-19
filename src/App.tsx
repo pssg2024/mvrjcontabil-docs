@@ -249,17 +249,23 @@ export default function App() {
       })
       .catch(err => console.log('Erro ao carregar cabeçalho de login:', err));
 
-    // Polling interval to keep header/logo and background in sync across all devices and sessions
-    const configInterval = setInterval(() => {
+    // Polling interval to keep folders, files and configs in sync across all devices and sessions
+    const syncInterval = setInterval(() => {
+      fetchFoldersFromApi().then(apiFolders => {
+        if (apiFolders && apiFolders.length > 0) setFolders(apiFolders);
+      }).catch(() => {});
+      fetchFilesFromApi().then(apiFiles => {
+        if (apiFiles && apiFiles.length > 0) setFiles(apiFiles);
+      }).catch(() => {});
       getAuthHeaderConfig().then(authConfig => {
         if (authConfig) setAuthHeaderConfig(authConfig);
       }).catch(() => {});
       getSiteBackgroundConfig().then(bgConfig => {
         if (bgConfig) setSiteBackgroundConfig(bgConfig);
       }).catch(() => {});
-    }, 10000);
+    }, 15000);
 
-    return () => clearInterval(configInterval);
+    return () => clearInterval(syncInterval);
 
     // Sincronizar dados mestres persistidos no Supabase
     fetchFoldersFromApi().then(apiFolders => {
