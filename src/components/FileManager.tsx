@@ -231,73 +231,63 @@ export const FileManager: React.FC<FileManagerProps> = ({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
       {/* Top Storage & Bandwidth Optimization Banner */}
-      <div className="bg-gradient-to-r from-[#112354] via-[#1B357B] to-[#112354] rounded-2xl p-6 sm:p-7 text-white shadow-md relative overflow-hidden border border-[#C59B4B]/30">
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <div className="flex items-center space-x-2">
-              <span className="px-3.5 py-1 rounded-full bg-[#1B357B]/60 text-[#E2B963] border border-[#C59B4B]/40 text-[11px] font-semibold tracking-wide shadow-xs">
-                DRIVE CORPORATIVO MVRJCONTÁBIL
+      <div className="bg-gradient-to-r from-[#0F1E42] via-[#162B60] to-[#1B357B] rounded-3xl p-8 sm:p-10 shadow-xl border border-white/10 relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 text-white">
+        {/* Subtle radial glow in background */}
+        <div className="absolute -right-20 -top-20 w-80 h-80 bg-[#C59B4B]/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Lado Esquerdo (Títulos e Descrição) */}
+        <div className="relative z-10 space-y-0 max-w-xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[#C59B4B] text-xs font-semibold uppercase tracking-wider mb-4">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#C59B4B]" />
+            <span>Drive Corporativo MVRJ Contábil</span>
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight mb-3">
+            Gestão Eletrônica de Documentos Contábeis
+          </h2>
+          <p className="text-slate-300 text-sm sm:text-base max-w-xl font-normal leading-relaxed">
+            Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais.
+          </p>
+        </div>
+
+        {/* Lado Direito (Card de Métricas / Armazenamento - Glassmorphism) */}
+        <div className="relative z-10 w-full lg:w-auto shrink-0">
+          <div className="bg-white/[0.07] backdrop-blur-xl border border-white/15 rounded-2xl p-5 w-full lg:w-72 shadow-2xl flex flex-col gap-4">
+            {/* Topo do Card */}
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-white/90 font-medium">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>Documentos Ativos</span>
+              </div>
+              <span className="bg-[#C59B4B]/20 text-[#DFC17B] px-2 py-0.5 rounded-md font-bold text-[11px] border border-[#C59B4B]/30">
+                {documentsPercent}%
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white leading-tight">
-              Gestão Eletrônica de Documentos Contábeis
-            </h2>
-            <p className="text-sm text-slate-200/90 leading-relaxed">
-              Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais.
-            </p>
-          </div>
 
-          {/* Documentos Metrics Card */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 shrink-0 w-full lg:w-auto">
-            {/* Card 1 - Total de Arquivos & Quanto Ainda Cabe */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 sm:p-4 border border-[#C59B4B]/30 shadow-xs flex-1 sm:flex-initial min-w-[210px] sm:min-w-[230px]">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <div className="flex items-center space-x-1.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wider">
-                    Documentos
-                  </span>
-                </div>
-                <span className="text-[10px] text-[#E2B963] font-bold px-2 py-0.5 rounded-md bg-[#112354]/60 border border-[#C59B4B]/30">
-                  {documentsPercent}% usado
-                </span>
-              </div>
+            {/* Números Principais */}
+            <div className="flex items-baseline">
+              <strong className="text-3xl font-black text-white tracking-tight">
+                {currentFilesCount.toLocaleString('pt-BR')}
+              </strong>
+              <span className="text-sm font-medium text-slate-400 ml-1">
+                / {maxFilesCapacity.toLocaleString('pt-BR')}
+              </span>
+            </div>
 
-              <div className="flex items-baseline space-x-1.5 mt-0.5">
-                <strong className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                  {currentFilesCount.toLocaleString('pt-BR')}
-                </strong>
-                <span className="text-xs text-slate-300 font-semibold">
-                  / {maxFilesCapacity.toLocaleString('pt-BR')} limite
-                </span>
-              </div>
+            {/* Barra de Progresso */}
+            <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden relative">
+              <div 
+                className="h-full bg-gradient-to-r from-[#C59B4B] to-[#F3D78A] rounded-full transition-all duration-500"
+                style={{ width: `${Math.max(currentFilesCount > 0 ? 3 : 0, Math.min(100, documentsPercent))}%` }}
+              />
+            </div>
 
-              <div className="flex items-center justify-between text-[11px] font-semibold mt-1.5 text-slate-300">
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-[#E2B963]" />
-                  Ainda cabe: <strong className="text-[#E2B963] font-bold">{remainingFilesCount.toLocaleString('pt-BR')}</strong>
-                </span>
-                <span className="text-slate-400 text-[10px]">
-                  disponíveis
-                </span>
-              </div>
-
-              {/* Barra de progresso com gradiente dourado */}
-              <div className="w-full bg-white/15 h-2 rounded-full overflow-hidden mt-2.5">
-                <div 
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    documentsPercent >= 95 
-                      ? 'bg-rose-500' 
-                      : documentsPercent >= 80 
-                        ? 'bg-amber-400' 
-                        : 'bg-gradient-to-r from-[#C59B4B] via-[#E2B963] to-emerald-400'
-                  }`} 
-                  style={{ width: `${Math.max(currentFilesCount > 0 ? 3 : 0, Math.min(100, documentsPercent))}%` }}
-                />
-              </div>
+            {/* Rodapé do Card */}
+            <div className="flex items-center justify-between text-[11px] font-medium text-slate-300 pt-1">
+              <span>Disponíveis: <strong className="text-white font-semibold">{remainingFilesCount.toLocaleString('pt-BR')}</strong></span>
+              <span>Capacidade: <strong className="text-white font-semibold">{maxFilesCapacity >= 1000 ? `${(maxFilesCapacity / 1000).toFixed(0)}k` : maxFilesCapacity}</strong></span>
             </div>
           </div>
         </div>
@@ -435,11 +425,11 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
         </div>
 
-          {/* Sector Filter Chips + Competence Selectors */}
+          {/* Competence Selectors & Clear Filter */}
           <div className="flex items-center space-x-1.5 overflow-x-auto pt-1 pb-1">
             <span className="text-xs font-bold text-slate-400 mr-1 flex items-center space-x-1">
               <Filter className="w-3 h-3" />
-              <span>Filtros:</span>
+              <span>Filtro de Período:</span>
             </span>
             <select
               value={selectedMonth}
@@ -457,36 +447,22 @@ export const FileManager: React.FC<FileManagerProps> = ({
               <option value="ALL">Todos os Anos</option>
               {['2024', '2025', '2026', '2027'].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
-            <div className="h-4 w-px bg-slate-200 mx-1.5" />
             
             {/* Clear Filters Button */}
-            {(selectedSector !== 'ALL' || selectedMonth !== 'ALL' || selectedYear !== 'ALL') && (
-              <button
-                onClick={() => {
-                  setSelectedSector('ALL');
-                  setSelectedMonth('ALL');
-                  setSelectedYear('ALL');
-                }}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-all cursor-pointer"
-              >
-                Limpar Filtros
-              </button>
+            {(selectedMonth !== 'ALL' || selectedYear !== 'ALL') && (
+              <>
+                <div className="h-4 w-px bg-slate-200 mx-1.5" />
+                <button
+                  onClick={() => {
+                    setSelectedMonth('ALL');
+                    setSelectedYear('ALL');
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  Limpar Filtro
+                </button>
+              </>
             )}
-
-            <div className="h-4 w-px bg-slate-200 mx-1.5" />
-            {(['ALL', 'Fiscal', 'Departamento Pessoal', 'Contábil', 'Diretoria', 'Financeiro'] as const).map(sec => (
-              <button
-                key={sec}
-                onClick={() => setSelectedSector(sec)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
-                  selectedSector === sec
-                    ? 'bg-[#1B357B] text-white shadow-xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-              >
-                {sec === 'ALL' ? 'Todos os Setores' : sec}
-              </button>
-            ))}
           </div>
       </div>
 

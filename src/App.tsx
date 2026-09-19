@@ -295,10 +295,13 @@ export default function App() {
 
         if (apiFolders && Array.isArray(apiFolders)) {
           setFolders(prev => {
-            if (
-              prev.length !== apiFolders.length ||
-              prev.some((f, idx) => f.id !== apiFolders[idx]?.id || f.name !== apiFolders[idx]?.name || f.parent_id !== apiFolders[idx]?.parent_id)
-            ) {
+            const prevIds = new Set(prev.map(p => p.id));
+            const apiIds = new Set(apiFolders.map(p => p.id));
+            const hasDifferences = prev.length !== apiFolders.length || 
+              apiFolders.some(f => !prevIds.has(f.id)) || 
+              prev.some(f => !apiIds.has(f.id)) ||
+              prev.some((f, idx) => f.name !== apiFolders[idx]?.name || f.parent_id !== apiFolders[idx]?.parent_id);
+            if (hasDifferences) {
               return apiFolders;
             }
             return prev;
@@ -310,10 +313,13 @@ export default function App() {
 
         if (apiFiles && Array.isArray(apiFiles)) {
           setFiles(prev => {
-            if (
-              prev.length !== apiFiles.length ||
-              prev.some((f, idx) => f.id !== apiFiles[idx]?.id || f.updated_at !== apiFiles[idx]?.updated_at || f.name !== apiFiles[idx]?.name || f.folder_id !== apiFiles[idx]?.folder_id)
-            ) {
+            const prevIds = new Set(prev.map(p => p.id));
+            const apiIds = new Set(apiFiles.map(p => p.id));
+            const hasDifferences = prev.length !== apiFiles.length || 
+              apiFiles.some(f => !prevIds.has(f.id)) || 
+              prev.some(f => !apiIds.has(f.id)) ||
+              prev.some((f, idx) => f.updated_at !== apiFiles[idx]?.updated_at || f.name !== apiFiles[idx]?.name || f.folder_id !== apiFiles[idx]?.folder_id);
+            if (hasDifferences) {
               return apiFiles;
             }
             return prev;

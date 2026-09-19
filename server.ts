@@ -1702,8 +1702,10 @@ app.get('/api/system/status', async (req: Request, res: Response) => {
 // ==============================================================================
 const FOLDERS_FILE = path.join(process.cwd(), 'storage', 'folders.json');
 const FILES_FILE = path.join(process.cwd(), 'storage', 'files.json');
+const DELETED_FILES_FILE = path.join(process.cwd(), 'storage', 'deleted_files.json');
 const R2_FOLDERS_KEY = 'system/folders.json';
 const R2_FILES_KEY = 'system/files.json';
+const R2_DELETED_FILES_KEY = 'system/deleted_files.json';
 
 interface StoredFolder {
   id: string;
@@ -1741,6 +1743,72 @@ let persistedFolders: StoredFolder[] = [];
 let foldersLoaded = false;
 let persistedFiles: StoredFile[] = [];
 let filesLoaded = false;
+let persistedDeletedFileIds: Set<string> = new Set();
+let deletedFilesLoaded = false;
+
+function loadDeletedFiles() {
+  if (deletedFilesLoaded) return;
+  try {
+    if (fs.existsSync(DELETED_FILES_FILE)) {
+      const raw = fs.readFileSync(DELETED_FILES_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) {
+        persistedDeletedFileIds = new Set(data);
+        deletedFilesLoaded = true;
+        return;
+      }
+    }
+    deletedFilesLoaded = true;
+  } catch (e) {
+    console.warn('[DeletedFiles] Aviso ao ler do disco:', e);
+  }
+}
+
+function saveDeletedFiles() {
+  try {
+    const dir = path.dirname(DELETED_FILES_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(DELETED_FILES_FILE, JSON.stringify(Array.from(persistedDeletedFileIds), null, 2), 'utf-8');
+    saveR2DeletedFiles().catch(() => {});
+  } catch (e) {
+    console.error('[DeletedFiles] Erro ao persistir em disco:', e);
+  }
+}
+
+async function fetchR2DeletedFiles(): Promise<string[]> {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return [];
+  try {
+    const res = await client.send(new GetObjectCommand({
+      Bucket: bucketName,
+      Key: R2_DELETED_FILES_KEY,
+    }));
+    if (res.Body) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as any) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {}
+  return [];
+}
+
+async function saveR2DeletedFiles() {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return;
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: R2_DELETED_FILES_KEY,
+      Body: Buffer.from(JSON.stringify(Array.from(persistedDeletedFileIds)), 'utf-8'),
+      ContentType: 'application/json',
+    }));
+  } catch (err: any) {}
+}
 
 function toDeterministicUuid(id: string): string {
   if (isValidUuid(id)) return id;
@@ -1930,23 +1998,38 @@ async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
 async function getAllUnifiedFiles(): Promise<StoredFile[]> {
   const filesMap = new Map<string, StoredFile>();
   
-  // 1. Carrega do armazenamento persistente em disco
-  loadPersistedFiles();
-  for (const f of persistedFiles) {
-    if (f && f.id) filesMap.set(f.id, f);
-  }
-
-  // 2. Se local estiver vazio, restaura a partir do Cloudflare R2
-  if (filesMap.size === 0) {
+  // 1. Carrega lista de exclusões persistentes (Tombstones)
+  loadDeletedFiles();
+  if (persistedDeletedFileIds.size === 0) {
     try {
-      const r2Files = await fetchR2Files();
-      for (const rf of r2Files) {
-        if (rf && rf.id) filesMap.set(rf.id, rf);
+      const r2Deleted = await fetchR2DeletedFiles();
+      for (const dId of r2Deleted) {
+        if (dId) persistedDeletedFileIds.add(dId);
       }
     } catch (e) {}
   }
 
-  // 3. Sincroniza e consolida com Supabase de forma segura (sem apagar arquivos locais recém-criados!)
+  // 2. Carrega do armazenamento persistente em disco
+  loadPersistedFiles();
+  for (const f of persistedFiles) {
+    if (f && f.id && !persistedDeletedFileIds.has(f.id) && !persistedDeletedFileIds.has(f.storage_key) && !persistedDeletedFileIds.has(toDeterministicUuid(f.id))) {
+      filesMap.set(f.id, f);
+    }
+  }
+
+  // 3. Se local estiver vazio, restaura a partir do Cloudflare R2
+  if (filesMap.size === 0) {
+    try {
+      const r2Files = await fetchR2Files();
+      for (const rf of r2Files) {
+        if (rf && rf.id && !persistedDeletedFileIds.has(rf.id) && !persistedDeletedFileIds.has(rf.storage_key) && !persistedDeletedFileIds.has(toDeterministicUuid(rf.id))) {
+          filesMap.set(rf.id, rf);
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 4. Sincroniza e consolida com Supabase de forma segura (respeitando exclusões reais!)
   const supabase = getSupabaseServerClient();
   if (supabase) {
     try {
@@ -1958,6 +2041,18 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
       if (!error && Array.isArray(dbFiles)) {
         // Atualiza ou insere dados autoritativos vindos do Supabase
         for (const f of dbFiles) {
+          const isDeleted = persistedDeletedFileIds.has(f.id) || 
+                            (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) ||
+                            persistedDeletedFileIds.has(toDeterministicUuid(f.id));
+
+          if (isDeleted) {
+            // Se foi excluído, remove também do Supabase caso ainda esteja lá
+            try {
+              await supabase.from('files').delete().eq('id', f.id);
+            } catch {}
+            continue;
+          }
+
           const folder = f.folders as any;
           const profile = f.profiles as any;
           const resolvedSector = folder?.sector || persistedFolders.find(pf => pf.id === f.folder_id)?.sector || f.sector || 'Fiscal';
@@ -1986,52 +2081,60 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
           });
         }
 
-        // Para qualquer arquivo local que ainda não esteja no Supabase, envia em background
+        // Para arquivos locais que não estão no Supabase:
         const dbFileIds = new Set(dbFiles.map(df => df.id));
-        for (const [id, localFile] of filesMap.entries()) {
+        for (const [id, localFile] of Array.from(filesMap.entries())) {
           if (!dbFileIds.has(id)) {
-            try {
-              let resFolderId = localFile.folder_id;
-              if (!isValidUuid(resFolderId)) {
-                resFolderId = toDeterministicUuid(localFile.folder_id || 'fold-fisc-root');
-              }
-              
-              // Garante que a pasta existe no Supabase para não quebrar FK
-              const { data: fCheck } = await supabase.from('folders').select('id').eq('id', resFolderId).maybeSingle();
-              if (!fCheck) {
-                await supabase.from('folders').upsert({
-                  id: resFolderId,
-                  name: localFile.sector || 'Geral',
-                  sector: localFile.sector || 'Fiscal',
-                  created_at: new Date().toISOString(),
+            const ageMs = Date.now() - new Date(localFile.created_at).getTime();
+            // Apenas sincroniza se for upload recente (< 60s) e não excluído
+            if (ageMs < 60000 && !persistedDeletedFileIds.has(localFile.id)) {
+              try {
+                let resFolderId = localFile.folder_id;
+                if (!isValidUuid(resFolderId)) {
+                  resFolderId = toDeterministicUuid(localFile.folder_id || 'fold-fisc-root');
+                }
+                
+                const { data: fCheck } = await supabase.from('folders').select('id').eq('id', resFolderId).maybeSingle();
+                if (!fCheck) {
+                  await supabase.from('folders').upsert({
+                    id: resFolderId,
+                    name: localFile.sector || 'Geral',
+                    sector: localFile.sector || 'Fiscal',
+                    created_at: new Date().toISOString(),
+                  });
+                }
+
+                let uploaderUuid: string | null = null;
+                if (isValidUuid(localFile.uploaded_by)) {
+                  const { data: pCheck } = await supabase.from('profiles').select('id').eq('id', localFile.uploaded_by).maybeSingle();
+                  if (pCheck) uploaderUuid = pCheck.id;
+                }
+
+                await supabase.from('files').upsert({
+                  id: localFile.id,
+                  folder_id: resFolderId,
+                  name: localFile.name,
+                  storage_key: localFile.storage_key,
+                  mime_type: localFile.mime_type,
+                  original_size: localFile.original_size,
+                  optimized_size: localFile.optimized_size,
+                  compression_ratio: localFile.compression_ratio,
+                  pages_count: localFile.pages_count,
+                  tags: localFile.tags,
+                  uploaded_by: uploaderUuid,
+                  checksum_sha256: localFile.checksum_sha256 || null,
+                  due_date: localFile.due_date || null,
+                  created_at: localFile.created_at,
+                  updated_at: localFile.updated_at,
                 });
+              } catch (syncSingleErr) {
+                console.warn('[Sync Local File to DB Error]', localFile.name, syncSingleErr);
               }
-
-              let uploaderUuid: string | null = null;
-              if (isValidUuid(localFile.uploaded_by)) {
-                const { data: pCheck } = await supabase.from('profiles').select('id').eq('id', localFile.uploaded_by).maybeSingle();
-                if (pCheck) uploaderUuid = pCheck.id;
-              }
-
-              await supabase.from('files').upsert({
-                id: localFile.id,
-                folder_id: resFolderId,
-                name: localFile.name,
-                storage_key: localFile.storage_key,
-                mime_type: localFile.mime_type,
-                original_size: localFile.original_size,
-                optimized_size: localFile.optimized_size,
-                compression_ratio: localFile.compression_ratio,
-                pages_count: localFile.pages_count,
-                tags: localFile.tags,
-                uploaded_by: uploaderUuid,
-                checksum_sha256: localFile.checksum_sha256 || null,
-                due_date: localFile.due_date || null,
-                created_at: localFile.created_at,
-                updated_at: localFile.updated_at,
-              });
-            } catch (syncSingleErr) {
-              console.warn('[Sync Local File to DB Error]', localFile.name, syncSingleErr);
+            } else if (ageMs >= 60000) {
+              // Se o arquivo era antigo e não está mais no Supabase, significa que foi apagado
+              filesMap.delete(id);
+              persistedDeletedFileIds.add(id);
+              if (localFile.storage_key) persistedDeletedFileIds.add(localFile.storage_key);
             }
           }
         }
@@ -2043,9 +2146,14 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
     }
   }
 
-  const result = Array.from(filesMap.values());
+  const result = Array.from(filesMap.values()).filter(f => 
+    !persistedDeletedFileIds.has(f.id) && 
+    !persistedDeletedFileIds.has(f.storage_key) && 
+    !persistedDeletedFileIds.has(toDeterministicUuid(f.id))
+  );
   persistedFiles = result;
   savePersistedFiles();
+  saveDeletedFiles();
   saveR2Files(result).catch(() => {});
   return result;
 }
@@ -2166,65 +2274,55 @@ app.delete('/api/folders/:id', async (req: Request, res: Response) => {
   const { client, bucketName, isConfigured } = getR2Client();
 
   try {
-    // 1. Remove from in-memory and disk
-    persistedFolders = persistedFolders.filter(f => f.id !== folderId && f.parent_id !== folderId);
+    loadDeletedFiles();
+    const uuidId = toDeterministicUuid(folderId);
+
+    // 1. Identifica e marca todos os arquivos desta pasta como excluídos (Tombstone)
+    const filesToDelete = persistedFiles.filter(f => f.folder_id === folderId || toDeterministicUuid(f.folder_id) === uuidId);
+    for (const f of filesToDelete) {
+      persistedDeletedFileIds.add(f.id);
+      if (f.storage_key) persistedDeletedFileIds.add(f.storage_key);
+      persistedDeletedFileIds.add(toDeterministicUuid(f.id));
+    }
+    saveDeletedFiles();
+
+    // 2. Remove from in-memory and disk
+    persistedFolders = persistedFolders.filter(f => f.id !== folderId && f.parent_id !== folderId && f.id !== uuidId);
     savePersistedFolders();
     saveR2Folders(persistedFolders).catch(() => {});
 
-    // 2. Also remove associated files in disk store
-    persistedFiles = persistedFiles.filter(f => f.folder_id !== folderId);
+    // 3. Also remove associated files in disk store
+    persistedFiles = persistedFiles.filter(f => f.folder_id !== folderId && toDeterministicUuid(f.folder_id) !== uuidId);
     savePersistedFiles();
+    saveR2Files(persistedFiles).catch(() => {});
 
-    // 3. Remove files from R2 and Supabase
+    // 4. Remove files from R2 and Supabase
     if (supabase) {
-      const uuidId = toDeterministicUuid(folderId);
-      
       // Delete files in Supabase first
-      const { error: filesDeleteError } = await supabase
+      await supabase
         .from('files')
         .delete()
         .or(`folder_id.eq.${folderId},folder_id.eq.${uuidId}`);
-      
-      if (filesDeleteError) console.error(`[PASTAS] Erro excluir arquivos Supabase: ${filesDeleteError.message}`);
 
       // Delete folders in Supabase
-      const { error: foldersDeleteError } = await supabase
+      await supabase
         .from('folders')
         .delete()
         .or(`id.eq.${folderId},id.eq.${uuidId},parent_id.eq.${folderId},parent_id.eq.${uuidId}`);
-      
-      if (foldersDeleteError) {
-        console.error(`[PASTAS] Erro excluir pasta Supabase: ${foldersDeleteError.message}`);
-      } else {
-        console.log('[PASTAS] Ação: DELETE, ID:', folderId, 'Resultado: SUCESSO');
-      }
+    }
 
-      // Handle R2 files
-      try {
-        const { data: folderFiles } = await supabase.from('files').select('id, storage_key, name').or(`folder_id.eq.${folderId},folder_id.eq.${uuidId}`);
-        if (Array.isArray(folderFiles) && isConfigured && client) {
-          for (const f of folderFiles) {
-            if (f.storage_key) {
-              try {
-                await client.send(new DeleteObjectCommand({
-                  Bucket: bucketName,
-                  Key: f.storage_key,
-                }));
-                inMemoryFileStore.delete(f.storage_key);
-              } catch (delObjErr: any) {
-                console.warn(`[PASTAS] R2 Aviso delete obj ${f.storage_key}:`, delObjErr.message);
-              }
-            }
-          }
+    // Handle R2 files
+    if (isConfigured && client) {
+      for (const f of filesToDelete) {
+        if (f.storage_key) {
+          try {
+            await client.send(new DeleteObjectCommand({
+              Bucket: bucketName,
+              Key: f.storage_key,
+            }));
+            inMemoryFileStore.delete(f.storage_key);
+          } catch (delObjErr: any) {}
         }
-      } catch (e) {}
-
-      // 4. Update R2 Folders Backup
-      try {
-        const updatedFoldersList = await getAllUnifiedFolders();
-        await saveR2Folders(updatedFoldersList);
-      } catch (e) {
-        console.warn('[PASTAS] R2 Backup Error:', e);
       }
     }
 
@@ -2385,13 +2483,30 @@ app.post('/api/files', async (req: Request, res: Response) => {
 app.delete('/api/files/:id', async (req: Request, res: Response) => {
   const fileId = req.params.id;
   try {
-    // 1. Remove from in-memory and disk
-    const targetFile = persistedFiles.find(f => f.id === fileId);
-    persistedFiles = persistedFiles.filter(f => f.id !== fileId);
+    loadDeletedFiles();
+    const targetFile = persistedFiles.find(f => f.id === fileId || toDeterministicUuid(f.id) === fileId);
+    const resolvedId = targetFile?.id || fileId;
+    const uuidId = toDeterministicUuid(resolvedId);
+
+    // 1. Registra no Tombstone de exclusão persistente
+    persistedDeletedFileIds.add(fileId);
+    persistedDeletedFileIds.add(resolvedId);
+    persistedDeletedFileIds.add(uuidId);
+    if (targetFile?.storage_key) {
+      persistedDeletedFileIds.add(targetFile.storage_key);
+    }
+    saveDeletedFiles();
+
+    // 2. Remove da memória e do disco local
+    persistedFiles = persistedFiles.filter(f => 
+      f.id !== fileId && 
+      f.id !== resolvedId && 
+      toDeterministicUuid(f.id) !== uuidId
+    );
     savePersistedFiles();
     saveR2Files(persistedFiles).catch(() => {});
 
-    // 2. Remove from R2
+    // 3. Remove do R2
     if (targetFile?.storage_key) {
       const { client, bucketName, isConfigured } = getR2Client();
       if (isConfigured && client) {
@@ -2405,11 +2520,15 @@ app.delete('/api/files/:id', async (req: Request, res: Response) => {
       }
     }
 
-    // 3. Remove from Supabase if connected
+    // 4. Remove do Supabase com todos os IDs possíveis
     const supabase = getSupabaseServerClient();
     if (supabase) {
       try {
-        await supabase.from('files').delete().eq('id', fileId);
+        await supabase
+          .from('files')
+          .delete()
+          .or(`id.eq.${fileId},id.eq.${resolvedId},id.eq.${uuidId}`);
+
         await supabase.from('audit_logs').insert({
           action: 'FILE_DELETE',
           target_type: 'FILE',
@@ -2420,7 +2539,7 @@ app.delete('/api/files/:id', async (req: Request, res: Response) => {
       } catch (sbErr) {}
     }
 
-    res.json({ status: 'success', message: 'Arquivo excluído com sucesso' });
+    res.json({ status: 'success', message: 'Arquivo excluído permanentemente com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
