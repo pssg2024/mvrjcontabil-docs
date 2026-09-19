@@ -326,22 +326,28 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               </div>
             </div>
           ) : storageMetrics ? (
-            <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2 text-xs">
+            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2 text-xs">
               <div className="flex items-center justify-between text-slate-700 font-medium">
                 <span className="flex items-center space-x-1.5">
-                  <HardDrive className="w-3.5 h-3.5 text-[#1B357B]" />
-                  <span>Armazenamento Cloudflare R2</span>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="font-semibold text-slate-800">Capacidade do Sistema:</span>
                 </span>
-                <span className="font-mono text-[11px] text-slate-500">
-                  {formatBytes(storageMetrics.usedBytes)} / {formatBytes(storageMetrics.totalCapacityBytes || (10 * 1024 * 1024 * 1024))}
+                <span className="text-[11px] text-[#C59B4B] font-bold">
+                  {(storageMetrics.remainingFilesCapacity ?? (10000 - storageMetrics.filesCount)).toLocaleString('pt-BR')} vagas para documentos
                 </span>
               </div>
-              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="flex items-center justify-between text-[11px] text-slate-500">
+                <span>Documentos: <strong className="text-slate-700 font-semibold">{storageMetrics.filesCount.toLocaleString('pt-BR')}</strong> / {(storageMetrics.maxFilesCapacity || 10000).toLocaleString('pt-BR')}</span>
+                <span>Espaço Livre: <strong className="text-slate-700 font-semibold">{formatBytes(storageMetrics.freeBytes || (storageMetrics.totalCapacityBytes - storageMetrics.usedBytes))}</strong></span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                 <div 
-                  className="h-full rounded-full transition-all duration-300"
+                  className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-[#C59B4B] to-[#E2B963]"
                   style={{ 
-                    width: `${Math.max(1, storageMetrics.usedPercent)}%`,
-                    backgroundColor: '#C59B4B' 
+                    width: `${Math.max(2, storageMetrics.usedPercent)}%`
                   }}
                 />
               </div>

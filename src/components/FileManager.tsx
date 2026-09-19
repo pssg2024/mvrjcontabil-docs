@@ -38,7 +38,9 @@ import {
   Clock,
   XCircle,
   CheckCircle2,
-  Check
+  Check,
+  RefreshCw,
+  Files
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -55,7 +57,7 @@ interface FileManagerProps {
   onRefreshStorage?: () => void;
   onOpenFileViewer: (file: DocumentFile) => void;
   onOpenUploadModal: (targetFolderId?: string | null) => void;
-  onCreateFolder: (name: string, parentId: string | null, sector: Sector) => void;
+  onCreateFolder: (name: string, parentId: string | null, sector: Sector) => Promise<any> | void;
   onDeleteFolder?: (folderId: string) => void;
   onDeleteFile: (fileId: string) => void;
   hasFolderPermission: (folderId: string, minLevel: PermissionLevel) => boolean;
@@ -82,6 +84,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'size'>('date');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [isSubmittingFolder, setIsSubmittingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
   // Breadcrumbs calculation
@@ -148,42 +151,62 @@ export const FileManager: React.FC<FileManagerProps> = ({
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  // Storage metrics
-  const totalOriginalBytes = files.reduce((acc, f) => acc + f.original_size, 0);
-  const totalOptimizedBytes = files.reduce((acc, f) => acc + f.optimized_size, 0);
-  const totalSavedBytes = Math.max(0, totalOriginalBytes - totalOptimizedBytes);
-  const overallSavingsPercent = totalOriginalBytes > 0 ? Math.round((totalSavedBytes / totalOriginalBytes) * 100) : 0;
-
-  // Quota calculation & strict lock
-  const totalQuotaBytes = storageMetrics?.totalCapacityBytes || (10 * 1024 * 1024 * 1024);
-  
-  // File capacity metrics in real time - Use local state for immediate feedback
+  // Storage & Document capacity metrics in real time
+  const maxFilesCapacity = storageMetrics?.maxFilesCapacity || 10000;
   const currentFilesCount = files.length;
-  const effectiveUsedBytes = totalOptimizedBytes > 0 ? totalOptimizedBytes : (storageMetrics?.usedBytes || 0);
+  const remainingFilesCount = Math.max(0, maxFilesCapacity - currentFilesCount);
+  const documentsPercent = Number(((currentFilesCount / maxFilesCapacity) * 100).toFixed(1));
+
+  const totalOriginalBytes = files.reduce((acc, f) => acc + (f.original_size || 0), 0);
+  const totalOptimizedBytes = files.reduce((acc, f) => acc + (f.optimized_size || 0), 0);
+  const totalSavedBytes = Math.max(0, totalOriginalBytes - totalOptimizedBytes);
+  const overallSavingsPercent = totalOriginalBytes > 0 
+    ? Math.round((totalSavedBytes / totalOriginalBytes) * 100) 
+    : (storageMetrics?.savingsPercent || 81);
+
+  // Quota calculation & strict lock (10 GB default)
+  const totalQuotaBytes = storageMetrics?.totalCapacityBytes || (10 * 1024 * 1024 * 1024);
+  const effectiveUsedBytes = storageMetrics?.usedBytes && storageMetrics.usedBytes > totalOptimizedBytes
+    ? storageMetrics.usedBytes
+    : totalOptimizedBytes;
   
-  const isQuotaExceeded = effectiveUsedBytes >= totalQuotaBytes || (storageMetrics ? storageMetrics.usedPercent >= 100 : false);
-  const [showBlockedLimitModal, setShowBlockedLimitModal] = useState(false);
-  
-  // Percentual de ocupação baseado no número de documentos (Limite 10.000)
-  const documentsPercent = Number(((currentFilesCount / 10000) * 100).toFixed(2));
-  
-  const usedPercentValue = totalQuotaBytes > 0 
-    ? Number(((effectiveUsedBytes / totalQuotaBytes) * 100).toFixed(2)) 
-    : 0;
   const remainingBytes = Math.max(0, totalQuotaBytes - effectiveUsedBytes);
+  const usedPercentValue = totalQuotaBytes > 0 
+    ? Number(((effectiveUsedBytes / totalQuotaBytes) * 100).toFixed(1)) 
+    : 0;
+
+  const isQuotaExceeded = effectiveUsedBytes >= totalQuotaBytes || (storageMetrics ? storageMetrics.usedPercent >= 100 : false) || currentFilesCount >= maxFilesCapacity;
+  const [showBlockedLimitModal, setShowBlockedLimitModal] = useState(false);
+  const [isRefreshingLocal, setIsRefreshingLocal] = useState(false);
+
+  const handleRefreshClick = () => {
+    if (isRefreshingLocal) return;
+    setIsRefreshingLocal(true);
+    if (onRefreshStorage) onRefreshStorage();
+    setTimeout(() => setIsRefreshingLocal(false), 800);
+  };
 
   // Permissions for current folder (Bloqueado se cota de armazenamento estourada)
   const isApprovedOrActive = currentUser.status === 'active' || currentUser.status === 'approved';
   const canUpload = isApprovedOrActive && !isQuotaExceeded && (currentFolderId ? hasFolderPermission(currentFolderId, 'editor') : (currentUser.role === 'admin' || currentUser.role === 'editor'));
-  const canCreateSubfolder = isApprovedOrActive && (currentFolderId ? hasFolderPermission(currentFolderId, 'editor') : currentUser.role === 'admin');
+  const canCreateSubfolder = isApprovedOrActive;
 
-  const handleCreateFolderSubmit = (e: React.FormEvent) => {
+  const handleCreateFolderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFolderName.trim()) return;
-    const sectorForFolder: Sector = currentFolder ? currentFolder.sector : (selectedSector !== 'ALL' ? selectedSector : currentUser.sector);
-    onCreateFolder(newFolderName.trim(), currentFolderId, sectorForFolder);
-    setNewFolderName('');
-    setIsCreatingFolder(false);
+    if (!newFolderName.trim() || isSubmittingFolder) return;
+    const sectorForFolder: Sector = currentFolder ? currentFolder.sector : (selectedSector !== 'ALL' ? selectedSector : (currentUser.sector || 'Fiscal'));
+    
+    setIsSubmittingFolder(true);
+    try {
+      await onCreateFolder(newFolderName.trim(), currentFolderId, sectorForFolder);
+      setNewFolderName('');
+      setIsCreatingFolder(false);
+    } catch (err: any) {
+      console.error('[ERRO CRIAR PASTA]', err);
+      alert('Erro ao salvar pasta: ' + (err.message || 'Falha ao salvar pasta no banco de dados.'));
+    } finally {
+      setIsSubmittingFolder(false);
+    }
   };
 
   const handleDirectDownload = async (file: DocumentFile) => {
@@ -221,30 +244,107 @@ export const FileManager: React.FC<FileManagerProps> = ({
             </p>
           </div>
 
-          {/* Clean & Minimalist Metrics Cards */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 shrink-0">
-            {/* Card 1 - Total de Arquivos / Capacidade */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-[#C59B4B]/30 shadow-xs min-w-[200px] sm:min-w-[220px]">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[11px] font-medium text-slate-200 tracking-wide block">
-                  Documentos
-                </span>
-                <span className="text-[10px] text-[#E2B963] font-semibold">
-                  {Math.min(100, Number(((currentFilesCount / 10000) * 100).toFixed(2)))}% usado
+          {/* Clean & Elegant Dual Metrics Cards (Tempo Real) */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 shrink-0 w-full lg:w-auto">
+            {/* Card 1 - Total de Arquivos & Quanto Ainda Cabe */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 sm:p-4 border border-[#C59B4B]/30 shadow-xs flex-1 sm:flex-initial min-w-[210px] sm:min-w-[230px]">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center space-x-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wider">
+                    Documentos
+                  </span>
+                </div>
+                <span className="text-[10px] text-[#E2B963] font-bold px-2 py-0.5 rounded-md bg-[#112354]/60 border border-[#C59B4B]/30">
+                  {documentsPercent}% usado
                 </span>
               </div>
-              <strong className="text-2xl sm:text-3xl font-black text-white tracking-tight block mt-0.5">
-                {currentFilesCount.toLocaleString('pt-BR')} / 10.000
-              </strong>
-              <div className="flex items-center justify-between text-[10px] text-slate-300 font-medium mt-1">
-                <span className="text-[#E2B963]">{(10000 - currentFilesCount).toLocaleString('pt-BR')} disponíveis</span>
-                <span>Limite: 10k</span>
+
+              <div className="flex items-baseline space-x-1.5 mt-0.5">
+                <strong className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  {currentFilesCount.toLocaleString('pt-BR')}
+                </strong>
+                <span className="text-xs text-slate-300 font-semibold">
+                  / {maxFilesCapacity.toLocaleString('pt-BR')} limite
+                </span>
               </div>
-              {/* Barra de progresso com gradiente dourado da marca */}
-              <div className="w-full bg-white/15 h-1.5 rounded-full overflow-hidden mt-2">
+
+              <div className="flex items-center justify-between text-[11px] font-semibold mt-1.5 text-slate-300">
+                <span className="text-emerald-400 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-[#E2B963]" />
+                  Ainda cabe: <strong className="text-[#E2B963] font-bold">{remainingFilesCount.toLocaleString('pt-BR')}</strong>
+                </span>
+                <span className="text-slate-400 text-[10px]">
+                  disponíveis
+                </span>
+              </div>
+
+              {/* Barra de progresso com gradiente dourado */}
+              <div className="w-full bg-white/15 h-2 rounded-full overflow-hidden mt-2.5">
                 <div 
-                  className="bg-gradient-to-r from-[#C59B4B] to-[#E2B963] h-full rounded-full transition-all duration-500" 
-                  style={{ width: `${Math.max(currentFilesCount > 0 ? 2 : 0, Math.min(100, documentsPercent))}%` }}
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    documentsPercent >= 95 
+                      ? 'bg-rose-500' 
+                      : documentsPercent >= 80 
+                        ? 'bg-amber-400' 
+                        : 'bg-gradient-to-r from-[#C59B4B] via-[#E2B963] to-emerald-400'
+                  }`} 
+                  style={{ width: `${Math.max(currentFilesCount > 0 ? 3 : 0, Math.min(100, documentsPercent))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Card 2 - Espaço em Disco Cloudflare R2 / Supabase */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 sm:p-4 border border-[#C59B4B]/30 shadow-xs flex-1 sm:flex-initial min-w-[210px] sm:min-w-[230px]">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center space-x-1.5">
+                  <HardDrive className="w-3.5 h-3.5 text-[#E2B963]" />
+                  <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wider">
+                    Espaço em Disco
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRefreshClick}
+                  title="Atualizar métricas em tempo real"
+                  className="p-1 hover:bg-white/20 rounded-md text-slate-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingLocal ? 'animate-spin text-[#E2B963]' : ''}`} />
+                </button>
+              </div>
+
+              <div className="flex items-baseline space-x-1.5 mt-0.5">
+                <strong className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  {formatBytes(effectiveUsedBytes)}
+                </strong>
+                <span className="text-xs text-slate-300 font-semibold">
+                  / {formatBytes(totalQuotaBytes)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] font-semibold mt-1.5 text-slate-300">
+                <span className="text-emerald-400">
+                  Livre: <strong className="text-white font-bold">{formatBytes(remainingBytes)}</strong>
+                </span>
+                <span className="text-[#E2B963] text-[10px] font-bold">
+                  {overallSavingsPercent}% economia
+                </span>
+              </div>
+
+              {/* Barra de progresso de espaço */}
+              <div className="w-full bg-white/15 h-2 rounded-full overflow-hidden mt-2.5">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    usedPercentValue >= 95 
+                      ? 'bg-rose-500' 
+                      : usedPercentValue >= 80 
+                        ? 'bg-amber-400' 
+                        : 'bg-gradient-to-r from-blue-400 via-[#C59B4B] to-[#E2B963]'
+                  }`} 
+                  style={{ width: `${Math.max(effectiveUsedBytes > 0 ? 3 : 0, Math.min(100, usedPercentValue))}%` }}
                 />
               </div>
             </div>
@@ -457,14 +557,23 @@ export const FileManager: React.FC<FileManagerProps> = ({
             <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors"
+                disabled={isSubmittingFolder}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center space-x-1.5"
               >
-                Salvar Pasta
+                {isSubmittingFolder ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span>Salvando...</span>
+                  </>
+                ) : (
+                  <span>Salvar Pasta</span>
+                )}
               </button>
               <button
                 type="button"
+                disabled={isSubmittingFolder}
                 onClick={() => setIsCreatingFolder(false)}
-                className="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition-colors"
+                className="px-3 py-2 bg-gray-200 hover:bg-gray-300 disabled:opacity-50 text-gray-700 text-xs font-semibold rounded-lg transition-colors"
               >
                 Cancelar
               </button>

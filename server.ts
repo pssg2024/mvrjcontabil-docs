@@ -35,8 +35,19 @@ const inMemoryFileStore = new Map<string, { buffer: Buffer; mimeType: string; na
 // Supabase Server Client (Service Role or Anon Key)
 function getSupabaseServerClient() {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  
+  const key = serviceKey || anonKey;
+  
   if (!url || !key) return null;
+  
+  if (serviceKey) {
+    console.log('[Supabase Server] Usando SERVICE_ROLE_KEY (Bypasses RLS)');
+  } else {
+    console.warn('[Supabase Server] Usando ANON_KEY (Sujeito a RLS - Pastas podem sumir se políticas não estiverem configuradas)');
+  }
+
   try {
     return createClient(url, key);
   } catch (err) {
@@ -1842,69 +1853,38 @@ async function saveR2Folders(foldersList: StoredFolder[]) {
 }
 
 async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
-  const foldersMap = new Map<string, StoredFolder>();
-  
-  // 1. Load from local persistence only if not loaded yet
-  loadPersistedFolders();
-  for (const f of persistedFolders) {
-    foldersMap.set(f.id, f);
-  }
-
-  // 2. Fetch from Supabase (Authority)
   const supabase = getSupabaseServerClient();
   if (supabase) {
     try {
       const { data: dbFolders, error } = await supabase
         .from('folders')
         .select('*')
-        .order('name', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(dbFolders)) {
-        console.log(`[FOLDERS SYNC] DB retornou ${dbFolders.length} pastas. (Supabase Authority)`);
-        
-        if (dbFolders.length === 0 && foldersMap.size > 0) {
-          console.log('[FOLDERS SYNC] DB Vazio detectado. Semeando com pastas locais...');
-          const localFolders = Array.from(foldersMap.values());
-          for (const lf of localFolders) {
-            try {
-              const payload = {
-                id: toDeterministicUuid(lf.id),
-                name: lf.name,
-                sector: lf.sector,
-                parent_id: lf.parent_id ? toDeterministicUuid(lf.parent_id) : null,
-                created_by: isValidUuid(lf.created_by) ? lf.created_by : null,
-                created_at: lf.created_at,
-                updated_at: lf.updated_at,
-              };
-              await supabase.from('folders').upsert(payload);
-            } catch (seedErr) {
-              console.error('[FOLDERS SYNC] Falha ao semear pasta:', lf.name, seedErr);
-            }
-          }
-        } else {
-          // Se o Supabase retornou algo (ou se ambos estão vazios), ele é a autoridade
-          foldersMap.clear();
-          for (const df of dbFolders) {
-            foldersMap.set(df.id, {
-              id: df.id,
-              parent_id: df.parent_id || null,
-              name: df.name,
-              sector: df.sector,
-              created_by: df.created_by || '57e1d483-669b-4791-b09e-7496570e63ea',
-              created_at: df.created_at,
-              updated_at: df.updated_at || df.created_at,
-            });
-          }
-        }
+        console.log(`[FOLDERS SYNC] Supabase retornou ${dbFolders.length} pastas.`);
+        const mapped: StoredFolder[] = dbFolders.map((df: any) => ({
+          id: df.id,
+          parent_id: df.parent_id || null,
+          name: df.name,
+          sector: df.sector || 'Geral',
+          created_by: df.created_by || null,
+          created_at: df.created_at,
+          updated_at: df.updated_at || df.created_at,
+        }));
+        persistedFolders = mapped;
+        savePersistedFolders();
+        return mapped;
+      } else if (error) {
+        console.error('[FOLDERS SYNC] Erro ao buscar pastas no Supabase:', error.message);
       }
     } catch (sbErr: any) {
-      console.warn('[PASTAS] Aviso Sync Supabase:', sbErr.message);
+      console.error('[PASTAS] Exceção Sync Supabase:', sbErr.message);
     }
   }
 
-  const result = Array.from(foldersMap.values());
-  persistedFolders = result;
-  return result;
+  loadPersistedFolders();
+  return persistedFolders;
 }
 
 async function getAllUnifiedFiles(): Promise<StoredFile[]> {
@@ -2005,54 +1985,60 @@ app.get('/api/folders', async (req: Request, res: Response) => {
 
 app.post('/api/folders', async (req: Request, res: Response) => {
   try {
+    console.log('[API FOLDERS] Payload recebido:', req.body);
     const { name, parent_id, sector, created_by, id: customId } = req.body;
     if (!name || !sector) {
-      console.log('[PASTAS] Erro: Nome e setor são obrigatórios');
+      console.error('[API FOLDERS] Erro: Nome e setor são obrigatórios');
       return res.status(400).json({ error: 'Nome e setor são obrigatórios' });
     }
 
     const folderId = customId || crypto.randomUUID();
+    const cleanName = String(name).trim();
+
+    const validSectors = ['Fiscal', 'Departamento Pessoal', 'Contábil', 'Diretoria', 'Financeiro', 'Geral'];
+    const finalSector = validSectors.includes(sector) ? sector : 'Geral';
+
     const newFolder: StoredFolder = {
       id: folderId,
       parent_id: parent_id || null,
-      name: name.trim(),
-      sector,
-      created_by: isValidUuid(created_by) ? created_by : '57e1d483-669b-4791-b09e-7496570e63ea',
+      name: cleanName,
+      sector: finalSector,
+      created_by: isValidUuid(created_by) ? created_by : null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    // 1. Immediately save to in-memory store and disk
-    const existingIdx = persistedFolders.findIndex(f => f.id === folderId);
-    if (existingIdx >= 0) {
-      persistedFolders[existingIdx] = newFolder;
-    } else {
-      persistedFolders.push(newFolder);
-    }
-    savePersistedFolders();
-
-    // 2. Backup to R2
-    saveR2Folders(persistedFolders).catch(() => {});
-
-    // 3. Sync to Supabase if connected
+    // 1. Sync to Supabase if connected
     const supabase = getSupabaseServerClient();
     if (supabase) {
       try {
+        let createdByUuid: string | null = null;
+        if (isValidUuid(created_by)) {
+          // Check if profile exists to prevent foreign key violation on profiles(id)
+          const { data: profile } = await supabase.from('profiles').select('id').eq('id', created_by).maybeSingle();
+          if (profile) {
+            createdByUuid = profile.id;
+          }
+        }
+
         const payload: any = {
           id: toDeterministicUuid(folderId),
-          name: newFolder.name,
-          sector: newFolder.sector,
+          name: cleanName,
+          sector: finalSector,
           parent_id: newFolder.parent_id ? toDeterministicUuid(newFolder.parent_id) : null,
-          created_by: isValidUuid(newFolder.created_by) ? newFolder.created_by : null,
+          created_by: createdByUuid,
           updated_at: newFolder.updated_at,
         };
 
-        const { error } = await supabase.from('folders').upsert(payload);
+        const { data, error } = await supabase.from('folders').upsert(payload).select();
+        console.log('[API FOLDERS] Resposta Supabase:', { data, error });
+
         if (error) {
-          console.error('[PASTAS] Erro Supabase:', error.message);
-        } else {
-          console.log('[PASTAS] Ação: CREATE, ID:', folderId, 'Resultado: SUCESSO');
+          console.error('[API FOLDERS] Erro ao gravar pasta no Supabase:', error.message);
+          return res.status(500).json({ error: error.message });
         }
+
+        console.log('[PASTAS] Ação: CREATE, ID:', folderId, 'Resultado: SUCESSO no Supabase');
 
         // Audit log in Supabase
         try {
@@ -2061,24 +2047,37 @@ app.post('/api/folders', async (req: Request, res: Response) => {
             target_type: 'FOLDER',
             target_id: folderId,
             user_name: 'Sistema',
-            sector: newFolder.sector,
+            sector: finalSector,
             details: {
               folder_id: folderId,
-              name: newFolder.name,
+              name: cleanName,
               parent_id: newFolder.parent_id,
-              sector: newFolder.sector,
+              sector: finalSector,
             },
           });
         } catch {}
       } catch (sbErr: any) {
-        console.error('[PASTAS] Erro Sync Supabase:', sbErr.message);
+        console.error('[API FOLDERS] Exceção Sync Supabase:', sbErr.message);
+        return res.status(500).json({ error: sbErr.message });
       }
     }
 
-    res.status(201).json({ status: 'success', folder: newFolder });
+    // 2. Immediately save to in-memory store and disk
+    const existingIdx = persistedFolders.findIndex(f => f.id === folderId);
+    if (existingIdx >= 0) {
+      persistedFolders[existingIdx] = newFolder;
+    } else {
+      persistedFolders.push(newFolder);
+    }
+    savePersistedFolders();
+
+    // 3. Backup to R2
+    saveR2Folders(persistedFolders).catch(() => {});
+
+    return res.status(201).json({ status: 'success', folder: newFolder });
   } catch (err: any) {
     console.error('[PASTAS] Ação: CREATE, ID: N/A, Erro:', err.message);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 

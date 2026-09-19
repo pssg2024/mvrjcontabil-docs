@@ -143,20 +143,20 @@ export const StorageStatsWidget: React.FC<StorageStatsWidgetProps> = ({
           </div>
         </div>
 
-        {/* Card 3: Capacidade Estimada Restante */}
+        {/* Card 3: Limite e Vagas de Documentos */}
         <div className="bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Capacidade Restante</span>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Limite de Documentos</span>
             <div className="p-1.5 rounded-md bg-indigo-100/70 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
               <TrendingUp className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
             <div className="text-xl font-bold font-mono text-slate-900 dark:text-white tracking-tight">
-              ~{estimatedRemainingDocs.toLocaleString('pt-BR')} docs
+              {Math.max(0, 10000 - totalFiles).toLocaleString('pt-BR')} vagas
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Estimativa com base na média otimizada ({formatBytes(averageFileSize)})
+              {totalFiles.toLocaleString('pt-BR')} de 10.000 documentos cadastrados
             </p>
           </div>
         </div>

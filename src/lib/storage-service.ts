@@ -783,15 +783,18 @@ export async function createFolderInApi(
   createdBy?: string | null,
   customId?: string
 ): Promise<Folder> {
+  const payload = { name, parent_id: parentId, sector, created_by: createdBy, id: customId };
   const res = await fetch('/api/folders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, parent_id: parentId, sector, created_by: createdBy, id: customId }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Erro ao criar pasta no Supabase');
+    const errorMsg = err.error || `HTTP ${res.status}: Erro ao criar pasta no Supabase`;
+    console.error('[ERRO CRIAR PASTA API]', errorMsg, { status: res.status, payload });
+    throw new Error(errorMsg);
   }
 
   const data = await res.json();

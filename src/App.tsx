@@ -297,12 +297,11 @@ export default function App() {
 
         console.log('[FOLDERS SYNC] Pastas recebidas da API:', apiFolders);
 
-        if (apiFolders && Array.isArray(apiFolders) && apiFolders.length > 0) {
+        if (apiFolders && Array.isArray(apiFolders)) {
           setFolders(apiFolders);
-        } else if (apiFolders && Array.isArray(apiFolders) && apiFolders.length === 0) {
-          // Apenas limpa se o estado local também estiver vazio ou se quisermos forçar a sincronia, 
-          // mas para evitar o sumiço repentino, vamos logar
-          console.log('[FOLDERS SYNC] API retornou lista vazia de pastas.');
+          try {
+            localStorage.setItem('mvrj_folders', JSON.stringify(apiFolders));
+          } catch {}
         }
 
         if (apiFiles && Array.isArray(apiFiles) && apiFiles.length > 0) {
@@ -435,21 +434,22 @@ export default function App() {
     if (currentUser.status !== 'active' && currentUser.status !== 'approved') return false;
     if (currentUser.role === 'admin') return true;
 
+    // Visualização (viewer): todos os usuários autenticados/ativos podem ver pastas da empresa
+    if (minLevel === 'viewer') return true;
+
     // 1. Explicit folder assignment in folder_permissions
     const explicit = folderPermissions.find(p => p.folder_id === folderId && p.profile_id === currentUser.id);
     if (explicit) {
-      if (minLevel === 'viewer') return true;
       if (minLevel === 'editor' && (explicit.permission_level === 'editor' || explicit.permission_level === 'admin')) return true;
       if (minLevel === 'admin' && explicit.permission_level === 'admin') return true;
     }
 
-    // 2. Default Sector matching
+    // 2. Default Sector matching or Creator
     const folder = folders.find(f => f.id === folderId);
     if (folder) {
       // Creator always has full access to their own folder
       if (folder.created_by === currentUser.id) return true;
       if (folder.sector === currentUser.sector || folder.sector === 'Geral') {
-        if (minLevel === 'viewer') return true;
         if (minLevel === 'editor' && currentUser.role === 'editor') return true;
       }
     }
@@ -639,42 +639,34 @@ export default function App() {
   const handleCreateFolder = async (name: string, parentId: string | null, sector: Sector) => {
     lastFolderActionRef.current = Date.now();
     const folderId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `fold-${Date.now()}`;
-    const optimisticFolder: Folder = {
-      id: folderId,
-      parent_id: parentId,
-      name: name.trim(),
-      sector,
-      created_by: currentUser?.id || '57e1d483-669b-4791-b09e-7496570e63ea',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    // 1. Instantly save to local state and localStorage
-    setFolders(prev => {
-      const updated = [...prev, optimisticFolder];
-      localStorage.setItem('mvrj_folders', JSON.stringify(updated));
-      return updated;
-    });
-    logAudit('FOLDER_CREATE', 'FOLDER', folderId, { name, sector, parentId });
 
     try {
       const created = await createFolderInApi(name, parentId, sector, currentUser?.id, folderId);
       lastFolderActionRef.current = Date.now();
-      if (created && created.id) {
-        setFolders(prev => {
-          const updated = prev.map(f => (f.id === folderId ? { ...f, ...created } : f));
-          if (!updated.some(f => f.id === created.id || f.id === folderId)) {
-            updated.push(created);
-          }
+      
+      const newFolderItem: Folder = created && created.id ? created : {
+        id: folderId,
+        parent_id: parentId,
+        name: name.trim(),
+        sector,
+        created_by: currentUser?.id || '57e1d483-669b-4791-b09e-7496570e63ea',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      setFolders(prev => {
+        const updated = [...prev.filter(f => f.id !== newFolderItem.id && f.id !== folderId), newFolderItem];
+        try {
           localStorage.setItem('mvrj_folders', JSON.stringify(updated));
-          return updated;
-        });
-      }
+        } catch {}
+        return updated;
+      });
+
+      logAudit('FOLDER_CREATE', 'FOLDER', newFolderItem.id, { name, sector, parentId });
+      return newFolderItem;
     } catch (err: any) {
-      console.warn('Erro ao sincronizar pasta com a API:', err);
-      alert(`Erro ao criar pasta: ${err.message}`);
-      // Revert optimistic update
-      setFolders(prev => prev.filter(f => f.id !== folderId));
+      console.error('[ERRO CRIAR PASTA]', err);
+      throw err;
     }
   };
 
