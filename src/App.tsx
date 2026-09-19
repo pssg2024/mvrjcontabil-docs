@@ -295,11 +295,17 @@ export default function App() {
           fetchFilesFromApi().catch(() => null),
         ]);
 
-        if (apiFolders && Array.isArray(apiFolders)) {
+        console.log('[FOLDERS SYNC] Pastas recebidas da API:', apiFolders);
+
+        if (apiFolders && Array.isArray(apiFolders) && apiFolders.length > 0) {
           setFolders(apiFolders);
+        } else if (apiFolders && Array.isArray(apiFolders) && apiFolders.length === 0) {
+          // Apenas limpa se o estado local também estiver vazio ou se quisermos forçar a sincronia, 
+          // mas para evitar o sumiço repentino, vamos logar
+          console.log('[FOLDERS SYNC] API retornou lista vazia de pastas.');
         }
 
-        if (apiFiles && Array.isArray(apiFiles)) {
+        if (apiFiles && Array.isArray(apiFiles) && apiFiles.length > 0) {
           setFiles(apiFiles);
         }
       } finally {
@@ -365,6 +371,7 @@ export default function App() {
 
     // Initial load
     fetchFoldersFromApi().then(apiFolders => {
+      console.log('[FOLDERS SYNC] Initial load - Pastas recebidas:', apiFolders);
       if (apiFolders && Array.isArray(apiFolders)) {
         setFolders(apiFolders);
       }

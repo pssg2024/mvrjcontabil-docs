@@ -1727,7 +1727,9 @@ interface StoredFile {
 }
 
 let persistedFolders: StoredFolder[] = [];
+let foldersLoaded = false;
 let persistedFiles: StoredFile[] = [];
+let filesLoaded = false;
 
 function toDeterministicUuid(id: string): string {
   if (isValidUuid(id)) return id;
@@ -1736,16 +1738,19 @@ function toDeterministicUuid(id: string): string {
 }
 
 function loadPersistedFolders() {
+  if (foldersLoaded) return;
   try {
     if (fs.existsSync(FOLDERS_FILE)) {
       const raw = fs.readFileSync(FOLDERS_FILE, 'utf-8');
       const data = JSON.parse(raw);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         persistedFolders = data;
+        foldersLoaded = true;
         console.log(`[Folders] ${persistedFolders.length} pastas carregadas do disco com sucesso`);
         return;
       }
     }
+    foldersLoaded = true; // Mesmo se não existir, marcamos como carregado (vazio)
   } catch (e) {
     console.warn('[Folders] Aviso ao ler pastas do disco:', e);
   }
@@ -1764,16 +1769,19 @@ function savePersistedFolders() {
 }
 
 function loadPersistedFiles() {
+  if (filesLoaded) return;
   try {
     if (fs.existsSync(FILES_FILE)) {
       const raw = fs.readFileSync(FILES_FILE, 'utf-8');
       const data = JSON.parse(raw);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         persistedFiles = data;
+        filesLoaded = true;
         console.log(`[Files] ${persistedFiles.length} arquivos carregados do disco com sucesso`);
         return;
       }
     }
+    filesLoaded = true;
   } catch (e) {
     console.warn('[Files] Aviso ao ler arquivos do disco:', e);
   }
@@ -1836,10 +1844,8 @@ async function saveR2Folders(foldersList: StoredFolder[]) {
 async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
   const foldersMap = new Map<string, StoredFolder>();
   
-  // 1. Load from local persistence first
-  if (persistedFolders.length === 0) {
-    loadPersistedFolders();
-  }
+  // 1. Load from local persistence only if not loaded yet
+  loadPersistedFolders();
   for (const f of persistedFolders) {
     foldersMap.set(f.id, f);
   }
@@ -1854,19 +1860,41 @@ async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
         .order('name', { ascending: true });
 
       if (!error && Array.isArray(dbFolders)) {
-        // Authority: DB completely replaces or populates the map
-        // We clear local cache if DB is connected to avoid phantom folders
-        foldersMap.clear();
-        for (const df of dbFolders) {
-          foldersMap.set(df.id, {
-            id: df.id,
-            parent_id: df.parent_id || null,
-            name: df.name,
-            sector: df.sector,
-            created_by: df.created_by || '57e1d483-669b-4791-b09e-7496570e63ea',
-            created_at: df.created_at,
-            updated_at: df.updated_at || df.created_at,
-          });
+        console.log(`[FOLDERS SYNC] DB retornou ${dbFolders.length} pastas. (Supabase Authority)`);
+        
+        if (dbFolders.length === 0 && foldersMap.size > 0) {
+          console.log('[FOLDERS SYNC] DB Vazio detectado. Semeando com pastas locais...');
+          const localFolders = Array.from(foldersMap.values());
+          for (const lf of localFolders) {
+            try {
+              const payload = {
+                id: toDeterministicUuid(lf.id),
+                name: lf.name,
+                sector: lf.sector,
+                parent_id: lf.parent_id ? toDeterministicUuid(lf.parent_id) : null,
+                created_by: isValidUuid(lf.created_by) ? lf.created_by : null,
+                created_at: lf.created_at,
+                updated_at: lf.updated_at,
+              };
+              await supabase.from('folders').upsert(payload);
+            } catch (seedErr) {
+              console.error('[FOLDERS SYNC] Falha ao semear pasta:', lf.name, seedErr);
+            }
+          }
+        } else {
+          // Se o Supabase retornou algo (ou se ambos estão vazios), ele é a autoridade
+          foldersMap.clear();
+          for (const df of dbFolders) {
+            foldersMap.set(df.id, {
+              id: df.id,
+              parent_id: df.parent_id || null,
+              name: df.name,
+              sector: df.sector,
+              created_by: df.created_by || '57e1d483-669b-4791-b09e-7496570e63ea',
+              created_at: df.created_at,
+              updated_at: df.updated_at || df.created_at,
+            });
+          }
         }
       }
     } catch (sbErr: any) {
@@ -1882,9 +1910,7 @@ async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
 async function getAllUnifiedFiles(): Promise<StoredFile[]> {
   const filesMap = new Map<string, StoredFile>();
   
-  if (persistedFiles.length === 0) {
-    loadPersistedFiles();
-  }
+  loadPersistedFiles();
   for (const f of persistedFiles) {
     filesMap.set(f.id, f);
   }
@@ -1898,30 +1924,61 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(dbFiles)) {
-        filesMap.clear(); // DB is authority
-        for (const f of dbFiles) {
-          const folder = f.folders as any;
-          filesMap.set(f.id, {
-            id: f.id,
-            folder_id: f.folder_id,
-            name: f.name,
-            storage_key: f.storage_key,
-            mime_type: f.mime_type,
-            original_size: Number(f.original_size) || 0,
-            optimized_size: Number(f.optimized_size) || 0,
-            compression_ratio: Number(f.compression_ratio) || 0,
-            pages_count: f.pages_count || 1,
-            tags: Array.isArray(f.tags) ? f.tags : [],
-            uploaded_by: f.uploaded_by || '57e1d483-669b-4791-b09e-7496570e63ea',
-            uploader_name: 'Evandro (Administrador)',
-            sector: folder?.sector || 'Fiscal',
-            checksum_sha256: f.checksum_sha256,
-            due_date: f.due_date || undefined,
-            is_archived: f.is_archived || false,
-            created_at: f.created_at,
-            updated_at: f.updated_at,
-            preview_url: `/api/r2/view?key=${encodeURIComponent(f.storage_key)}&name=${encodeURIComponent(f.name)}`,
-          });
+        console.log(`[FILES SYNC] DB retornou ${dbFiles.length} arquivos. (Supabase Authority)`);
+        
+        if (dbFiles.length === 0 && filesMap.size > 0) {
+          console.log('[FILES SYNC] DB Vazio detectado. Semeando arquivos locais...');
+          const localFiles = Array.from(filesMap.values());
+          for (const lf of localFiles) {
+            try {
+              const payload = {
+                id: lf.id,
+                folder_id: lf.folder_id,
+                name: lf.name,
+                storage_key: lf.storage_key,
+                mime_type: lf.mime_type,
+                original_size: lf.original_size,
+                optimized_size: lf.optimized_size,
+                compression_ratio: lf.compression_ratio,
+                pages_count: lf.pages_count,
+                tags: lf.tags,
+                uploaded_by: isValidUuid(lf.uploaded_by) ? lf.uploaded_by : null,
+                uploader_name: lf.uploader_name,
+                checksum_sha256: lf.checksum_sha256,
+                created_at: lf.created_at,
+                updated_at: lf.updated_at,
+              };
+              await supabase.from('files').upsert(payload);
+            } catch (seedErr) {
+              console.error('[FILES SYNC] Falha ao semear arquivo:', lf.name, seedErr);
+            }
+          }
+        } else {
+          filesMap.clear(); // DB is authority
+          for (const f of dbFiles) {
+            const folder = f.folders as any;
+            filesMap.set(f.id, {
+              id: f.id,
+              folder_id: f.folder_id,
+              name: f.name,
+              storage_key: f.storage_key,
+              mime_type: f.mime_type,
+              original_size: Number(f.original_size) || 0,
+              optimized_size: Number(f.optimized_size) || 0,
+              compression_ratio: Number(f.compression_ratio) || 0,
+              pages_count: f.pages_count || 1,
+              tags: Array.isArray(f.tags) ? f.tags : [],
+              uploaded_by: f.uploaded_by || '57e1d483-669b-4791-b09e-7496570e63ea',
+              uploader_name: 'Evandro (Administrador)',
+              sector: folder?.sector || 'Fiscal',
+              checksum_sha256: f.checksum_sha256,
+              due_date: f.due_date || undefined,
+              is_archived: f.is_archived || false,
+              created_at: f.created_at,
+              updated_at: f.updated_at,
+              preview_url: `/api/r2/view?key=${encodeURIComponent(f.storage_key)}&name=${encodeURIComponent(f.name)}`,
+            });
+          }
         }
       }
     } catch (err: any) {
