@@ -762,7 +762,7 @@ export async function fetchFoldersFromApi(): Promise<Folder[]> {
     const res = await fetch('/api/folders');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (Array.isArray(data.folders) && data.folders.length > 0) {
+    if (Array.isArray(data.folders)) {
       localStorage.setItem('mvrj_folders', JSON.stringify(data.folders));
       return data.folders;
     }

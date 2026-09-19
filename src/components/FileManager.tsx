@@ -284,7 +284,51 @@ export const FileManager: React.FC<FileManagerProps> = ({
         </div>
       )}
 
-      {/* Painel de Armazenamento & Capacidade R2: Oculto por padrão, só aparece quando o limite for atingido */}
+      {/* ALERT BANNER: Due dates */}
+      {(() => {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        const documentosEmAlerta = files.filter((doc) => {
+          const dataVenc = doc.due_date || doc.dataVencimento;
+          if (!dataVenc) return false;
+
+          const [ano, mes, dia] = dataVenc.split('-').map(Number);
+          const dataDoc = new Date(ano, mes - 1, dia);
+
+          const diffDias = Math.ceil((dataDoc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+          return diffDias <= 5;
+        });
+
+        if (documentosEmAlerta.length === 0) return null;
+
+        return (
+          <div className="bg-amber-50/95 border border-amber-200/80 rounded-2xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="text-[#C59B4B] w-6 h-6 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-amber-950 font-bold text-xs sm:text-sm mb-1">Atenção: Guias com vencimento próximo ou vencidas</h3>
+                <div className="flex flex-wrap gap-2">
+                  {documentosEmAlerta.slice(0, 2).map(doc => (
+                    <span key={doc.id} className="text-xs text-amber-800 bg-amber-100/50 px-2 py-1 rounded-md font-medium">
+                      ⚠️ {doc.name} - Vence em {doc.due_date || doc.dataVencimento}
+                    </span>
+                  ))}
+                  {documentosEmAlerta.length > 2 && (
+                    <span className="text-xs text-amber-800 italic">...e outros {documentosEmAlerta.length - 2}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button 
+              onClick={() => { /* Implementar filtro ou visualização se necessário */ }}
+              className="bg-[#1B357B] text-white text-xs px-4 py-2 rounded-lg font-semibold hover:bg-[#1B357B]/90 transition-colors whitespace-nowrap"
+            >
+              Ver Pendências
+            </button>
+          </div>
+        );
+      })()}
       {isQuotaExceeded && (
         <StorageStatsWidget 
           files={files} 

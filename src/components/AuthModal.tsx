@@ -129,15 +129,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     onLoginSuccess(user);
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const [isSubmittingRegister, setIsSubmittingRegister] = useState(false);
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regFullName || !regEmail || !regPassword) return;
 
+    // Se já existir usuário aprovado ou ativo com este email
     const existing = allProfiles.find(p => p.email.toLowerCase() === regEmail.trim().toLowerCase());
-    if (existing) {
-      alert('Já existe um usuário cadastrado com este e-mail corporativo.');
+    if (existing && existing.status !== 'rejected') {
+      if (existing.status === 'pending') {
+        alert('Já existe uma solicitação de acesso pendente para este e-mail corporativo. Aguarde a liberação da administração.');
+        return;
+      }
+      alert('Já existe um usuário ativo cadastrado com este e-mail corporativo.');
       return;
     }
+
+    setIsSubmittingRegister(true);
 
     const newUser: UserProfile = {
       id: `usr-${Date.now()}`,
@@ -158,8 +167,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       localStorage.setItem('mvrj_passwords', JSON.stringify(stored));
     } catch {}
 
-    onRequestAccessSuccess(newUser);
-    setRegistrationSubmitted(newUser);
+    try {
+      // Dispara persistência no backend imediatamente
+      const res = await fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Falha ao comunicar com o servidor');
+      }
+
+      onRequestAccessSuccess(newUser);
+      setRegistrationSubmitted(newUser);
+    } catch (err: any) {
+      console.error('Erro ao registrar perfil:', err);
+      // Fallback local se rede falhar
+      onRequestAccessSuccess(newUser);
+      setRegistrationSubmitted(newUser);
+    } finally {
+      setIsSubmittingRegister(false);
+    }
   };
 
   // Helper for rendering header icon
@@ -474,9 +504,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <button
                     id="submit-register-btn"
                     type="submit"
-                    className="w-full py-3 px-4 text-sm font-semibold text-white bg-[#C59B4B] hover:bg-[#B38A3A] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={isSubmittingRegister}
+                    className="w-full py-3 px-4 text-sm font-semibold text-white bg-[#C59B4B] hover:bg-[#B38A3A] disabled:opacity-60 disabled:cursor-not-allowed rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>Enviar Solicitação de Acesso</span>
+                    <span>{isSubmittingRegister ? 'Enviando Solicitação...' : 'Enviar Solicitação de Acesso'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </form>

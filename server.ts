@@ -1183,16 +1183,18 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
         .order('created_at', { ascending: true });
 
       if (Array.isArray(auditLogs)) {
-        const rejectedOrDeletedEmails = new Set<string>();
-        const rejectedOrDeletedIds = new Set<string>();
+        const lastDeletedTimeByEmail = new Map<string, number>();
+        const lastDeletedTimeById = new Map<string, number>();
         const approvedEmails = new Set<string>();
         const approvedIds = new Set<string>();
 
         for (const log of auditLogs) {
+          const logTime = new Date(log.created_at || 0).getTime();
           if (log.action === 'USER_REJECTED' || log.action === 'USER_DELETED') {
-            if (log.target_id) rejectedOrDeletedIds.add(String(log.target_id).toLowerCase().trim());
-            if (log.details?.rejected_email) rejectedOrDeletedEmails.add(String(log.details.rejected_email).toLowerCase().trim());
-            if (log.details?.deleted_email) rejectedOrDeletedEmails.add(String(log.details.deleted_email).toLowerCase().trim());
+            const delId = String(log.target_id || '').toLowerCase().trim();
+            const delEmail = (log.details?.deleted_email || log.details?.rejected_email || '').toLowerCase().trim();
+            if (delId) lastDeletedTimeById.set(delId, Math.max(logTime, lastDeletedTimeById.get(delId) || 0));
+            if (delEmail) lastDeletedTimeByEmail.set(delEmail, Math.max(logTime, lastDeletedTimeByEmail.get(delEmail) || 0));
           }
           if (log.action === 'USER_APPROVED') {
             if (log.details?.approved_email) approvedEmails.add(String(log.details.approved_email).toLowerCase().trim());
@@ -1207,8 +1209,14 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
             const email = (log.details?.email || '').toLowerCase().trim();
             const id = String(log.target_id || log.profile_id || '').toLowerCase().trim();
             const isMasterAdmin = email === 'evandro230655@gmail.com' || id === '57e1d483-669b-4791-b09e-7496570e63ea';
+            const logTime = new Date(log.created_at || 0).getTime();
+            const delEmailTime = lastDeletedTimeByEmail.get(email) || 0;
+            const delIdTime = (id ? lastDeletedTimeById.get(id) : 0) || 0;
 
-            if (email && !isMasterAdmin && !rejectedOrDeletedEmails.has(email) && !rejectedOrDeletedIds.has(id)) {
+            // Se a solicitação foi realizada DEPOIS da última exclusão, é uma nova solicitação válida
+            const wasDeletedAfterThis = (delEmailTime > logTime) || (delIdTime > logTime);
+
+            if (email && !isMasterAdmin && !wasDeletedAfterThis) {
               const existing = profilesMap.get(email);
               const isAlreadyActiveOrApproved = 
                 existing?.status === 'active' || 
@@ -1244,8 +1252,7 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
   // Sempre assegurar integridade do Administrador Master (Evandro)
   const masterAdminEmail = 'evandro230655@gmail.com';
   
-  // Limpeza final implacável: remover qualquer perfil que tenha sido excluído ou rejeitado (via audit_logs)
-  // Isso garante que contas excluídas NUNCA retornem após reinício ou sincronização.
+  // Limpeza de perfis excluídos (apenas se a exclusão ocorreu após a criação do perfil)
   if (supabase) {
     try {
       const { data: latestAuditLogs } = await supabase
@@ -1256,13 +1263,24 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
           if (log.action === 'USER_REJECTED' || log.action === 'USER_DELETED') {
             const delEmail = (log.details?.deleted_email || log.details?.rejected_email || '').toLowerCase().trim();
             const delId = String(log.target_id || '').toLowerCase().trim();
+            const delTime = new Date(log.created_at || 0).getTime();
+
             if (delEmail && delEmail !== masterAdminEmail) {
-              profilesMap.delete(delEmail);
+              const existing = profilesMap.get(delEmail);
+              if (existing) {
+                const profileTime = new Date(existing.created_at || existing.updated_at || 0).getTime();
+                if (delTime >= profileTime) {
+                  profilesMap.delete(delEmail);
+                }
+              }
             }
             if (delId) {
               for (const [key, p] of profilesMap.entries()) {
                 if (p.id && p.id.toLowerCase().trim() === delId && p.email.toLowerCase() !== masterAdminEmail) {
-                  profilesMap.delete(key);
+                  const profileTime = new Date(p.created_at || p.updated_at || 0).getTime();
+                  if (delTime >= profileTime) {
+                    profilesMap.delete(key);
+                  }
                 }
               }
             }
@@ -1310,7 +1328,11 @@ app.post('/api/profiles', async (req: Request, res: Response) => {
 
     const cleanEmail = email.trim().toLowerCase();
     const existingIndex = persistedProfiles.findIndex(p => p.email.toLowerCase() === cleanEmail);
-    const resolvedId = (id && isValidUuid(id)) ? id : (existingIndex >= 0 ? persistedProfiles[existingIndex].id : `usr-${Date.now()}`);
+    const resolvedId = (id && isValidUuid(id)) 
+      ? id 
+      : (existingIndex >= 0 && isValidUuid(persistedProfiles[existingIndex].id) 
+          ? persistedProfiles[existingIndex].id 
+          : crypto.randomUUID());
 
     const newProfile: StoredProfile = {
       id: resolvedId,
@@ -1335,6 +1357,17 @@ app.post('/api/profiles', async (req: Request, res: Response) => {
     // Registra persistentemente no Supabase
     const supabase = getSupabaseServerClient();
     if (supabase) {
+      // 0. Remove histórico de exclusão/rejeição prévia para permitir reingresso
+      try {
+        await supabase
+          .from('audit_logs')
+          .delete()
+          .in('action', ['USER_REJECTED', 'USER_DELETED'])
+          .or(`details->>deleted_email.ilike.${cleanEmail},details->>rejected_email.ilike.${cleanEmail}`);
+      } catch (cleanErr: any) {
+        console.warn('[Audit Log Cleanup on Re-request]', cleanErr.message);
+      }
+
       // 1. Grava no audit_logs para recuperação definitiva
       try {
         await supabase.from('audit_logs').insert({
@@ -1533,6 +1566,9 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
       try {
         // Exclui permissões de pastas vinculadas ao usuário
         await supabase.from('folder_permissions').delete().eq('user_id', userId);
+        if (targetEmail) {
+          await supabase.from('folder_permissions').delete().eq('profile_id', userId);
+        }
       } catch (permErr: any) {
         console.warn('[Folder Permissions Delete Aviso]', permErr.message);
       }
@@ -1541,6 +1577,11 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
         let { error } = await supabase.from('profiles').delete().eq('id', userId);
         if (targetEmail) {
           await supabase.from('profiles').delete().eq('email', targetEmail);
+        }
+
+        // Limpa registros anteriores de ACCESS_REQUEST do mesmo email no audit_logs para permitir nova solicitação limpa
+        if (targetEmail) {
+          await supabase.from('audit_logs').delete().eq('action', 'ACCESS_REQUEST').ilike('details->>email', targetEmail);
         }
 
         if (isValidUuid(userId)) {
@@ -1729,25 +1770,24 @@ app.delete('/api/folders/:id', async (req: Request, res: Response) => {
         console.warn('[Delete Folder] Aviso ao buscar arquivos para limpeza:', fFindErr);
       }
 
-      // 2. Remove arquivos associados à pasta do Supabase
-      try {
-        await supabase.from('files').delete().eq('folder_id', folderId);
-      } catch (fErr) {
-        console.warn('[Delete Folder] Aviso ao remover arquivos da pasta:', fErr);
-      }
+      // 2. Se for UUID válido no Supabase, remove arquivos e pastas no banco
+      if (isValidUuid(folderId)) {
+        try {
+          await supabase.from('files').delete().eq('folder_id', folderId);
+        } catch (fErr) {
+          console.warn('[Delete Folder] Aviso ao remover arquivos da pasta:', fErr);
+        }
 
-      // 3. Remove subpastas filhas
-      try {
-        await supabase.from('folders').delete().eq('parent_id', folderId);
-      } catch (subErr) {
-        console.warn('[Delete Folder] Aviso ao remover subpastas:', subErr);
-      }
+        try {
+          await supabase.from('folders').delete().eq('parent_id', folderId);
+        } catch (subErr) {
+          console.warn('[Delete Folder] Aviso ao remover subpastas:', subErr);
+        }
 
-      // 4. Executa DELETE na tabela folders
-      const { error } = await supabase.from('folders').delete().eq('id', folderId);
-      if (error) {
-        console.warn('[Delete Folder] Erro ao deletar no Supabase:', error.message);
-        return res.status(400).json({ error: error.message });
+        const { error } = await supabase.from('folders').delete().eq('id', folderId);
+        if (error) {
+          console.warn('[Delete Folder] Erro ao deletar no Supabase:', error.message);
+        }
       }
 
       // 5. Registra no audit_logs

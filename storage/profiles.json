@@ -1,58 +1,69 @@
 [
   {
-    "id": "usr-1789619153662",
-    "email": "antonio@gmail.com",
-    "full_name": "Antonio",
-    "sector": "Cliente",
-    "role": "client",
-    "status": "approved",
-    "avatar_url": "/api/r2/avatar/usr-1789619153662.webp?t=1789647206133",
-    "created_at": "2026-09-17T04:25:53.662Z",
-    "updated_at": "2026-09-17T12:13:29.189Z"
-  },
-  {
-    "id": "usr-1789618924217",
-    "email": "carlos@gmail.com",
-    "full_name": "Calos",
-    "sector": "Cliente",
-    "role": "client",
-    "status": "approved",
-    "avatar_url": null,
-    "created_at": "2026-09-17T04:22:04.217Z",
-    "updated_at": "2026-09-17T04:22:04.217Z"
-  },
-  {
-    "id": "usr-1789617741611",
-    "email": "lucas@gmail.com",
-    "full_name": "Lucas",
-    "sector": "Cliente",
-    "role": "client",
-    "status": "approved",
-    "avatar_url": null,
-    "created_at": "2026-09-17T04:02:21.611Z",
-    "updated_at": "2026-09-17T04:03:18.190Z"
-  },
-  {
-    "id": "usr-1789590292340",
-    "email": "iurd@gmail.com",
-    "full_name": "Iurd1",
+    "id": "usr-1789791875061",
+    "email": "dughhda@gmail.com",
+    "full_name": "duda",
     "sector": "Fiscal",
-    "role": "editor",
-    "status": "approved",
+    "role": "viewer",
+    "status": "pending",
     "avatar_url": null,
-    "created_at": "2026-09-16T20:24:52.340Z",
-    "updated_at": "2026-09-16T20:25:06.802Z"
+    "created_at": "2026-09-19T04:24:35.061Z",
+    "updated_at": "2026-09-19T04:24:35.061Z"
   },
   {
-    "id": "usr-1789588880768",
-    "email": "paulobmiranda3@gmail.com",
-    "full_name": "Pauloooo",
-    "sector": "Diretoria",
+    "id": "usr-1789791650057",
+    "email": "duda@gmail.com",
+    "full_name": "duda",
+    "sector": "Fiscal",
     "role": "viewer",
-    "status": "approved",
+    "status": "pending",
     "avatar_url": null,
-    "created_at": "2026-09-16T20:01:20.769Z",
-    "updated_at": "2026-09-17T00:54:20.575Z"
+    "created_at": "2026-09-19T04:20:50.057Z",
+    "updated_at": "2026-09-19T04:20:50.057Z"
+  },
+  {
+    "id": "usr-1789791358780",
+    "email": "qfahsjjajjna@gmail.com",
+    "full_name": "paulobmindam",
+    "sector": "Contábil",
+    "role": "viewer",
+    "status": "pending",
+    "avatar_url": null,
+    "created_at": "2026-09-19T04:15:58.780Z",
+    "updated_at": "2026-09-19T04:15:58.780Z"
+  },
+  {
+    "id": "usr-1789791087452",
+    "email": "juquinha@gmail.com",
+    "full_name": "zbshs",
+    "sector": "Contábil",
+    "role": "viewer",
+    "status": "pending",
+    "avatar_url": null,
+    "created_at": "2026-09-19T04:11:27.452Z",
+    "updated_at": "2026-09-19T04:11:27.452Z"
+  },
+  {
+    "id": "usr-1789790914024",
+    "email": "paulobmiranda1111@gmail.com",
+    "full_name": "paulon",
+    "sector": "Contábil",
+    "role": "viewer",
+    "status": "pending",
+    "avatar_url": null,
+    "created_at": "2026-09-19T04:08:34.024Z",
+    "updated_at": "2026-09-19T04:08:34.024Z"
+  },
+  {
+    "id": "usr-1789790706183",
+    "email": "paulobmiranda11@gmail.com",
+    "full_name": "paulon",
+    "sector": "Financeiro",
+    "role": "admin",
+    "status": "active",
+    "avatar_url": null,
+    "created_at": "2026-09-19T04:05:06.183Z",
+    "updated_at": "2026-09-19T04:10:08.856Z"
   },
   {
     "id": "57e1d483-669b-4791-b09e-7496570e63ea",
@@ -66,33 +77,13 @@
     "updated_at": "2026-09-14T16:43:39.722+00:00"
   },
   {
-    "id": "usr-1789515970493",
-    "email": "paulobmiranda1@gmail.com",
-    "full_name": "paulo",
+    "id": "usr-1789770441202",
+    "email": "danilcontabilidade@gmail.com",
+    "full_name": "Verônica Pereira da Costa",
     "sector": "Fiscal",
     "role": "viewer",
     "status": "approved",
-    "created_at": "2026-09-15T23:46:12.16866+00:00",
-    "updated_at": "2026-09-16T19:58:37.471Z"
-  },
-  {
-    "id": "usr-1789518925051",
-    "email": "paulobmiranda12@gmail.com",
-    "full_name": "paulobmiranda",
-    "sector": "Fiscal",
-    "role": "viewer",
-    "status": "approved",
-    "created_at": "2026-09-16T00:35:27.374628+00:00",
-    "updated_at": "2026-09-16T20:00:07.265Z"
-  },
-  {
-    "id": "usr-1789519023818",
-    "email": "paulobmirandabhwvshw12@gmail.com",
-    "full_name": "suhuw",
-    "sector": "Contábil",
-    "role": "viewer",
-    "status": "approved",
-    "created_at": "2026-09-16T00:37:05.449975+00:00",
-    "updated_at": "2026-09-17T12:10:11.820Z"
+    "created_at": "2026-09-18T22:27:21.876011+00:00",
+    "updated_at": "2026-09-18T22:27:21.876011+00:00"
   }
 ]

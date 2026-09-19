@@ -256,7 +256,7 @@ export default function App() {
       })
       .catch(err => console.log('Erro ao carregar cabeçalho de login:', err));
 
-    // Polling interval to keep folders, files and configs in sync across all devices and sessions
+    // Polling interval to keep folders, files and configs in sync across all devices and sessions in real time
     const syncInterval = setInterval(() => {
       fetchFoldersFromApi().then(apiFolders => {
         if (apiFolders) setFolders(apiFolders);
@@ -270,34 +270,32 @@ export default function App() {
       getSiteBackgroundConfig().then(bgConfig => {
         if (bgConfig) setSiteBackgroundConfig(bgConfig);
       }).catch(() => {});
-    }, 15000);
+    }, 4000);
 
-    return () => clearInterval(syncInterval);
-
-    // Sincronizar dados mestres persistidos no Supabase
+    // Sincronizar dados mestres persistidos no Supabase no carregamento inicial
     fetchFoldersFromApi().then(apiFolders => {
-      if (apiFolders && apiFolders.length > 0) {
+      if (apiFolders) {
         setFolders(apiFolders);
       }
-    });
+    }).catch(() => {});
 
     fetchFilesFromApi().then(apiFiles => {
-      if (apiFiles && apiFiles.length > 0) {
+      if (apiFiles) {
         setFiles(apiFiles);
       }
-    });
+    }).catch(() => {});
 
     fetchAuditLogsFromApi().then(apiLogs => {
       if (apiLogs && apiLogs.length > 0) {
         setAuditLogs(apiLogs);
       }
-    });
+    }).catch(() => {});
 
     fetchFolderPermissionsFromApi().then(apiPerms => {
       if (apiPerms && apiPerms.length > 0) {
         setFolderPermissions(apiPerms);
       }
-    });
+    }).catch(() => {});
 
     fetchStorageMetrics();
     // Poll storage metrics periodically every 15 seconds for real-time tracking
@@ -308,7 +306,6 @@ export default function App() {
       fetch('/api/profiles')
         .then(res => res.json())
         .then(data => {
-          console.log('API profiles sync data:', data);
           if (data && data.profiles && Array.isArray(data.profiles)) {
             setProfiles(data.profiles);
 
@@ -344,9 +341,10 @@ export default function App() {
     };
 
     syncProfiles();
-    const profilesInterval = setInterval(syncProfiles, 5000);
+    const profilesInterval = setInterval(syncProfiles, 4000);
 
     return () => {
+      clearInterval(syncInterval);
       clearInterval(interval);
       clearInterval(profilesInterval);
     };
