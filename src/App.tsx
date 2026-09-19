@@ -473,6 +473,10 @@ export default function App() {
             return [...prev, newFolder];
           });
         })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'folders' }, (payload) => {
+          const deletedFolder = payload.old as Folder;
+          setFolders(prev => prev.filter(f => f.id !== deletedFolder.id));
+        })
         .subscribe();
     }
 
