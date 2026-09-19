@@ -308,6 +308,7 @@ export default function App() {
       fetch('/api/profiles')
         .then(res => res.json())
         .then(data => {
+          console.log('API profiles sync data:', data);
           if (data && data.profiles && Array.isArray(data.profiles)) {
             setProfiles(data.profiles);
 
@@ -339,7 +340,7 @@ export default function App() {
             });
           }
         })
-        .catch(err => console.log('Erro ao sincronizar perfis com Supabase:', err));
+        .catch(err => console.error('Erro ao sincronizar perfis com Supabase:', err));
     };
 
     syncProfiles();

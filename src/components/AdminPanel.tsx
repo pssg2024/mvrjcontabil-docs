@@ -239,6 +239,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
           ) : (
+            <div className="flex justify-end mb-4">
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center space-x-2 text-xs font-medium text-[#1B357B] bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Atualizar Fila (Sincronizar Banco)</span>
+              </button>
+            </div>
+          )}
+
+          {pendingProfiles.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {pendingProfiles.map(profile => {
                 const chosenRole = selectedRoleForApproval[profile.id] || 'viewer';
