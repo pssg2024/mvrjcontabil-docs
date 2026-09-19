@@ -229,6 +229,14 @@ export default function App() {
     localStorage.setItem('mvrj_audit_logs', JSON.stringify(auditLogs));
   }, [auditLogs]);
 
+  useEffect(() => {
+    localStorage.setItem('mvrj_background_config', JSON.stringify(siteBackgroundConfig));
+  }, [siteBackgroundConfig]);
+
+  useEffect(() => {
+    localStorage.setItem('mvrj_auth_header_config', JSON.stringify(authHeaderConfig));
+  }, [authHeaderConfig]);
+
   // Fetch backend R2 status and real-time storage metrics on load
   useEffect(() => {
     fetch('/api/r2/status')
@@ -238,20 +246,46 @@ export default function App() {
       })
       .catch(err => console.log('Backend status check:', err));
 
-    // Fetch site background customization from server
+    // Fetch site background customization from server (only update if actually changed)
     getSiteBackgroundConfig()
       .then(bgConfig => {
         if (bgConfig) {
-          setSiteBackgroundConfig(bgConfig);
+          setSiteBackgroundConfig(prev => {
+            if (
+              prev.enabled === bgConfig.enabled &&
+              prev.imageUrl === bgConfig.imageUrl &&
+              prev.opacity === bgConfig.opacity &&
+              prev.blur === bgConfig.blur &&
+              prev.overlayType === bgConfig.overlayType &&
+              prev.overlayOpacity === bgConfig.overlayOpacity &&
+              prev.position === bgConfig.position
+            ) {
+              return prev;
+            }
+            return bgConfig;
+          });
         }
       })
       .catch(err => console.log('Erro ao carregar fundo do site:', err));
 
-    // Fetch auth modal header customization from server
+    // Fetch auth modal header customization from server (only update if actually changed)
     getAuthHeaderConfig()
       .then(authConfig => {
         if (authConfig) {
-          setAuthHeaderConfig(authConfig);
+          setAuthHeaderConfig(prev => {
+            if (
+              prev.gradientPreset === authConfig.gradientPreset &&
+              prev.logoType === authConfig.logoType &&
+              prev.logoImageUrl === authConfig.logoImageUrl &&
+              prev.iconName === authConfig.iconName &&
+              prev.showIcon === authConfig.showIcon &&
+              prev.showTitle === authConfig.showTitle &&
+              prev.showSubtitle === authConfig.showSubtitle
+            ) {
+              return prev;
+            }
+            return authConfig;
+          });
         }
       })
       .catch(err => console.log('Erro ao carregar cabeçalho de login:', err));
@@ -772,15 +806,15 @@ export default function App() {
         <div
           id="global-site-background"
           aria-hidden="true"
-          className="fixed inset-0 pointer-events-none z-0 transition-all duration-500"
+          className="fixed inset-0 pointer-events-none z-0"
           style={{
             backgroundImage: `url(${siteBackgroundConfig.imageUrl})`,
             backgroundSize: siteBackgroundConfig.position === 'repeat' ? 'auto' : siteBackgroundConfig.position === 'contain' ? 'contain' : 'cover',
             backgroundRepeat: siteBackgroundConfig.position === 'repeat' ? 'repeat' : 'no-repeat',
             backgroundPosition: 'center center',
             opacity: siteBackgroundConfig.opacity / 100,
-            filter: siteBackgroundConfig.blur > 0 ? `blur(${siteBackgroundConfig.blur}px)` : 'none',
-            transform: siteBackgroundConfig.blur > 0 ? 'scale(1.04)' : 'none',
+            filter: siteBackgroundConfig.blur > 0 ? `blur(${siteBackgroundConfig.blur}px)` : undefined,
+            willChange: 'opacity',
           }}
         />
       )}
@@ -790,11 +824,12 @@ export default function App() {
         <div
           id="global-site-background-overlay"
           aria-hidden="true"
-          className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-300 ${
+          className={`fixed inset-0 pointer-events-none z-0 ${
             siteBackgroundConfig.overlayType === 'dark' ? 'bg-slate-950' : 'bg-slate-50'
           }`}
           style={{
             opacity: (siteBackgroundConfig.overlayOpacity ?? 40) / 100,
+            willChange: 'opacity',
           }}
         />
       )}
