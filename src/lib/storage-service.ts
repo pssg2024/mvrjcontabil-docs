@@ -759,7 +759,7 @@ export async function resetAuthHeaderConfig(
  */
 export async function fetchFoldersFromApi(): Promise<Folder[]> {
   try {
-    const res = await fetch('/api/folders');
+    const res = await fetch(`/api/folders?t=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const contentType = res.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) throw new Error('Not JSON');
@@ -817,7 +817,7 @@ export async function deleteFolderInApi(folderId: string): Promise<void> {
  */
 export async function fetchFilesFromApi(): Promise<DocumentFile[]> {
   try {
-    const res = await fetch('/api/files');
+    const res = await fetch(`/api/files?t=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const contentType = res.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) throw new Error('Not JSON');

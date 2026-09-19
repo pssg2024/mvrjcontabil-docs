@@ -403,9 +403,10 @@ export default function App() {
           setFolders(updatedFolders);
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, async () => {
-          // Refetch files to ensure consistency
+          // Refetch files and metrics to ensure consistency
           const updatedFiles = await fetchFilesFromApi();
           setFiles(updatedFiles);
+          fetchStorageMetrics();
         })
         .subscribe();
     }

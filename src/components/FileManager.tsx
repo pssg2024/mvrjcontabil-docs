@@ -157,12 +157,15 @@ export const FileManager: React.FC<FileManagerProps> = ({
   // Quota calculation & strict lock
   const totalQuotaBytes = storageMetrics?.totalCapacityBytes || (10 * 1024 * 1024 * 1024);
   
-  // File capacity metrics in real time - Favoring local state for immediate feedback on deletions
-  const currentFilesCount = files.length > 0 ? files.length : (storageMetrics?.filesCount || 0);
+  // File capacity metrics in real time - Use local state for immediate feedback
+  const currentFilesCount = files.length;
   const effectiveUsedBytes = totalOptimizedBytes > 0 ? totalOptimizedBytes : (storageMetrics?.usedBytes || 0);
-
+  
   const isQuotaExceeded = effectiveUsedBytes >= totalQuotaBytes || (storageMetrics ? storageMetrics.usedPercent >= 100 : false);
   const [showBlockedLimitModal, setShowBlockedLimitModal] = useState(false);
+  
+  // Percentual de ocupação baseado no número de documentos (Limite 10.000)
+  const documentsPercent = Number(((currentFilesCount / 10000) * 100).toFixed(2));
   
   const usedPercentValue = totalQuotaBytes > 0 
     ? Number(((effectiveUsedBytes / totalQuotaBytes) * 100).toFixed(2)) 
@@ -241,7 +244,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               <div className="w-full bg-white/15 h-1.5 rounded-full overflow-hidden mt-2">
                 <div 
                   className="bg-gradient-to-r from-[#C59B4B] to-[#E2B963] h-full rounded-full transition-all duration-500" 
-                  style={{ width: `${Math.max(currentFilesCount > 0 ? 2 : 0, Math.min(100, (currentFilesCount / 10000) * 100))}%` }}
+                  style={{ width: `${Math.max(currentFilesCount > 0 ? 2 : 0, Math.min(100, documentsPercent))}%` }}
                 />
               </div>
             </div>
