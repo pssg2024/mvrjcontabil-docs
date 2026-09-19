@@ -449,7 +449,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               title="Filtrar guias e obrigações vencidas ou com vencimento nos próximos 7 dias"
             >
               <Clock className={`w-3.5 h-3.5 ${dueFilter === 'EXPIRING_OR_OVERDUE' ? 'text-slate-950' : 'text-amber-700'}`} />
-              <span>Perto de Vencer</span>
+              <span>⚠️ A Vencer / Vencidos</span>
               {expiringOrOverdueCount > 0 && (
                 <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                   dueFilter === 'EXPIRING_OR_OVERDUE'

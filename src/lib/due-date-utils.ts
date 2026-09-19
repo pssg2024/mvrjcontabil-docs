@@ -36,37 +36,35 @@ export function getDueDateInfo(dueDateStr?: string | null): DueDateInfo | null {
     const shortDate = `${dayStr}/${monthStr}`;
 
     if (diffDays < 0) {
-      const absDays = Math.abs(diffDays);
-      const label = absDays === 1 ? `Vencido ontem (${shortDate})` : `Vencido (${shortDate})`;
       return {
         status: 'expired',
-        label,
+        label: `🔴 Venceu em ${shortDate}`,
         formattedDate,
         diffDays,
-        badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-md inline-flex items-center gap-1 shadow-2xs',
+        badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs',
       };
     }
 
-    if (diffDays <= 7) {
-      let label = `Vence em ${diffDays} dias (${shortDate})`;
-      if (diffDays === 0) label = `Vence hoje (${shortDate})`;
-      else if (diffDays === 1) label = `Vence amanhã (${shortDate})`;
+    if (diffDays <= 5) {
+      let label = `⚠️ Vence em ${diffDays} dias (${shortDate})`;
+      if (diffDays === 0) label = `⚠️ Vence hoje (${shortDate})`;
+      else if (diffDays === 1) label = `⚠️ Vence amanhã (${shortDate})`;
 
       return {
         status: 'soon',
         label,
         formattedDate,
         diffDays,
-        badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-semibold px-2 py-0.5 rounded-md inline-flex items-center gap-1 shadow-2xs',
+        badgeClass: 'bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-semibold px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs',
       };
     }
 
     return {
       status: 'ok',
-      label: `No prazo (${shortDate})`,
+      label: `Vence em ${shortDate}`,
       formattedDate,
       diffDays,
-      badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-2 py-0.5 rounded-md inline-flex items-center gap-1',
+      badgeClass: 'bg-slate-100 text-slate-600 text-[11px] px-2.5 py-0.5 rounded-lg',
     };
   } catch {
     return null;
