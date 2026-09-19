@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "id": "8efda902-caa3-4690-b89e-18d76817fd14",
+    "folder_id": "34f11d5c-cbbc-48f0-b15c-86543d913833",
+    "name": "72100-nfe.pdf",
+    "storage_key": "sectors/diretoria/34f11d5c-cbbc-48f0-b15c-86543d913833/1789850927218-72100-nfe.pdf",
+    "mime_type": "application/pdf",
+    "original_size": 121092,
+    "optimized_size": 113930,
+    "compression_ratio": 6,
+    "pages_count": 1,
+    "tags": [
+      "Contábil",
+      "2026",
+      "Diretoria"
+    ],
+    "uploaded_by": "57e1d483-669b-4791-b09e-7496570e63ea",
+    "uploader_name": "Evandro (Administrador)",
+    "sector": "Diretoria",
+    "checksum_sha256": "588d01d98e97c1c07dfa8d19158ded467b08f96d427975a5e9980c15b728703d",
+    "is_archived": false,
+    "created_at": "2026-09-19T20:48:52.23274+00:00",
+    "updated_at": "2026-09-19T20:48:52.132+00:00",
+    "preview_url": "/api/r2/view?key=sectors%2Fdiretoria%2F34f11d5c-cbbc-48f0-b15c-86543d913833%2F1789850927218-72100-nfe.pdf&name=72100-nfe.pdf"
+  }
+]

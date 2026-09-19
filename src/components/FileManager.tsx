@@ -125,7 +125,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
     const matchesCompetence = (selectedMonth === 'ALL' || file.tags.some(t => t.includes(selectedMonth))) &&
                               (selectedYear === 'ALL' || file.tags.some(t => t.includes(selectedYear)));
 
-    const matchesSector = selectedSector === 'ALL' || file.sector === selectedSector;
+    // When inside a specific folder, files of that folder are shown directly; on root/global search, respect selected sector filter
+    const matchesSector = currentFolderId 
+      ? true 
+      : (selectedSector === 'ALL' || file.sector === selectedSector);
     if (!matchesSector) return false;
 
     const hasPerm = file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true;
@@ -133,13 +136,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
     if (searchQuery) {
       // Global search returns matching files the user has permission to see
-      return matchesSearch && matchesCompetence;
+      return matchesSearch && matchesCompetence && (selectedSector === 'ALL' || file.sector === selectedSector);
     }
 
     // In regular navigation, show files in current folder strictly
     const isInCurrentFolder = currentFolderId 
-      ? file.folder_id === currentFolderId 
-      : (!file.folder_id || file.folder_id === null || file.folder_id === 'root');
+      ? (file.folder_id === currentFolderId || String(file.folder_id).toLowerCase() === String(currentFolderId).toLowerCase())
+      : (!file.folder_id || file.folder_id === null || file.folder_id === '' || file.folder_id === 'root' || file.folder_id === 'fold-fisc-root');
     if (!isInCurrentFolder) return false;
     return matchesSearch && matchesCompetence;
   });
@@ -244,7 +247,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
             </p>
           </div>
 
-          {/* Clean & Elegant Dual Metrics Cards (Tempo Real) */}
+          {/* Documentos Metrics Card */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 shrink-0 w-full lg:w-auto">
             {/* Card 1 - Total de Arquivos & Quanto Ainda Cabe */}
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 sm:p-4 border border-[#C59B4B]/30 shadow-xs flex-1 sm:flex-initial min-w-[210px] sm:min-w-[230px]">
@@ -293,58 +296,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         : 'bg-gradient-to-r from-[#C59B4B] via-[#E2B963] to-emerald-400'
                   }`} 
                   style={{ width: `${Math.max(currentFilesCount > 0 ? 3 : 0, Math.min(100, documentsPercent))}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Card 2 - Espaço em Disco Cloudflare R2 / Supabase */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 sm:p-4 border border-[#C59B4B]/30 shadow-xs flex-1 sm:flex-initial min-w-[210px] sm:min-w-[230px]">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <div className="flex items-center space-x-1.5">
-                  <HardDrive className="w-3.5 h-3.5 text-[#E2B963]" />
-                  <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wider">
-                    Espaço em Disco
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleRefreshClick}
-                  title="Atualizar métricas em tempo real"
-                  className="p-1 hover:bg-white/20 rounded-md text-slate-300 hover:text-white transition-colors cursor-pointer"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingLocal ? 'animate-spin text-[#E2B963]' : ''}`} />
-                </button>
-              </div>
-
-              <div className="flex items-baseline space-x-1.5 mt-0.5">
-                <strong className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                  {formatBytes(effectiveUsedBytes)}
-                </strong>
-                <span className="text-xs text-slate-300 font-semibold">
-                  / {formatBytes(totalQuotaBytes)}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] font-semibold mt-1.5 text-slate-300">
-                <span className="text-emerald-400">
-                  Livre: <strong className="text-white font-bold">{formatBytes(remainingBytes)}</strong>
-                </span>
-                <span className="text-[#E2B963] text-[10px] font-bold">
-                  {overallSavingsPercent}% economia
-                </span>
-              </div>
-
-              {/* Barra de progresso de espaço */}
-              <div className="w-full bg-white/15 h-2 rounded-full overflow-hidden mt-2.5">
-                <div 
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    usedPercentValue >= 95 
-                      ? 'bg-rose-500' 
-                      : usedPercentValue >= 80 
-                        ? 'bg-amber-400' 
-                        : 'bg-gradient-to-r from-blue-400 via-[#C59B4B] to-[#E2B963]'
-                  }`} 
-                  style={{ width: `${Math.max(effectiveUsedBytes > 0 ? 3 : 0, Math.min(100, usedPercentValue))}%` }}
                 />
               </div>
             </div>

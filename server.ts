@@ -1852,6 +1852,45 @@ async function saveR2Folders(foldersList: StoredFolder[]) {
   }
 }
 
+async function fetchR2Files(): Promise<StoredFile[]> {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return [];
+  try {
+    const res = await client.send(new GetObjectCommand({
+      Bucket: bucketName,
+      Key: R2_FILES_KEY,
+    }));
+    if (res.Body) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as any) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (err) {}
+  return [];
+}
+
+async function saveR2Files(filesList: StoredFile[]) {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return;
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: R2_FILES_KEY,
+      Body: Buffer.from(JSON.stringify(filesList, null, 2), 'utf-8'),
+      ContentType: 'application/json',
+      Metadata: {
+        'system-sync': 'files',
+        'updated-at': new Date().toISOString(),
+      },
+    }));
+  } catch (err: any) {
+    console.warn('[R2 Files Save Aviso]', err.message);
+  }
+}
+
 async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
   const supabase = getSupabaseServerClient();
   if (supabase) {
@@ -1874,6 +1913,7 @@ async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
         }));
         persistedFolders = mapped;
         savePersistedFolders();
+        saveR2Folders(mapped).catch(() => {});
         return mapped;
       } else if (error) {
         console.error('[FOLDERS SYNC] Erro ao buscar pastas no Supabase:', error.message);
@@ -1890,76 +1930,113 @@ async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
 async function getAllUnifiedFiles(): Promise<StoredFile[]> {
   const filesMap = new Map<string, StoredFile>();
   
+  // 1. Carrega do armazenamento persistente em disco
   loadPersistedFiles();
   for (const f of persistedFiles) {
-    filesMap.set(f.id, f);
+    if (f && f.id) filesMap.set(f.id, f);
   }
 
+  // 2. Se local estiver vazio, restaura a partir do Cloudflare R2
+  if (filesMap.size === 0) {
+    try {
+      const r2Files = await fetchR2Files();
+      for (const rf of r2Files) {
+        if (rf && rf.id) filesMap.set(rf.id, rf);
+      }
+    } catch (e) {}
+  }
+
+  // 3. Sincroniza e consolida com Supabase de forma segura (sem apagar arquivos locais recém-criados!)
   const supabase = getSupabaseServerClient();
   if (supabase) {
     try {
       const { data: dbFiles, error } = await supabase
         .from('files')
-        .select('*, folders(name, sector)')
+        .select('*, folders(name, sector), profiles:uploaded_by(full_name, email)')
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(dbFiles)) {
-        console.log(`[FILES SYNC] DB retornou ${dbFiles.length} arquivos. (Supabase Authority)`);
-        
-        if (dbFiles.length === 0 && filesMap.size > 0) {
-          console.log('[FILES SYNC] DB Vazio detectado. Semeando arquivos locais...');
-          const localFiles = Array.from(filesMap.values());
-          for (const lf of localFiles) {
+        // Atualiza ou insere dados autoritativos vindos do Supabase
+        for (const f of dbFiles) {
+          const folder = f.folders as any;
+          const profile = f.profiles as any;
+          const resolvedSector = folder?.sector || persistedFolders.find(pf => pf.id === f.folder_id)?.sector || f.sector || 'Fiscal';
+          const resolvedUploaderName = profile?.full_name || f.uploader_name || 'Evandro (Administrador)';
+
+          filesMap.set(f.id, {
+            id: f.id,
+            folder_id: f.folder_id,
+            name: f.name,
+            storage_key: f.storage_key,
+            mime_type: f.mime_type,
+            original_size: Number(f.original_size) || 0,
+            optimized_size: Number(f.optimized_size) || 0,
+            compression_ratio: Number(f.compression_ratio) || 0,
+            pages_count: f.pages_count || 1,
+            tags: Array.isArray(f.tags) ? f.tags : [],
+            uploaded_by: f.uploaded_by || '57e1d483-669b-4791-b09e-7496570e63ea',
+            uploader_name: resolvedUploaderName,
+            sector: resolvedSector,
+            checksum_sha256: f.checksum_sha256,
+            due_date: f.due_date || undefined,
+            is_archived: f.is_archived || false,
+            created_at: f.created_at,
+            updated_at: f.updated_at,
+            preview_url: `/api/r2/view?key=${encodeURIComponent(f.storage_key)}&name=${encodeURIComponent(f.name)}`,
+          });
+        }
+
+        // Para qualquer arquivo local que ainda não esteja no Supabase, envia em background
+        const dbFileIds = new Set(dbFiles.map(df => df.id));
+        for (const [id, localFile] of filesMap.entries()) {
+          if (!dbFileIds.has(id)) {
             try {
-              const payload = {
-                id: lf.id,
-                folder_id: lf.folder_id,
-                name: lf.name,
-                storage_key: lf.storage_key,
-                mime_type: lf.mime_type,
-                original_size: lf.original_size,
-                optimized_size: lf.optimized_size,
-                compression_ratio: lf.compression_ratio,
-                pages_count: lf.pages_count,
-                tags: lf.tags,
-                uploaded_by: isValidUuid(lf.uploaded_by) ? lf.uploaded_by : null,
-                uploader_name: lf.uploader_name,
-                checksum_sha256: lf.checksum_sha256,
-                created_at: lf.created_at,
-                updated_at: lf.updated_at,
-              };
-              await supabase.from('files').upsert(payload);
-            } catch (seedErr) {
-              console.error('[FILES SYNC] Falha ao semear arquivo:', lf.name, seedErr);
+              let resFolderId = localFile.folder_id;
+              if (!isValidUuid(resFolderId)) {
+                resFolderId = toDeterministicUuid(localFile.folder_id || 'fold-fisc-root');
+              }
+              
+              // Garante que a pasta existe no Supabase para não quebrar FK
+              const { data: fCheck } = await supabase.from('folders').select('id').eq('id', resFolderId).maybeSingle();
+              if (!fCheck) {
+                await supabase.from('folders').upsert({
+                  id: resFolderId,
+                  name: localFile.sector || 'Geral',
+                  sector: localFile.sector || 'Fiscal',
+                  created_at: new Date().toISOString(),
+                });
+              }
+
+              let uploaderUuid: string | null = null;
+              if (isValidUuid(localFile.uploaded_by)) {
+                const { data: pCheck } = await supabase.from('profiles').select('id').eq('id', localFile.uploaded_by).maybeSingle();
+                if (pCheck) uploaderUuid = pCheck.id;
+              }
+
+              await supabase.from('files').upsert({
+                id: localFile.id,
+                folder_id: resFolderId,
+                name: localFile.name,
+                storage_key: localFile.storage_key,
+                mime_type: localFile.mime_type,
+                original_size: localFile.original_size,
+                optimized_size: localFile.optimized_size,
+                compression_ratio: localFile.compression_ratio,
+                pages_count: localFile.pages_count,
+                tags: localFile.tags,
+                uploaded_by: uploaderUuid,
+                checksum_sha256: localFile.checksum_sha256 || null,
+                due_date: localFile.due_date || null,
+                created_at: localFile.created_at,
+                updated_at: localFile.updated_at,
+              });
+            } catch (syncSingleErr) {
+              console.warn('[Sync Local File to DB Error]', localFile.name, syncSingleErr);
             }
           }
-        } else {
-          filesMap.clear(); // DB is authority
-          for (const f of dbFiles) {
-            const folder = f.folders as any;
-            filesMap.set(f.id, {
-              id: f.id,
-              folder_id: f.folder_id,
-              name: f.name,
-              storage_key: f.storage_key,
-              mime_type: f.mime_type,
-              original_size: Number(f.original_size) || 0,
-              optimized_size: Number(f.optimized_size) || 0,
-              compression_ratio: Number(f.compression_ratio) || 0,
-              pages_count: f.pages_count || 1,
-              tags: Array.isArray(f.tags) ? f.tags : [],
-              uploaded_by: f.uploaded_by || '57e1d483-669b-4791-b09e-7496570e63ea',
-              uploader_name: 'Evandro (Administrador)',
-              sector: folder?.sector || 'Fiscal',
-              checksum_sha256: f.checksum_sha256,
-              due_date: f.due_date || undefined,
-              is_archived: f.is_archived || false,
-              created_at: f.created_at,
-              updated_at: f.updated_at,
-              preview_url: `/api/r2/view?key=${encodeURIComponent(f.storage_key)}&name=${encodeURIComponent(f.name)}`,
-            });
-          }
         }
+      } else if (error) {
+        console.error('[FILES SYNC] Erro ao buscar arquivos no Supabase:', error.message);
       }
     } catch (err: any) {
       console.warn('[ARQUIVOS] Aviso Sync Supabase:', err.message);
@@ -1968,6 +2045,8 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
 
   const result = Array.from(filesMap.values());
   persistedFiles = result;
+  savePersistedFiles();
+  saveR2Files(result).catch(() => {});
   return result;
 }
 
@@ -2191,6 +2270,7 @@ app.post('/api/files', async (req: Request, res: Response) => {
     }
 
     const fileId = crypto.randomUUID();
+    const resolvedUploaderName = req.body.uploader_name || 'Evandro (Administrador)';
     const newFile: StoredFile = {
       id: fileId,
       folder_id: folder_id || 'fold-fisc-root',
@@ -2203,19 +2283,20 @@ app.post('/api/files', async (req: Request, res: Response) => {
       pages_count: Number(pages_count) || 1,
       tags: Array.isArray(tags) ? tags : [],
       uploaded_by: uploaded_by || '57e1d483-669b-4791-b09e-7496570e63ea',
-      uploader_name: 'Evandro (Administrador)',
+      uploader_name: resolvedUploaderName,
       sector: sector || 'Fiscal',
       checksum_sha256: checksum_sha256 || undefined,
       due_date: due_date || undefined,
       is_archived: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      preview_url: `/api/r2/download?key=${encodeURIComponent(storage_key)}&name=${encodeURIComponent(name)}`,
+      preview_url: `/api/r2/view?key=${encodeURIComponent(storage_key)}&name=${encodeURIComponent(name)}`,
     };
 
-    // 1. Immediately save to disk and memory
+    // 1. Immediately save to disk, memory and Cloudflare R2 backup
     persistedFiles.unshift(newFile);
     savePersistedFiles();
+    saveR2Files(persistedFiles).catch(() => {});
 
     // 2. Sync to Supabase if connected
     const supabase = getSupabaseServerClient();
@@ -2223,10 +2304,26 @@ app.post('/api/files', async (req: Request, res: Response) => {
       try {
         let resolvedFolderId = folder_id;
         if (!isValidUuid(resolvedFolderId)) {
-          resolvedFolderId = toDeterministicUuid(folder_id);
+          resolvedFolderId = toDeterministicUuid(folder_id || 'fold-fisc-root');
+        }
+
+        // Garante que a pasta existe no Supabase para não quebrar chave estrangeira
+        const { data: fCheck } = await supabase.from('folders').select('id').eq('id', resolvedFolderId).maybeSingle();
+        if (!fCheck) {
+          const localFolder = persistedFolders.find(pf => pf.id === folder_id || toDeterministicUuid(pf.id) === resolvedFolderId);
+          await supabase.from('folders').upsert({
+            id: resolvedFolderId,
+            name: localFolder?.name || sector || 'Pasta Geral',
+            sector: localFolder?.sector || sector || 'Fiscal',
+            created_at: new Date().toISOString(),
+          });
         }
 
         let resolvedUploaderId = isValidUuid(uploaded_by) ? uploaded_by : null;
+        if (resolvedUploaderId) {
+          const { data: profCheck } = await supabase.from('profiles').select('id').eq('id', resolvedUploaderId).maybeSingle();
+          if (!profCheck) resolvedUploaderId = null;
+        }
         if (!resolvedUploaderId) {
           const { data: adminProfiles } = await supabase.from('profiles').select('id').eq('role', 'admin').limit(1);
           if (adminProfiles && adminProfiles[0]) {
@@ -2252,14 +2349,17 @@ app.post('/api/files', async (req: Request, res: Response) => {
 
         if (due_date) payload.due_date = due_date;
 
-        await supabase.from('files').upsert(payload);
+        const { error: sbFileErr } = await supabase.from('files').upsert(payload);
+        if (sbFileErr) {
+          console.error('[Supabase File Sync Error]', sbFileErr.message);
+        }
 
         await supabase.from('audit_logs').insert({
           action: 'FILE_UPLOAD',
           target_type: 'FILE',
           target_id: fileId,
           profile_id: resolvedUploaderId,
-          user_name: 'Evandro (Administrador)',
+          user_name: resolvedUploaderName,
           sector: sector || 'Fiscal',
           details: {
             name: newFile.name,
@@ -2289,6 +2389,7 @@ app.delete('/api/files/:id', async (req: Request, res: Response) => {
     const targetFile = persistedFiles.find(f => f.id === fileId);
     persistedFiles = persistedFiles.filter(f => f.id !== fileId);
     savePersistedFiles();
+    saveR2Files(persistedFiles).catch(() => {});
 
     // 2. Remove from R2
     if (targetFile?.storage_key) {

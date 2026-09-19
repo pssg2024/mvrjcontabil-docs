@@ -282,12 +282,10 @@ export default function App() {
       })
       .catch(err => console.log('Erro ao carregar cabeçalho de login:', err));
 
-    // Background sync to keep folders, files and profiles in sync across all devices
+    // Background sync to keep folders, files and profiles in sync in real time across all devices and tabs
     let isSyncing = false;
     const syncData = async () => {
       if (isSyncing) return;
-      // If user created, edited or deleted a folder in the last 12 seconds, postpone background sync to prevent race conditions
-      if (Date.now() - lastFolderActionRef.current < 12000) return;
       isSyncing = true;
       try {
         const [apiFolders, apiFiles] = await Promise.all([
@@ -295,22 +293,53 @@ export default function App() {
           fetchFilesFromApi().catch(() => null),
         ]);
 
-        console.log('[FOLDERS SYNC] Pastas recebidas da API:', apiFolders);
-
         if (apiFolders && Array.isArray(apiFolders)) {
-          setFolders(apiFolders);
+          setFolders(prev => {
+            if (
+              prev.length !== apiFolders.length ||
+              prev.some((f, idx) => f.id !== apiFolders[idx]?.id || f.name !== apiFolders[idx]?.name || f.parent_id !== apiFolders[idx]?.parent_id)
+            ) {
+              return apiFolders;
+            }
+            return prev;
+          });
           try {
             localStorage.setItem('mvrj_folders', JSON.stringify(apiFolders));
           } catch {}
         }
 
-        if (apiFiles && Array.isArray(apiFiles) && apiFiles.length > 0) {
-          setFiles(apiFiles);
+        if (apiFiles && Array.isArray(apiFiles)) {
+          setFiles(prev => {
+            if (
+              prev.length !== apiFiles.length ||
+              prev.some((f, idx) => f.id !== apiFiles[idx]?.id || f.updated_at !== apiFiles[idx]?.updated_at || f.name !== apiFiles[idx]?.name || f.folder_id !== apiFiles[idx]?.folder_id)
+            ) {
+              return apiFiles;
+            }
+            return prev;
+          });
+          try {
+            localStorage.setItem('mvrj_files', JSON.stringify(apiFiles));
+          } catch {}
         }
       } finally {
         isSyncing = false;
       }
     };
+
+    // BroadcastChannel for instant cross-tab sync in the browser
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('mvrj_realtime_sync');
+        bc.onmessage = (event) => {
+          if (event.data?.type === 'SYNC_ALL' || event.data?.type === 'SYNC_FILES') {
+            syncData();
+            fetchStorageMetrics();
+          }
+        };
+      }
+    } catch {}
 
     // Profiles sync from API with proper JSON and status validation
     const syncProfiles = async () => {
@@ -370,7 +399,6 @@ export default function App() {
 
     // Initial load
     fetchFoldersFromApi().then(apiFolders => {
-      console.log('[FOLDERS SYNC] Initial load - Pastas recebidas:', apiFolders);
       if (apiFolders && Array.isArray(apiFolders)) {
         setFolders(apiFolders);
       }
@@ -393,12 +421,12 @@ export default function App() {
     fetchStorageMetrics();
     syncProfiles();
 
-    // Intervals otimizados para fluidez total do site
-    const syncInterval = setInterval(syncData, 8000);
-    const profilesInterval = setInterval(syncProfiles, 8000);
-    const metricsInterval = setInterval(fetchStorageMetrics, 10000);
+    // Intervals otimizados para tempo real (polling de 2.5s garante atualização rápida entre dispositivos)
+    const syncInterval = setInterval(syncData, 2500);
+    const profilesInterval = setInterval(syncProfiles, 6000);
+    const metricsInterval = setInterval(fetchStorageMetrics, 5000);
 
-    // Realtime subscription for folders and files
+    // Realtime subscription for folders and files via Supabase
     const supabaseClient = getSupabase();
     let channel: any = null;
     if (supabaseClient) {
@@ -421,6 +449,9 @@ export default function App() {
       clearInterval(syncInterval);
       clearInterval(profilesInterval);
       clearInterval(metricsInterval);
+      if (bc) {
+        try { bc.close(); } catch {}
+      }
       if (channel) {
         supabaseClient?.removeChannel(channel);
       }
@@ -615,6 +646,17 @@ export default function App() {
     });
   };
 
+  // Helper to notify other tabs immediately
+  const notifyBroadcastSync = () => {
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('mvrj_realtime_sync');
+        bc.postMessage({ type: 'SYNC_ALL' });
+        bc.close();
+      }
+    } catch {}
+  };
+
   // Handlers for File & Folder Operations
   const handleUploadSuccess = (newDoc: DocumentFile) => {
     setFiles(prev => {
@@ -627,6 +669,7 @@ export default function App() {
         setFiles(apiFiles);
       }
     });
+    notifyBroadcastSync();
     logAudit('FILE_UPLOAD', 'FILE', newDoc.id, {
       name: newDoc.name,
       original_size: newDoc.original_size,
@@ -662,6 +705,7 @@ export default function App() {
         return updated;
       });
 
+      notifyBroadcastSync();
       logAudit('FOLDER_CREATE', 'FOLDER', newFolderItem.id, { name, sector, parentId });
       return newFolderItem;
     } catch (err: any) {
@@ -687,6 +731,7 @@ export default function App() {
         try {
           await deleteFileInApi(fileId);
           fetchStorageMetrics();
+          notifyBroadcastSync();
         } catch (err) {
           console.warn('Erro ao excluir no Supabase/R2:', err);
           // Refresh to sync state if failed
@@ -718,6 +763,7 @@ export default function App() {
         try {
           await deleteFolderInApi(folderId);
           fetchStorageMetrics();
+          notifyBroadcastSync();
         } catch (err: any) {
           console.warn('Aviso ao excluir pasta na API:', err);
           // Refresh to sync state if failed
