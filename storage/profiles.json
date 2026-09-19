@@ -1,60 +1,5 @@
 [
   {
-    "id": "usr-1789791875061",
-    "email": "dughhda@gmail.com",
-    "full_name": "duda",
-    "sector": "Fiscal",
-    "role": "viewer",
-    "status": "pending",
-    "avatar_url": null,
-    "created_at": "2026-09-19T04:24:35.061Z",
-    "updated_at": "2026-09-19T04:24:35.061Z"
-  },
-  {
-    "id": "usr-1789791650057",
-    "email": "duda@gmail.com",
-    "full_name": "duda",
-    "sector": "Fiscal",
-    "role": "viewer",
-    "status": "pending",
-    "avatar_url": null,
-    "created_at": "2026-09-19T04:20:50.057Z",
-    "updated_at": "2026-09-19T04:20:50.057Z"
-  },
-  {
-    "id": "usr-1789791358780",
-    "email": "qfahsjjajjna@gmail.com",
-    "full_name": "paulobmindam",
-    "sector": "Contábil",
-    "role": "viewer",
-    "status": "pending",
-    "avatar_url": null,
-    "created_at": "2026-09-19T04:15:58.780Z",
-    "updated_at": "2026-09-19T04:15:58.780Z"
-  },
-  {
-    "id": "usr-1789791087452",
-    "email": "juquinha@gmail.com",
-    "full_name": "zbshs",
-    "sector": "Contábil",
-    "role": "viewer",
-    "status": "pending",
-    "avatar_url": null,
-    "created_at": "2026-09-19T04:11:27.452Z",
-    "updated_at": "2026-09-19T04:11:27.452Z"
-  },
-  {
-    "id": "usr-1789790914024",
-    "email": "paulobmiranda1111@gmail.com",
-    "full_name": "paulon",
-    "sector": "Contábil",
-    "role": "viewer",
-    "status": "pending",
-    "avatar_url": null,
-    "created_at": "2026-09-19T04:08:34.024Z",
-    "updated_at": "2026-09-19T04:08:34.024Z"
-  },
-  {
     "id": "usr-1789790706183",
     "email": "paulobmiranda11@gmail.com",
     "full_name": "paulon",
@@ -85,5 +30,15 @@
     "status": "approved",
     "created_at": "2026-09-18T22:27:21.876011+00:00",
     "updated_at": "2026-09-18T22:27:21.876011+00:00"
+  },
+  {
+    "id": "usr-1789585422566",
+    "email": "paulobmiranda1@gmail.com",
+    "full_name": "Paulo",
+    "sector": "Departamento Pessoal",
+    "role": "viewer",
+    "status": "pending",
+    "created_at": "2026-09-16T19:03:41.92032+00:00",
+    "updated_at": "2026-09-16T19:03:41.92032+00:00"
   }
 ]

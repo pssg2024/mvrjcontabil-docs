@@ -256,97 +256,108 @@ export default function App() {
       })
       .catch(err => console.log('Erro ao carregar cabeçalho de login:', err));
 
-    // Polling interval to keep folders, files and configs in sync across all devices and sessions in real time
-    const syncInterval = setInterval(() => {
-      fetchFoldersFromApi().then(apiFolders => {
+    // Background sync to keep folders, files and profiles in sync across all devices
+    let isSyncing = false;
+    const syncData = async () => {
+      if (isSyncing) return;
+      isSyncing = true;
+      try {
+        const [apiFolders, apiFiles] = await Promise.all([
+          fetchFoldersFromApi().catch(() => null),
+          fetchFilesFromApi().catch(() => null),
+        ]);
         if (apiFolders) setFolders(apiFolders);
-      }).catch(() => {});
-      fetchFilesFromApi().then(apiFiles => {
         if (apiFiles) setFiles(apiFiles);
-      }).catch(() => {});
-      getAuthHeaderConfig().then(authConfig => {
-        if (authConfig) setAuthHeaderConfig(authConfig);
-      }).catch(() => {});
-      getSiteBackgroundConfig().then(bgConfig => {
-        if (bgConfig) setSiteBackgroundConfig(bgConfig);
-      }).catch(() => {});
-    }, 4000);
-
-    // Sincronizar dados mestres persistidos no Supabase no carregamento inicial
-    fetchFoldersFromApi().then(apiFolders => {
-      if (apiFolders) {
-        setFolders(apiFolders);
+      } finally {
+        isSyncing = false;
       }
+    };
+
+    // Profiles sync from API with proper JSON and status validation
+    const syncProfiles = async () => {
+      try {
+        const res = await fetch('/api/profiles');
+        if (!res.ok) return;
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) return;
+
+        const data = await res.json();
+        if (data && Array.isArray(data.profiles)) {
+          setProfiles(data.profiles);
+
+          setCurrentUser(prevUser => {
+            if (!prevUser) return prevUser;
+            const match = data.profiles.find((p: UserProfile) => 
+              p.email.toLowerCase() === prevUser.email.toLowerCase() || p.id === prevUser.id
+            );
+            if (match) {
+              // Se o status do usuário não for 'active' ou 'approved', bloquear acesso imediatamente
+              if (match.status !== 'active' && match.status !== 'approved') {
+                try {
+                  sessionStorage.removeItem('mvrj_session_user');
+                  sessionStorage.removeItem('mvrj_session_token');
+                  localStorage.removeItem('mvrj_session_user');
+                  localStorage.removeItem('mvrj_session_token');
+                } catch {}
+                setIsAuthModalOpen(true);
+                return null;
+              }
+
+              const resolvedAvatar = match.avatar_url || prevUser.avatar_url;
+              const updated: UserProfile = {
+                ...prevUser,
+                id: match.id || prevUser.id,
+                full_name: match.full_name || prevUser.full_name,
+                role: match.role || prevUser.role,
+                status: match.status || prevUser.status,
+                sector: match.sector || prevUser.sector,
+                avatar_url: resolvedAvatar,
+              };
+              if (resolvedAvatar !== prevUser.avatar_url || match.full_name !== prevUser.full_name || match.role !== prevUser.role) {
+                try {
+                  sessionStorage.setItem('mvrj_session_user', JSON.stringify(updated));
+                  localStorage.setItem('mvrj_session_user', JSON.stringify(updated));
+                } catch {}
+              }
+              return updated;
+            }
+            return prevUser;
+          });
+        }
+      } catch (err) {
+        // Silencioso para não poluir o console com erros de rede transitórios
+      }
+    };
+
+    // Initial load
+    fetchFoldersFromApi().then(apiFolders => {
+      if (apiFolders) setFolders(apiFolders);
     }).catch(() => {});
 
     fetchFilesFromApi().then(apiFiles => {
-      if (apiFiles) {
-        setFiles(apiFiles);
-      }
+      if (apiFiles) setFiles(apiFiles);
     }).catch(() => {});
 
     fetchAuditLogsFromApi().then(apiLogs => {
-      if (apiLogs && apiLogs.length > 0) {
-        setAuditLogs(apiLogs);
-      }
+      if (apiLogs && apiLogs.length > 0) setAuditLogs(apiLogs);
     }).catch(() => {});
 
     fetchFolderPermissionsFromApi().then(apiPerms => {
-      if (apiPerms && apiPerms.length > 0) {
-        setFolderPermissions(apiPerms);
-      }
+      if (apiPerms && apiPerms.length > 0) setFolderPermissions(apiPerms);
     }).catch(() => {});
 
     fetchStorageMetrics();
-    // Poll storage metrics periodically every 15 seconds for real-time tracking
-    const interval = setInterval(fetchStorageMetrics, 15000);
-
-    // Initial sync of profiles from API / Supabase
-    const syncProfiles = () => {
-      fetch('/api/profiles')
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.profiles && Array.isArray(data.profiles)) {
-            setProfiles(data.profiles);
-
-            setCurrentUser(prevUser => {
-              if (!prevUser) return prevUser;
-              const match = data.profiles.find((p: UserProfile) => 
-                p.email.toLowerCase() === prevUser.email.toLowerCase() || p.id === prevUser.id
-              );
-              if (match) {
-                const resolvedAvatar = match.avatar_url || prevUser.avatar_url;
-                const updated: UserProfile = {
-                  ...prevUser,
-                  id: match.id || prevUser.id,
-                  full_name: match.full_name || prevUser.full_name,
-                  role: match.role || prevUser.role,
-                  status: match.status || prevUser.status,
-                  sector: match.sector || prevUser.sector,
-                  avatar_url: resolvedAvatar,
-                };
-                if (resolvedAvatar !== prevUser.avatar_url || match.full_name !== prevUser.full_name) {
-                  try {
-                    sessionStorage.setItem('mvrj_session_user', JSON.stringify(updated));
-                    localStorage.setItem('mvrj_session_user', JSON.stringify(updated));
-                  } catch {}
-                }
-                return updated;
-              }
-              return prevUser;
-            });
-          }
-        })
-        .catch(err => console.error('Erro ao sincronizar perfis com Supabase:', err));
-    };
-
     syncProfiles();
-    const profilesInterval = setInterval(syncProfiles, 4000);
+
+    // Intervals otimizados para fluidez total do site
+    const syncInterval = setInterval(syncData, 8000);
+    const profilesInterval = setInterval(syncProfiles, 8000);
+    const metricsInterval = setInterval(fetchStorageMetrics, 30000);
 
     return () => {
       clearInterval(syncInterval);
-      clearInterval(interval);
       clearInterval(profilesInterval);
+      clearInterval(metricsInterval);
     };
   }, []);
 

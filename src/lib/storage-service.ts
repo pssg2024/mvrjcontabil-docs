@@ -761,6 +761,8 @@ export async function fetchFoldersFromApi(): Promise<Folder[]> {
   try {
     const res = await fetch('/api/folders');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) throw new Error('Not JSON');
     const data = await res.json();
     if (Array.isArray(data.folders)) {
       localStorage.setItem('mvrj_folders', JSON.stringify(data.folders));
@@ -818,6 +820,8 @@ export async function fetchFilesFromApi(): Promise<DocumentFile[]> {
   try {
     const res = await fetch('/api/files');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) throw new Error('Not JSON');
     const data = await res.json();
     if (Array.isArray(data.files)) {
       localStorage.setItem('mvrj_files', JSON.stringify(data.files));

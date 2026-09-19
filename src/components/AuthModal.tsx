@@ -68,6 +68,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [regSector, setRegSector] = useState<Sector>('Fiscal');
   const [registrationSubmitted, setRegistrationSubmitted] = useState<UserProfile | null>(null);
+  const [isSubmittingRegister, setIsSubmittingRegister] = useState(false);
 
   if (!isOpen) return null;
 
@@ -128,8 +129,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     // Sucesso
     onLoginSuccess(user);
   };
-
-  const [isSubmittingRegister, setIsSubmittingRegister] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

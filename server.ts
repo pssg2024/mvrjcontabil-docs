@@ -1129,10 +1129,26 @@ async function saveR2Profiles(profiles: StoredProfile[]) {
   }
 }
 
+// Cache in-memory for unified profiles to make GET /api/profiles respond in <1ms
+let cachedUnifiedProfiles: StoredProfile[] | null = null;
+let lastUnifiedProfilesFetchTime = 0;
+const PROFILES_CACHE_TTL_MS = 6000; // 6 seconds cache
+
+function invalidateProfilesCache() {
+  cachedUnifiedProfiles = null;
+  lastUnifiedProfilesFetchTime = 0;
+}
+
 // Reconstruct and unify profiles from R2, Supabase profiles, and Supabase audit_logs
-async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
+async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfile[]> {
+  const now = Date.now();
+  if (!forceRefresh && cachedUnifiedProfiles && (now - lastUnifiedProfilesFetchTime < PROFILES_CACHE_TTL_MS)) {
+    return cachedUnifiedProfiles;
+  }
+
   const supabase = getSupabaseServerClient();
   const profilesMap = new Map<string, StoredProfile>();
+  const masterAdminEmail = 'evandro230655@gmail.com';
 
   // 1. Carregar perfis do Cloudflare R2
   const r2Profiles = await fetchR2Profiles();
@@ -1154,7 +1170,7 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
     try {
       const { data: dbProfiles } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, sector, role, status, avatar_url, first_access_completed, created_at, updated_at')
         .order('created_at', { ascending: true });
       if (Array.isArray(dbProfiles)) {
         for (const p of dbProfiles) {
@@ -1165,7 +1181,7 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
               ...existing,
               ...p,
               avatar_url: p.avatar_url || existing?.avatar_url || (existing as any)?.avatarUrl || (p.id ? `/api/r2/avatar/${p.id}.webp` : undefined),
-              status: p.status || existing?.status || 'active',
+              status: p.status || existing?.status || 'pending',
             });
           }
         }
@@ -1174,19 +1190,21 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
       console.warn('[Supabase Profiles Sync Aviso]', err.message);
     }
 
-    // 4. Reconstrução vital de solicitações de acesso a partir de audit_logs
-    // Garante que solicitações de novos usuários NUNCA se percam após reinício do Render
+    // 4. Reconstrução precisa a partir de audit_logs (CONSULTA ÚNICA E OTIMIZADA)
     try {
       const { data: auditLogs } = await supabase
         .from('audit_logs')
-        .select('*')
+        .select('id, action, target_id, user_name, sector, details, created_at')
+        .in('action', ['ACCESS_REQUEST', 'USER_APPROVED', 'USER_DELETED', 'USER_REJECTED'])
         .order('created_at', { ascending: true });
 
       if (Array.isArray(auditLogs)) {
         const lastDeletedTimeByEmail = new Map<string, number>();
         const lastDeletedTimeById = new Map<string, number>();
-        const approvedEmails = new Set<string>();
-        const approvedIds = new Set<string>();
+        const lastApprovedTimeByEmail = new Map<string, number>();
+        const lastApprovedTimeById = new Map<string, number>();
+        const approvedRolesByEmail = new Map<string, string>();
+        const approvedSectorsByEmail = new Map<string, string>();
 
         for (const log of auditLogs) {
           const logTime = new Date(log.created_at || 0).getTime();
@@ -1195,52 +1213,77 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
             const delEmail = (log.details?.deleted_email || log.details?.rejected_email || '').toLowerCase().trim();
             if (delId) lastDeletedTimeById.set(delId, Math.max(logTime, lastDeletedTimeById.get(delId) || 0));
             if (delEmail) lastDeletedTimeByEmail.set(delEmail, Math.max(logTime, lastDeletedTimeByEmail.get(delEmail) || 0));
-          }
-          if (log.action === 'USER_APPROVED') {
-            if (log.details?.approved_email) approvedEmails.add(String(log.details.approved_email).toLowerCase().trim());
-            if (log.details?.email) approvedEmails.add(String(log.details.email).toLowerCase().trim());
-            if (log.target_id) approvedIds.add(String(log.target_id).toLowerCase().trim());
-            if (log.details?.user_id) approvedIds.add(String(log.details.user_id).toLowerCase().trim());
+          } else if (log.action === 'USER_APPROVED') {
+            const appEmail = (log.details?.approved_email || log.details?.email || '').toLowerCase().trim();
+            const appId = String(log.target_id || log.details?.user_id || '').toLowerCase().trim();
+            if (appEmail) {
+              lastApprovedTimeByEmail.set(appEmail, Math.max(logTime, lastApprovedTimeByEmail.get(appEmail) || 0));
+              if (log.details?.role) approvedRolesByEmail.set(appEmail, log.details.role);
+              if (log.details?.sector) approvedSectorsByEmail.set(appEmail, log.details.sector);
+            }
+            if (appId) {
+              lastApprovedTimeById.set(appId, Math.max(logTime, lastApprovedTimeById.get(appId) || 0));
+            }
           }
         }
 
+        // Processar ACCESS_REQUEST
         for (const log of auditLogs) {
           if (log.action === 'ACCESS_REQUEST') {
             const email = (log.details?.email || '').toLowerCase().trim();
-            const id = String(log.target_id || log.profile_id || '').toLowerCase().trim();
-            const isMasterAdmin = email === 'evandro230655@gmail.com' || id === '57e1d483-669b-4791-b09e-7496570e63ea';
+            const id = String(log.target_id || log.details?.user_id || '').toLowerCase().trim();
+            if (!email || email === masterAdminEmail) continue;
+
             const logTime = new Date(log.created_at || 0).getTime();
-            const delEmailTime = lastDeletedTimeByEmail.get(email) || 0;
-            const delIdTime = (id ? lastDeletedTimeById.get(id) : 0) || 0;
+            const delTime = Math.max(lastDeletedTimeByEmail.get(email) || 0, id ? (lastDeletedTimeById.get(id) || 0) : 0);
+            
+            // Se foi excluído APÓS a solicitação, não restaurar
+            if (delTime > logTime) {
+              continue;
+            }
 
-            // Se a solicitação foi realizada DEPOIS da última exclusão, é uma nova solicitação válida
-            const wasDeletedAfterThis = (delEmailTime > logTime) || (delIdTime > logTime);
+            const appTime = Math.max(lastApprovedTimeByEmail.get(email) || 0, id ? (lastApprovedTimeById.get(id) || 0) : 0);
+            // REGRA FUNDAMENTAL: O usuário SÓ é aprovado se o admin aprovou DEPOIS da solicitação!
+            const isApproved = appTime > logTime;
 
-            if (email && !isMasterAdmin && !wasDeletedAfterThis) {
-              const existing = profilesMap.get(email);
-              const isAlreadyActiveOrApproved = 
-                existing?.status === 'active' || 
-                existing?.status === 'approved' || 
-                approvedEmails.has(email) || 
-                (id && approvedIds.has(id));
-
-              if (!existing) {
-                profilesMap.set(email, {
-                  id: id || `usr-${Date.now()}`,
-                  email,
-                  full_name: log.details?.name || log.user_name || email.split('@')[0],
-                  sector: log.details?.sector || log.details?.requested_sector || log.sector || 'Fiscal',
-                  role: 'viewer',
-                  status: isAlreadyActiveOrApproved ? 'approved' : 'pending',
-                  created_at: log.created_at,
-                  updated_at: log.created_at,
-                });
-              } else if (isAlreadyActiveOrApproved) {
-                if (existing.status !== 'active') {
-                  existing.status = 'approved';
+            const existing = profilesMap.get(email);
+            if (!existing) {
+              profilesMap.set(email, {
+                id: id || `usr-${Date.now()}`,
+                email,
+                full_name: log.details?.name || log.user_name || email.split('@')[0],
+                sector: approvedSectorsByEmail.get(email) || log.details?.sector || 'Fiscal',
+                role: (approvedRolesByEmail.get(email) as any) || 'viewer',
+                status: isApproved ? 'approved' : 'pending',
+                created_at: log.created_at,
+                updated_at: log.created_at,
+              });
+            } else {
+              // Se o perfil existe, assegurar status de acordo com aprovação explícita
+              if (email !== masterAdminEmail) {
+                if (isApproved) {
+                  existing.status = existing.status === 'active' ? 'active' : 'approved';
+                  if (approvedRolesByEmail.has(email)) existing.role = approvedRolesByEmail.get(email) as any;
+                } else {
+                  existing.status = 'pending';
                 }
               }
             }
+          }
+        }
+
+        // Limpeza de perfis excluídos
+        for (const [key, p] of Array.from(profilesMap.entries())) {
+          if (p.email.toLowerCase() === masterAdminEmail) continue;
+          const pEmail = p.email.toLowerCase().trim();
+          const pId = p.id?.toLowerCase().trim();
+          const delTime = Math.max(
+            lastDeletedTimeByEmail.get(pEmail) || 0,
+            pId ? (lastDeletedTimeById.get(pId) || 0) : 0
+          );
+          const pTime = new Date(p.created_at || p.updated_at || 0).getTime();
+          if (delTime > 0 && delTime >= pTime) {
+            profilesMap.delete(key);
           }
         }
       }
@@ -1249,47 +1292,7 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
     }
   }
 
-  // Sempre assegurar integridade do Administrador Master (Evandro)
-  const masterAdminEmail = 'evandro230655@gmail.com';
-  
-  // Limpeza de perfis excluídos (apenas se a exclusão ocorreu após a criação do perfil)
-  if (supabase) {
-    try {
-      const { data: latestAuditLogs } = await supabase
-        .from('audit_logs')
-        .select('*');
-      if (Array.isArray(latestAuditLogs)) {
-        for (const log of latestAuditLogs) {
-          if (log.action === 'USER_REJECTED' || log.action === 'USER_DELETED') {
-            const delEmail = (log.details?.deleted_email || log.details?.rejected_email || '').toLowerCase().trim();
-            const delId = String(log.target_id || '').toLowerCase().trim();
-            const delTime = new Date(log.created_at || 0).getTime();
-
-            if (delEmail && delEmail !== masterAdminEmail) {
-              const existing = profilesMap.get(delEmail);
-              if (existing) {
-                const profileTime = new Date(existing.created_at || existing.updated_at || 0).getTime();
-                if (delTime >= profileTime) {
-                  profilesMap.delete(delEmail);
-                }
-              }
-            }
-            if (delId) {
-              for (const [key, p] of profilesMap.entries()) {
-                if (p.id && p.id.toLowerCase().trim() === delId && p.email.toLowerCase() !== masterAdminEmail) {
-                  const profileTime = new Date(p.created_at || p.updated_at || 0).getTime();
-                  if (delTime >= profileTime) {
-                    profilesMap.delete(key);
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {}
-  }
-
+  // Assegurar Administrador Master (Evandro)
   if (profilesMap.has(masterAdminEmail)) {
     const admin = profilesMap.get(masterAdminEmail)!;
     admin.role = 'admin';
@@ -1310,10 +1313,8 @@ async function getAllUnifiedProfiles(): Promise<StoredProfile[]> {
 
   const result = Array.from(profilesMap.values());
   persistedProfiles = result;
-  savePersistedProfiles();
-  await saveR2Profiles(result).catch(() => {});
-  savePersistedProfiles();
-  saveR2Profiles(result).catch(() => {});
+  cachedUnifiedProfiles = result;
+  lastUnifiedProfilesFetchTime = Date.now();
 
   return result;
 }
@@ -1405,6 +1406,8 @@ app.post('/api/profiles', async (req: Request, res: Response) => {
       }
     }
 
+    invalidateProfilesCache();
+
     return res.status(201).json({ status: 'success', profile: newProfile });
   } catch (error: any) {
     res.status(500).json({ error: 'Erro ao cadastrar perfil', details: error.message });
@@ -1464,6 +1467,7 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
     }
     savePersistedProfiles();
     saveR2Profiles(persistedProfiles).catch(() => {});
+    invalidateProfilesCache();
 
     // Registra aprovação em audit_logs caso tenha sido aprovado
     const targetEmail = cleanEmail || (idx >= 0 ? persistedProfiles[idx].email : '');
@@ -1541,6 +1545,7 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
     persistedProfiles = persistedProfiles.filter(p => p.id !== userId && (!targetEmail || p.email.toLowerCase() !== targetEmail));
     savePersistedProfiles();
     await saveR2Profiles(persistedProfiles).catch(() => {});
+    invalidateProfilesCache();
 
     // Deleta do Supabase e registra no audit_logs
     const supabase = getSupabaseServerClient();
