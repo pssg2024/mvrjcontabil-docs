@@ -1834,15 +1834,17 @@ async function saveR2Folders(foldersList: StoredFolder[]) {
 }
 
 async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
+  const foldersMap = new Map<string, StoredFolder>();
+  
+  // 1. Load from local persistence first
   if (persistedFolders.length === 0) {
     loadPersistedFolders();
   }
-
-  const foldersMap = new Map<string, StoredFolder>();
   for (const f of persistedFolders) {
     foldersMap.set(f.id, f);
   }
 
+  // 2. Fetch from Supabase (Authority)
   const supabase = getSupabaseServerClient();
   if (supabase) {
     try {
@@ -1852,64 +1854,37 @@ async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
         .order('name', { ascending: true });
 
       if (!error && Array.isArray(dbFolders)) {
-        if (dbFolders.length === 0 && persistedFolders.length > 0) {
-          // Auto-seed Supabase with local persisted folders
-          for (const f of persistedFolders) {
-            try {
-              await supabase.from('folders').upsert({
-                id: toDeterministicUuid(f.id),
-                parent_id: f.parent_id ? toDeterministicUuid(f.parent_id) : null,
-                name: f.name,
-                sector: f.sector,
-                created_by: isValidUuid(f.created_by) ? f.created_by : null,
-                created_at: f.created_at,
-                updated_at: f.updated_at,
-              });
-            } catch (seedErr) {}
-          }
-        } else {
-          for (const df of dbFolders) {
-            const existing = Array.from(foldersMap.values()).find(
-              f => f.id === df.id || toDeterministicUuid(f.id) === df.id || (f.name === df.name && f.sector === df.sector)
-            );
-            if (existing) {
-              foldersMap.set(existing.id, {
-                ...existing,
-                name: df.name,
-                sector: df.sector,
-                updated_at: df.updated_at || existing.updated_at,
-              });
-            } else {
-              foldersMap.set(df.id, {
-                id: df.id,
-                parent_id: df.parent_id,
-                name: df.name,
-                sector: df.sector,
-                created_by: df.created_by || '57e1d483-669b-4791-b09e-7496570e63ea',
-                created_at: df.created_at || new Date().toISOString(),
-                updated_at: df.updated_at || new Date().toISOString(),
-              });
-            }
-          }
+        // Authority: DB completely replaces or populates the map
+        // We clear local cache if DB is connected to avoid phantom folders
+        foldersMap.clear();
+        for (const df of dbFolders) {
+          foldersMap.set(df.id, {
+            id: df.id,
+            parent_id: df.parent_id || null,
+            name: df.name,
+            sector: df.sector,
+            created_by: df.created_by || '57e1d483-669b-4791-b09e-7496570e63ea',
+            created_at: df.created_at,
+            updated_at: df.updated_at || df.created_at,
+          });
         }
       }
     } catch (sbErr: any) {
-      console.warn('[Supabase Folders Sync Aviso]', sbErr.message);
+      console.warn('[PASTAS] Aviso Sync Supabase:', sbErr.message);
     }
   }
 
   const result = Array.from(foldersMap.values());
   persistedFolders = result;
-  savePersistedFolders();
   return result;
 }
 
 async function getAllUnifiedFiles(): Promise<StoredFile[]> {
+  const filesMap = new Map<string, StoredFile>();
+  
   if (persistedFiles.length === 0) {
     loadPersistedFiles();
   }
-
-  const filesMap = new Map<string, StoredFile>();
   for (const f of persistedFiles) {
     filesMap.set(f.id, f);
   }
@@ -1923,6 +1898,7 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(dbFiles)) {
+        filesMap.clear(); // DB is authority
         for (const f of dbFiles) {
           const folder = f.folders as any;
           filesMap.set(f.id, {
@@ -1949,13 +1925,12 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
         }
       }
     } catch (err: any) {
-      console.warn('[Supabase Files Sync Aviso]', err.message);
+      console.warn('[ARQUIVOS] Aviso Sync Supabase:', err.message);
     }
   }
 
   const result = Array.from(filesMap.values());
   persistedFiles = result;
-  savePersistedFiles();
   return result;
 }
 
@@ -1975,6 +1950,7 @@ app.post('/api/folders', async (req: Request, res: Response) => {
   try {
     const { name, parent_id, sector, created_by, id: customId } = req.body;
     if (!name || !sector) {
+      console.log('[PASTAS] Erro: Nome e setor são obrigatórios');
       return res.status(400).json({ error: 'Nome e setor são obrigatórios' });
     }
 
@@ -1984,7 +1960,7 @@ app.post('/api/folders', async (req: Request, res: Response) => {
       parent_id: parent_id || null,
       name: name.trim(),
       sector,
-      created_by: created_by || '57e1d483-669b-4791-b09e-7496570e63ea',
+      created_by: isValidUuid(created_by) ? created_by : '57e1d483-669b-4791-b09e-7496570e63ea',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -2016,7 +1992,9 @@ app.post('/api/folders', async (req: Request, res: Response) => {
 
         const { error } = await supabase.from('folders').upsert(payload);
         if (error) {
-          console.warn('[Supabase Folder Insert Aviso]', error.message);
+          console.error('[PASTAS] Erro Supabase:', error.message);
+        } else {
+          console.log('[PASTAS] Ação: CREATE, ID:', folderId, 'Resultado: SUCESSO');
         }
 
         // Audit log in Supabase
@@ -2036,12 +2014,13 @@ app.post('/api/folders', async (req: Request, res: Response) => {
           });
         } catch {}
       } catch (sbErr: any) {
-        console.warn('[Supabase Folder Sync Error]', sbErr.message);
+        console.error('[PASTAS] Erro Sync Supabase:', sbErr.message);
       }
     }
 
     res.status(201).json({ status: 'success', folder: newFolder });
   } catch (err: any) {
+    console.error('[PASTAS] Ação: CREATE, ID: N/A, Erro:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2071,15 +2050,19 @@ app.delete('/api/folders/:id', async (req: Request, res: Response) => {
         .delete()
         .or(`folder_id.eq.${folderId},folder_id.eq.${uuidId}`);
       
-      if (filesDeleteError) throw new Error(`Erro ao excluir arquivos no Supabase: ${filesDeleteError.message}`);
+      if (filesDeleteError) console.error(`[PASTAS] Erro excluir arquivos Supabase: ${filesDeleteError.message}`);
 
       // Delete folders in Supabase
       const { error: foldersDeleteError } = await supabase
         .from('folders')
         .delete()
-        .or(`id.eq.${folderId},id.eq.${uuidId}`);
+        .or(`id.eq.${folderId},id.eq.${uuidId},parent_id.eq.${folderId},parent_id.eq.${uuidId}`);
       
-      if (foldersDeleteError) throw new Error(`Erro ao excluir pasta no Supabase: ${foldersDeleteError.message}`);
+      if (foldersDeleteError) {
+        console.error(`[PASTAS] Erro excluir pasta Supabase: ${foldersDeleteError.message}`);
+      } else {
+        console.log('[PASTAS] Ação: DELETE, ID:', folderId, 'Resultado: SUCESSO');
+      }
 
       // Handle R2 files
       try {
@@ -2094,17 +2077,25 @@ app.delete('/api/folders/:id', async (req: Request, res: Response) => {
                 }));
                 inMemoryFileStore.delete(f.storage_key);
               } catch (delObjErr: any) {
-                console.warn(`[Delete Folder R2 Aviso] ${f.storage_key}:`, delObjErr.message);
+                console.warn(`[PASTAS] R2 Aviso delete obj ${f.storage_key}:`, delObjErr.message);
               }
             }
           }
         }
       } catch (e) {}
+
+      // 4. Update R2 Folders Backup
+      try {
+        const updatedFoldersList = await getAllUnifiedFolders();
+        await saveR2Folders(updatedFoldersList);
+      } catch (e) {
+        console.warn('[PASTAS] R2 Backup Error:', e);
+      }
     }
 
     res.json({ status: 'success', message: 'Pasta e conteúdos removidos com sucesso' });
   } catch (err: any) {
-    console.error('[Delete Folder Error]', err);
+    console.error('[PASTAS] Ação: DELETE, ID:', folderId, 'Erro:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2252,6 +2243,7 @@ app.delete('/api/files/:id', async (req: Request, res: Response) => {
             Bucket: bucketName,
             Key: targetFile.storage_key,
           }));
+          inMemoryFileStore.delete(targetFile.storage_key);
         } catch (r2Err) {}
       }
     }
@@ -2383,61 +2375,48 @@ app.post('/api/folder-permissions', async (req: Request, res: Response) => {
 // ==============================================================================
 app.get('/api/storage/metrics', async (req: Request, res: Response) => {
   try {
-    const { client, bucketName, isConfigured } = getR2Client();
+    const { isConfigured, bucketName } = getR2Client();
+    const totalCapacityBytes = process.env.R2_QUOTA_BYTES ? parseInt(process.env.R2_QUOTA_BYTES, 10) : 10 * 1024 * 1024 * 1024;
 
-    // Default quota capacity: 10 GB (free tier / initial corporate quota) or custom env R2_QUOTA_BYTES
-    const totalCapacityBytes = process.env.R2_QUOTA_BYTES 
-      ? parseInt(process.env.R2_QUOTA_BYTES, 10) 
-      : 10 * 1024 * 1024 * 1024; // 10 GB
-
-    let cachedBytes = 0;
-    let cachedFilesCount = inMemoryFileStore.size;
-    for (const item of inMemoryFileStore.values()) {
-      cachedBytes += item.buffer.length;
-    }
-
-    // Query files table in Supabase if connected for authoritative byte size
-    const supabase = getSupabaseServerClient();
     let dbUsedBytes = 0;
     let dbFilesCount = 0;
     let dbOriginalBytes = 0;
     let sectorBreakdown: Record<string, { usedBytes: number; filesCount: number }> = {};
 
+    const supabase = getSupabaseServerClient();
     if (supabase) {
-      try {
-        const { data: dbDocs, error: docError } = await supabase
-          .from('files')
-          .select('optimized_size, original_size, folders(sector)');
-        
-        if (!docError && dbDocs) {
-          dbFilesCount = dbDocs.length;
-          for (const doc of dbDocs) {
-            const opt = Number(doc.optimized_size) || 0;
-            const orig = Number(doc.original_size) || opt;
-            dbUsedBytes += opt;
-            dbOriginalBytes += orig;
-            const s = (doc.folders as any)?.sector || 'Fiscal';
-            if (!sectorBreakdown[s]) {
-              sectorBreakdown[s] = { usedBytes: 0, filesCount: 0 };
-            }
-            sectorBreakdown[s].usedBytes += opt;
-            sectorBreakdown[s].filesCount += 1;
-          }
+      const { data: dbDocs, error: docError } = await supabase
+        .from('files')
+        .select('optimized_size, original_size, folders(sector)');
+      
+      if (!docError && dbDocs) {
+        dbFilesCount = dbDocs.length;
+        for (const doc of dbDocs) {
+          const opt = Number(doc.optimized_size) || 0;
+          const orig = Number(doc.original_size) || opt;
+          dbUsedBytes += opt;
+          dbOriginalBytes += orig;
+          const s = (doc.folders as any)?.sector || 'Fiscal';
+          if (!sectorBreakdown[s]) sectorBreakdown[s] = { usedBytes: 0, filesCount: 0 };
+          sectorBreakdown[s].usedBytes += opt;
+          sectorBreakdown[s].filesCount += 1;
         }
-      } catch (err: any) {
-        // Fallback silently if files table is not available
+      }
+    } else {
+      // Fallback to in-memory only if no Supabase
+      dbFilesCount = inMemoryFileStore.size;
+      for (const item of inMemoryFileStore.values()) {
+        dbUsedBytes += item.buffer.length;
       }
     }
 
-    const effectiveUsedBytes = Math.max(dbUsedBytes, cachedBytes);
-    const effectiveFilesCount = Math.max(dbFilesCount, cachedFilesCount);
+    const effectiveUsedBytes = dbUsedBytes;
+    const effectiveFilesCount = dbFilesCount;
     const freeBytes = Math.max(0, totalCapacityBytes - effectiveUsedBytes);
     const usedPercent = Math.min(100, Number(((effectiveUsedBytes / totalCapacityBytes) * 100).toFixed(2)));
     const freePercent = Math.max(0, Number((100 - usedPercent).toFixed(2)));
 
-    const maxFilesCapacity = process.env.R2_MAX_FILES 
-      ? parseInt(process.env.R2_MAX_FILES, 10) 
-      : 10000; // Capacidade padrão de até 10.000 documentos no plano 10GB
+    const maxFilesCapacity = process.env.R2_MAX_FILES ? parseInt(process.env.R2_MAX_FILES, 10) : 10000;
     const remainingFilesCapacity = Math.max(0, maxFilesCapacity - effectiveFilesCount);
 
     return res.status(200).json({

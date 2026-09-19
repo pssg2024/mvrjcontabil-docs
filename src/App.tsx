@@ -190,7 +190,7 @@ export default function App() {
   } | null>(null);
 
   const fetchStorageMetrics = useCallback(() => {
-    fetch('/api/storage/metrics')
+    fetch(`/api/storage/metrics?t=${Date.now()}`)
       .then(res => res.json())
       .then(data => {
         if (data && !data.error) {
@@ -390,7 +390,7 @@ export default function App() {
     // Intervals otimizados para fluidez total do site
     const syncInterval = setInterval(syncData, 8000);
     const profilesInterval = setInterval(syncProfiles, 8000);
-    const metricsInterval = setInterval(fetchStorageMetrics, 30000);
+    const metricsInterval = setInterval(fetchStorageMetrics, 10000);
 
     // Realtime subscription for folders and files
     const supabaseClient = getSupabase();
@@ -662,8 +662,11 @@ export default function App() {
           return updated;
         });
       }
-    } catch (err) {
-      console.warn('Aviso ao sincronizar pasta com a API (mantida localmente):', err);
+    } catch (err: any) {
+      console.warn('Erro ao sincronizar pasta com a API:', err);
+      alert(`Erro ao criar pasta: ${err.message}`);
+      // Revert optimistic update
+      setFolders(prev => prev.filter(f => f.id !== folderId));
     }
   };
 
@@ -674,19 +677,21 @@ export default function App() {
       id: fileId,
       name: file?.name || fileId,
       action: async () => {
-        setFiles(prev => {
-          const updated = prev.filter(f => f.id !== fileId);
-          localStorage.setItem('mvrj_files', JSON.stringify(updated));
-          return updated;
-        });
         if (file) {
           logAudit('FILE_DELETE', 'FILE', fileId, { name: file.name, storage_key: file.storage_key });
         }
+        
+        // Optimistic update
+        setFiles(prev => prev.filter(f => f.id !== fileId));
+        
         try {
           await deleteFileInApi(fileId);
           fetchStorageMetrics();
         } catch (err) {
           console.warn('Erro ao excluir no Supabase/R2:', err);
+          // Refresh to sync state if failed
+          const updatedFiles = await fetchFilesFromApi();
+          setFiles(updatedFiles);
         }
       }
     });
@@ -701,26 +706,25 @@ export default function App() {
       name: folder?.name || folderId,
       action: async () => {
         lastFolderActionRef.current = Date.now();
-        // Remove pasta excluída e eventuais subpastas vinculadas imediatamente
-        setFolders(prev => {
-          const updated = prev.filter(f => f.id !== folderId && f.parent_id !== folderId);
-          localStorage.setItem('mvrj_folders', JSON.stringify(updated));
-          return updated;
-        });
-        // Remove arquivos pertencentes a esta pasta da listagem local
-        setFiles(prev => {
-          const updated = prev.filter(file => file.folder_id !== folderId);
-          localStorage.setItem('mvrj_files', JSON.stringify(updated));
-          return updated;
-        });
+        
         if (folder) {
           logAudit('FOLDER_DELETE', 'FOLDER', folderId, { name: folder.name });
         }
+
+        // Optimistic update
+        setFolders(prev => prev.filter(f => f.id !== folderId && f.parent_id !== folderId));
+        setFiles(prev => prev.filter(f => f.folder_id !== folderId));
+
         try {
           await deleteFolderInApi(folderId);
           fetchStorageMetrics();
         } catch (err: any) {
           console.warn('Aviso ao excluir pasta na API:', err);
+          // Refresh to sync state if failed
+          const updatedFolders = await fetchFoldersFromApi();
+          setFolders(updatedFolders);
+          const updatedFiles = await fetchFilesFromApi();
+          setFiles(updatedFiles);
         }
       }
     });

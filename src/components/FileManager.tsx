@@ -156,14 +156,14 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
   // Quota calculation & strict lock
   const totalQuotaBytes = storageMetrics?.totalCapacityBytes || (10 * 1024 * 1024 * 1024);
-  const effectiveUsedBytes = storageMetrics?.usedBytes && storageMetrics.usedBytes > totalOptimizedBytes 
-    ? storageMetrics.usedBytes 
-    : totalOptimizedBytes;
+  
+  // File capacity metrics in real time - Favoring local state for immediate feedback on deletions
+  const currentFilesCount = files.length > 0 ? files.length : (storageMetrics?.filesCount || 0);
+  const effectiveUsedBytes = totalOptimizedBytes > 0 ? totalOptimizedBytes : (storageMetrics?.usedBytes || 0);
+
   const isQuotaExceeded = effectiveUsedBytes >= totalQuotaBytes || (storageMetrics ? storageMetrics.usedPercent >= 100 : false);
   const [showBlockedLimitModal, setShowBlockedLimitModal] = useState(false);
-
-  // File capacity metrics in real time
-  const currentFilesCount = Math.max(files.length, storageMetrics?.filesCount || 0);
+  
   const usedPercentValue = totalQuotaBytes > 0 
     ? Number(((effectiveUsedBytes / totalQuotaBytes) * 100).toFixed(2)) 
     : 0;
