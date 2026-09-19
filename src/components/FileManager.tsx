@@ -286,12 +286,27 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
       {/* ALERT BANNER: Due dates */}
       {(() => {
-        const expiringFiles = files.filter(f => f.due_date).map(f => ({ ...f, dueInfo: getDueDateInfo(f.due_date!) })).filter(f => f.dueInfo) as (DocumentFile & { dueInfo: NonNullable<ReturnType<typeof getDueDateInfo>> })[];
+        // Calculate alerts directly from files data
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        const expiringFiles = files.filter(f => f.due_date).map(f => {
+          const [year, month, day] = f.due_date!.split('-').map(Number);
+          const dataDoc = new Date(year, month - 1, day);
+          const diffDias = Math.ceil((dataDoc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+          
+          return {
+            ...f,
+            diffDias,
+            label: diffDias < 0 ? `🔴 Venceu em ${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}` : `⚠️ Vence em ${diffDias} dias (${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')})`,
+            isExpired: diffDias < 0
+          };
+        }).filter(f => f.diffDias <= 5);
         
         if (expiringFiles.length === 0) return null;
 
         return (
-          <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-4 shadow-sm backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="relative z-50 bg-amber-50/90 border border-amber-200/80 rounded-2xl p-4 shadow-sm backdrop-blur-sm">
             <div className="flex items-start space-x-3 mb-4">
               <AlertTriangle className="text-[#C59B4B] w-5 h-5 flex-shrink-0 mt-0.5" />
               <h3 className="text-amber-950 font-bold text-xs sm:text-sm">Atenção: Existem guias com prazo iminente ou vencidas</h3>
@@ -305,7 +320,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     <span className="font-semibold text-slate-800 text-xs truncate">{file.name}</span>
                   </div>
                   <div className="flex items-center space-x-3 ml-4">
-                    <span className={`text-[11px] font-bold ${file.dueInfo.status === 'expired' ? 'text-rose-600' : 'text-amber-700'}`}>{file.dueInfo.label}</span>
+                    <span className={`text-[11px] font-bold ${file.isExpired ? 'text-rose-600' : 'text-amber-700'}`}>{file.label}</span>
                     <button 
                       onClick={() => onOpenFileViewer(file)}
                       className="text-[#1B357B] hover:text-[#C59B4B] p-1 rounded hover:bg-[#1B357B]/10 transition-colors"
