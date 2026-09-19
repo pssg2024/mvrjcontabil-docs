@@ -1687,60 +1687,360 @@ app.get('/api/system/status', async (req: Request, res: Response) => {
 });
 
 // ==============================================================================
-// 13. FOLDERS CRUD ENDPOINTS (Supabase Integrated)
+// 12.5 FOLDERS & FILES PERSISTENCE (Supabase + Local Disk + Cloudflare R2)
 // ==============================================================================
-app.get('/api/folders', async (req: Request, res: Response) => {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    return res.json({ folders: [], source: 'empty' });
+const FOLDERS_FILE = path.join(process.cwd(), 'storage', 'folders.json');
+const FILES_FILE = path.join(process.cwd(), 'storage', 'files.json');
+const R2_FOLDERS_KEY = 'system/folders.json';
+const R2_FILES_KEY = 'system/files.json';
+
+interface StoredFolder {
+  id: string;
+  parent_id: string | null;
+  name: string;
+  sector: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface StoredFile {
+  id: string;
+  folder_id: string;
+  name: string;
+  storage_key: string;
+  mime_type: string;
+  original_size: number;
+  optimized_size: number;
+  compression_ratio: number;
+  pages_count?: number;
+  tags: string[];
+  uploaded_by: string;
+  uploader_name?: string;
+  sector: string;
+  checksum_sha256?: string;
+  due_date?: string;
+  is_archived?: boolean;
+  created_at: string;
+  updated_at: string;
+  preview_url?: string;
+}
+
+let persistedFolders: StoredFolder[] = [];
+let persistedFiles: StoredFile[] = [];
+
+function toDeterministicUuid(id: string): string {
+  if (isValidUuid(id)) return id;
+  const hash = crypto.createHash('md5').update(String(id)).digest('hex');
+  return `${hash.substring(0, 8)}-${hash.substring(8, 12)}-4${hash.substring(13, 16)}-a${hash.substring(17, 20)}-${hash.substring(20, 32)}`;
+}
+
+function loadPersistedFolders() {
+  try {
+    if (fs.existsSync(FOLDERS_FILE)) {
+      const raw = fs.readFileSync(FOLDERS_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.length > 0) {
+        persistedFolders = data;
+        console.log(`[Folders] ${persistedFolders.length} pastas carregadas do disco com sucesso`);
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('[Folders] Aviso ao ler pastas do disco:', e);
+  }
+}
+
+function savePersistedFolders() {
+  try {
+    const dir = path.dirname(FOLDERS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(FOLDERS_FILE, JSON.stringify(persistedFolders, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[Folders] Erro ao persistir pastas em disco:', e);
+  }
+}
+
+function loadPersistedFiles() {
+  try {
+    if (fs.existsSync(FILES_FILE)) {
+      const raw = fs.readFileSync(FILES_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.length > 0) {
+        persistedFiles = data;
+        console.log(`[Files] ${persistedFiles.length} arquivos carregados do disco com sucesso`);
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('[Files] Aviso ao ler arquivos do disco:', e);
+  }
+}
+
+function savePersistedFiles() {
+  try {
+    const dir = path.dirname(FILES_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(FILES_FILE, JSON.stringify(persistedFiles, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[Files] Erro ao persistir arquivos em disco:', e);
+  }
+}
+
+loadPersistedFolders();
+loadPersistedFiles();
+
+async function fetchR2Folders(): Promise<StoredFolder[]> {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return [];
+  try {
+    const res = await client.send(new GetObjectCommand({
+      Bucket: bucketName,
+      Key: R2_FOLDERS_KEY,
+    }));
+    if (res.Body) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as any) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (err) {}
+  return [];
+}
+
+async function saveR2Folders(foldersList: StoredFolder[]) {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return;
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: R2_FOLDERS_KEY,
+      Body: Buffer.from(JSON.stringify(foldersList, null, 2), 'utf-8'),
+      ContentType: 'application/json',
+      Metadata: {
+        'system-sync': 'folders',
+        'updated-at': new Date().toISOString(),
+      },
+    }));
+  } catch (err: any) {
+    console.warn('[R2 Folders Save Aviso]', err.message);
+  }
+}
+
+async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
+  if (persistedFolders.length === 0) {
+    loadPersistedFolders();
   }
 
-  try {
-    const { data: folders, error } = await supabase
-      .from('folders')
-      .select('*')
-      .order('name', { ascending: true });
+  const foldersMap = new Map<string, StoredFolder>();
+  for (const f of persistedFolders) {
+    foldersMap.set(f.id, f);
+  }
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
+  const supabase = getSupabaseServerClient();
+  if (supabase) {
+    try {
+      const { data: dbFolders, error } = await supabase
+        .from('folders')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (!error && Array.isArray(dbFolders)) {
+        if (dbFolders.length === 0 && persistedFolders.length > 0) {
+          // Auto-seed Supabase with local persisted folders
+          for (const f of persistedFolders) {
+            try {
+              await supabase.from('folders').upsert({
+                id: toDeterministicUuid(f.id),
+                parent_id: f.parent_id ? toDeterministicUuid(f.parent_id) : null,
+                name: f.name,
+                sector: f.sector,
+                created_by: isValidUuid(f.created_by) ? f.created_by : null,
+                created_at: f.created_at,
+                updated_at: f.updated_at,
+              });
+            } catch (seedErr) {}
+          }
+        } else {
+          for (const df of dbFolders) {
+            const existing = Array.from(foldersMap.values()).find(
+              f => f.id === df.id || toDeterministicUuid(f.id) === df.id || (f.name === df.name && f.sector === df.sector)
+            );
+            if (existing) {
+              foldersMap.set(existing.id, {
+                ...existing,
+                name: df.name,
+                sector: df.sector,
+                updated_at: df.updated_at || existing.updated_at,
+              });
+            } else {
+              foldersMap.set(df.id, {
+                id: df.id,
+                parent_id: df.parent_id,
+                name: df.name,
+                sector: df.sector,
+                created_by: df.created_by || '57e1d483-669b-4791-b09e-7496570e63ea',
+                created_at: df.created_at || new Date().toISOString(),
+                updated_at: df.updated_at || new Date().toISOString(),
+              });
+            }
+          }
+        }
+      }
+    } catch (sbErr: any) {
+      console.warn('[Supabase Folders Sync Aviso]', sbErr.message);
     }
+  }
 
-    res.json({ folders: folders || [], source: 'supabase' });
+  const result = Array.from(foldersMap.values());
+  persistedFolders = result;
+  savePersistedFolders();
+  return result;
+}
+
+async function getAllUnifiedFiles(): Promise<StoredFile[]> {
+  if (persistedFiles.length === 0) {
+    loadPersistedFiles();
+  }
+
+  const filesMap = new Map<string, StoredFile>();
+  for (const f of persistedFiles) {
+    filesMap.set(f.id, f);
+  }
+
+  const supabase = getSupabaseServerClient();
+  if (supabase) {
+    try {
+      const { data: dbFiles, error } = await supabase
+        .from('files')
+        .select('*, folders(name, sector)')
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(dbFiles)) {
+        for (const f of dbFiles) {
+          const folder = f.folders as any;
+          filesMap.set(f.id, {
+            id: f.id,
+            folder_id: f.folder_id,
+            name: f.name,
+            storage_key: f.storage_key,
+            mime_type: f.mime_type,
+            original_size: Number(f.original_size) || 0,
+            optimized_size: Number(f.optimized_size) || 0,
+            compression_ratio: Number(f.compression_ratio) || 0,
+            pages_count: f.pages_count || 1,
+            tags: Array.isArray(f.tags) ? f.tags : [],
+            uploaded_by: f.uploaded_by || '57e1d483-669b-4791-b09e-7496570e63ea',
+            uploader_name: 'Evandro (Administrador)',
+            sector: folder?.sector || 'Fiscal',
+            checksum_sha256: f.checksum_sha256,
+            due_date: f.due_date || undefined,
+            is_archived: f.is_archived || false,
+            created_at: f.created_at,
+            updated_at: f.updated_at,
+            preview_url: `/api/r2/view?key=${encodeURIComponent(f.storage_key)}&name=${encodeURIComponent(f.name)}`,
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Supabase Files Sync Aviso]', err.message);
+    }
+  }
+
+  const result = Array.from(filesMap.values());
+  persistedFiles = result;
+  savePersistedFiles();
+  return result;
+}
+
+// ==============================================================================
+// 13. FOLDERS CRUD ENDPOINTS (Unified Persistence: Disk + Memory + R2 + Supabase)
+// ==============================================================================
+app.get('/api/folders', async (req: Request, res: Response) => {
+  try {
+    const folders = await getAllUnifiedFolders();
+    res.json({ folders, source: 'unified', count: folders.length });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.json({ folders: persistedFolders, source: 'fallback' });
   }
 });
 
 app.post('/api/folders', async (req: Request, res: Response) => {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    return res.status(503).json({ error: 'Supabase não conectado' });
-  }
-
   try {
-    const { name, parent_id, sector, created_by } = req.body;
+    const { name, parent_id, sector, created_by, id: customId } = req.body;
     if (!name || !sector) {
       return res.status(400).json({ error: 'Nome e setor são obrigatórios' });
     }
 
-    const payload: any = {
+    const folderId = customId || crypto.randomUUID();
+    const newFolder: StoredFolder = {
+      id: folderId,
+      parent_id: parent_id || null,
       name: name.trim(),
       sector,
-      parent_id: isValidUuid(parent_id) ? parent_id : null,
-      created_by: isValidUuid(created_by) ? created_by : null,
+      created_by: created_by || '57e1d483-669b-4791-b09e-7496570e63ea',
+      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
-      .from('folders')
-      .insert(payload)
-      .select();
+    // 1. Immediately save to in-memory store and disk
+    const existingIdx = persistedFolders.findIndex(f => f.id === folderId);
+    if (existingIdx >= 0) {
+      persistedFolders[existingIdx] = newFolder;
+    } else {
+      persistedFolders.push(newFolder);
+    }
+    savePersistedFolders();
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
+    // 2. Backup to R2
+    saveR2Folders(persistedFolders).catch(() => {});
+
+    // 3. Sync to Supabase if connected
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        const payload: any = {
+          id: toDeterministicUuid(folderId),
+          name: newFolder.name,
+          sector: newFolder.sector,
+          parent_id: newFolder.parent_id ? toDeterministicUuid(newFolder.parent_id) : null,
+          created_by: isValidUuid(newFolder.created_by) ? newFolder.created_by : null,
+          updated_at: newFolder.updated_at,
+        };
+
+        const { error } = await supabase.from('folders').upsert(payload);
+        if (error) {
+          console.warn('[Supabase Folder Insert Aviso]', error.message);
+        }
+
+        // Audit log in Supabase
+        try {
+          await supabase.from('audit_logs').insert({
+            action: 'FOLDER_CREATE',
+            target_type: 'FOLDER',
+            target_id: folderId,
+            user_name: 'Sistema',
+            sector: newFolder.sector,
+            details: {
+              folder_id: folderId,
+              name: newFolder.name,
+              parent_id: newFolder.parent_id,
+              sector: newFolder.sector,
+            },
+          });
+        } catch {}
+      } catch (sbErr: any) {
+        console.warn('[Supabase Folder Sync Error]', sbErr.message);
+      }
     }
 
-    res.status(201).json({ status: 'success', folder: data[0] });
+    res.status(201).json({ status: 'success', folder: newFolder });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1752,10 +2052,20 @@ app.delete('/api/folders/:id', async (req: Request, res: Response) => {
   const { client, bucketName, isConfigured } = getR2Client();
 
   try {
+    // 1. Remove from in-memory and disk
+    persistedFolders = persistedFolders.filter(f => f.id !== folderId && f.parent_id !== folderId);
+    savePersistedFolders();
+    saveR2Folders(persistedFolders).catch(() => {});
+
+    // 2. Also remove associated files in disk store
+    persistedFiles = persistedFiles.filter(f => f.folder_id !== folderId);
+    savePersistedFiles();
+
+    // 3. Remove files from R2 and Supabase
     if (supabase) {
-      // 1. Busca arquivos dentro da pasta para remover seus objetos do Cloudflare R2
       try {
-        const { data: folderFiles } = await supabase.from('files').select('id, storage_key, name').eq('folder_id', folderId);
+        const uuidId = toDeterministicUuid(folderId);
+        const { data: folderFiles } = await supabase.from('files').select('id, storage_key, name').or(`folder_id.eq.${folderId},folder_id.eq.${uuidId}`);
         if (Array.isArray(folderFiles) && isConfigured && client) {
           for (const f of folderFiles) {
             if (f.storage_key) {
@@ -1771,109 +2081,33 @@ app.delete('/api/folders/:id', async (req: Request, res: Response) => {
             }
           }
         }
-      } catch (fFindErr) {
-        console.warn('[Delete Folder] Aviso ao buscar arquivos para limpeza:', fFindErr);
+        await supabase.from('files').delete().or(`folder_id.eq.${folderId},folder_id.eq.${uuidId}`);
+        await supabase.from('folders').delete().or(`parent_id.eq.${folderId},parent_id.eq.${uuidId}`);
+        await supabase.from('folders').delete().or(`id.eq.${folderId},id.eq.${uuidId}`);
+      } catch (sbErr: any) {
+        console.warn('[Delete Folder Supabase Aviso]', sbErr.message);
       }
-
-      // 2. Se for UUID válido no Supabase, remove arquivos e pastas no banco
-      if (isValidUuid(folderId)) {
-        try {
-          await supabase.from('files').delete().eq('folder_id', folderId);
-        } catch (fErr) {
-          console.warn('[Delete Folder] Aviso ao remover arquivos da pasta:', fErr);
-        }
-
-        try {
-          await supabase.from('folders').delete().eq('parent_id', folderId);
-        } catch (subErr) {
-          console.warn('[Delete Folder] Aviso ao remover subpastas:', subErr);
-        }
-
-        const { error } = await supabase.from('folders').delete().eq('id', folderId);
-        if (error) {
-          console.warn('[Delete Folder] Erro ao deletar no Supabase:', error.message);
-        }
-      }
-
-      // 5. Registra no audit_logs
-      try {
-        await supabase.from('audit_logs').insert({
-          action: 'FOLDER_DELETE',
-          target_type: 'FOLDER',
-          target_id: folderId,
-          user_name: 'Evandro (Administrador)',
-          sector: 'Diretoria',
-          details: {
-            folder_id: folderId,
-            deleted_at: new Date().toISOString(),
-          },
-        });
-      } catch {}
     }
 
-    res.json({ status: 'success', message: 'Pasta e conteúdos removidos com sucesso do Supabase e Cloudflare R2' });
+    res.json({ status: 'success', message: 'Pasta e conteúdos removidos com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // ==============================================================================
-// 14. FILES CRUD ENDPOINTS (Supabase + Cloudflare R2 Integrated)
+// 14. FILES CRUD ENDPOINTS (Unified Persistence: Disk + Memory + R2 + Supabase)
 // ==============================================================================
 app.get('/api/files', async (req: Request, res: Response) => {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    return res.json({ files: [], source: 'empty' });
-  }
-
   try {
-    const { data: dbFiles, error } = await supabase
-      .from('files')
-      .select('*, folders(name, sector)')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    // Map to DocumentFile format expected by the frontend
-    const mappedFiles = (dbFiles || []).map(f => {
-      const folder = f.folders as any;
-      return {
-        id: f.id,
-        folder_id: f.folder_id,
-        name: f.name,
-        storage_key: f.storage_key,
-        mime_type: f.mime_type,
-        original_size: Number(f.original_size) || 0,
-        optimized_size: Number(f.optimized_size) || 0,
-        compression_ratio: Number(f.compression_ratio) || 0,
-        pages_count: f.pages_count || 1,
-        tags: Array.isArray(f.tags) ? f.tags : [],
-        uploaded_by: f.uploaded_by || 'usr-admin-evandro',
-        uploader_name: 'Evandro (Administrador)',
-        sector: folder?.sector || 'Fiscal',
-        checksum_sha256: f.checksum_sha256,
-        due_date: f.due_date || undefined,
-        is_archived: f.is_archived || false,
-        created_at: f.created_at,
-        updated_at: f.updated_at,
-        preview_url: `/api/r2/view?key=${encodeURIComponent(f.storage_key)}&name=${encodeURIComponent(f.name)}`,
-      };
-    });
-
-    res.json({ files: mappedFiles, source: 'supabase', count: mappedFiles.length });
+    const files = await getAllUnifiedFiles();
+    res.json({ files, source: 'unified', count: files.length });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.json({ files: persistedFiles, source: 'fallback', count: persistedFiles.length });
   }
 });
 
 app.post('/api/files', async (req: Request, res: Response) => {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    return res.status(503).json({ error: 'Supabase não conectado' });
-  }
-
   try {
     const {
       folder_id,
@@ -1895,33 +2129,10 @@ app.post('/api/files', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Campos name e storage_key são obrigatórios' });
     }
 
-    // Resolve valid folder UUID in Supabase
-    let resolvedFolderId = folder_id;
-    if (!isValidUuid(resolvedFolderId)) {
-      const { data: allFolders } = await supabase.from('folders').select('id, sector, name');
-      const matched = (allFolders || []).find(f => 
-        f.sector === sector || 
-        f.sector === 'Fiscal' || 
-        f.name.toLowerCase().includes(String(sector || '').toLowerCase())
-      );
-      resolvedFolderId = matched?.id || allFolders?.[0]?.id;
-    }
-
-    if (!resolvedFolderId) {
-      return res.status(400).json({ error: 'Nenhuma pasta encontrada no Supabase para vincular o documento' });
-    }
-
-    // Resolve uploader UUID
-    let resolvedUploaderId = isValidUuid(uploaded_by) ? uploaded_by : null;
-    if (!resolvedUploaderId) {
-      const { data: adminProfiles } = await supabase.from('profiles').select('id').eq('role', 'admin').limit(1);
-      if (adminProfiles && adminProfiles[0]) {
-        resolvedUploaderId = adminProfiles[0].id;
-      }
-    }
-
-    const payload: any = {
-      folder_id: resolvedFolderId,
+    const fileId = crypto.randomUUID();
+    const newFile: StoredFile = {
+      id: fileId,
+      folder_id: folder_id || 'fold-fisc-root',
       name: name.trim(),
       storage_key,
       mime_type: mime_type || 'application/pdf',
@@ -1930,85 +2141,80 @@ app.post('/api/files', async (req: Request, res: Response) => {
       compression_ratio: Number(compression_ratio) || 0,
       pages_count: Number(pages_count) || 1,
       tags: Array.isArray(tags) ? tags : [],
-      uploaded_by: resolvedUploaderId,
-      checksum_sha256: checksum_sha256 || null,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (due_date) {
-      payload.due_date = due_date;
-    }
-
-    let inserted: any = null;
-    const { data, error } = await supabase
-      .from('files')
-      .insert(payload)
-      .select('*, folders(name, sector)');
-
-    if (error) {
-      // Se a coluna due_date não existir no Supabase, tenta novamente sem ela
-      if (due_date && (error.message.includes('due_date') || error.code === '42703')) {
-        delete payload.due_date;
-        const retry = await supabase.from('files').insert(payload).select('*, folders(name, sector)');
-        if (retry.error) {
-          console.error('[Supabase Files] Erro no retry insert:', retry.error);
-          return res.status(400).json({ error: retry.error.message });
-        }
-        inserted = retry.data?.[0];
-      } else {
-        console.error('[Supabase Files] Erro no insert:', error);
-        return res.status(400).json({ error: error.message });
-      }
-    } else {
-      inserted = data?.[0];
-    }
-
-    const folder = inserted.folders as any;
-
-    // Auto-record audit log in Supabase
-    try {
-      await supabase.from('audit_logs').insert({
-        action: 'FILE_UPLOAD',
-        target_type: 'FILE',
-        target_id: inserted.id,
-        profile_id: resolvedUploaderId,
-        user_name: 'Evandro (Administrador)',
-        sector: folder?.sector || sector || 'Fiscal',
-        details: {
-          name: inserted.name,
-          storage_key: inserted.storage_key,
-          original_size: inserted.original_size,
-          optimized_size: inserted.optimized_size,
-          compression_ratio: `${inserted.compression_ratio}%`,
-          due_date: due_date || inserted.due_date,
-        },
-      });
-    } catch (auditErr) {
-      console.warn('[Audit] Erro ao registrar log de upload:', auditErr);
-    }
-
-    const responseDoc = {
-      id: inserted.id,
-      folder_id: inserted.folder_id,
-      name: inserted.name,
-      storage_key: inserted.storage_key,
-      mime_type: inserted.mime_type,
-      original_size: inserted.original_size,
-      optimized_size: inserted.optimized_size,
-      compression_ratio: inserted.compression_ratio,
-      pages_count: inserted.pages_count,
-      tags: inserted.tags,
-      uploaded_by: inserted.uploaded_by,
+      uploaded_by: uploaded_by || '57e1d483-669b-4791-b09e-7496570e63ea',
       uploader_name: 'Evandro (Administrador)',
-      sector: folder?.sector || sector || 'Fiscal',
-      checksum_sha256: inserted.checksum_sha256,
-      due_date: due_date || inserted.due_date || undefined,
-      created_at: inserted.created_at,
-      updated_at: inserted.updated_at,
-      preview_url: `/api/r2/download?key=${encodeURIComponent(inserted.storage_key)}&name=${encodeURIComponent(inserted.name)}`,
+      sector: sector || 'Fiscal',
+      checksum_sha256: checksum_sha256 || undefined,
+      due_date: due_date || undefined,
+      is_archived: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      preview_url: `/api/r2/download?key=${encodeURIComponent(storage_key)}&name=${encodeURIComponent(name)}`,
     };
 
-    res.status(201).json({ status: 'success', file: responseDoc });
+    // 1. Immediately save to disk and memory
+    persistedFiles.unshift(newFile);
+    savePersistedFiles();
+
+    // 2. Sync to Supabase if connected
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        let resolvedFolderId = folder_id;
+        if (!isValidUuid(resolvedFolderId)) {
+          resolvedFolderId = toDeterministicUuid(folder_id);
+        }
+
+        let resolvedUploaderId = isValidUuid(uploaded_by) ? uploaded_by : null;
+        if (!resolvedUploaderId) {
+          const { data: adminProfiles } = await supabase.from('profiles').select('id').eq('role', 'admin').limit(1);
+          if (adminProfiles && adminProfiles[0]) {
+            resolvedUploaderId = adminProfiles[0].id;
+          }
+        }
+
+        const payload: any = {
+          id: fileId,
+          folder_id: resolvedFolderId,
+          name: name.trim(),
+          storage_key,
+          mime_type: mime_type || 'application/pdf',
+          original_size: Number(original_size) || 0,
+          optimized_size: Number(optimized_size) || 0,
+          compression_ratio: Number(compression_ratio) || 0,
+          pages_count: Number(pages_count) || 1,
+          tags: Array.isArray(tags) ? tags : [],
+          uploaded_by: resolvedUploaderId,
+          checksum_sha256: checksum_sha256 || null,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (due_date) payload.due_date = due_date;
+
+        await supabase.from('files').upsert(payload);
+
+        await supabase.from('audit_logs').insert({
+          action: 'FILE_UPLOAD',
+          target_type: 'FILE',
+          target_id: fileId,
+          profile_id: resolvedUploaderId,
+          user_name: 'Evandro (Administrador)',
+          sector: sector || 'Fiscal',
+          details: {
+            name: newFile.name,
+            storage_key: newFile.storage_key,
+            original_size: newFile.original_size,
+            optimized_size: newFile.optimized_size,
+            compression_ratio: `${newFile.compression_ratio}%`,
+            due_date: due_date || newFile.due_date,
+          },
+        });
+      } catch (sbErr: any) {
+        console.warn('[Supabase File Sync Error]', sbErr.message);
+      }
+    }
+
+    res.status(201).json({ status: 'success', file: newFile });
   } catch (err: any) {
     console.error('[POST /api/files] Erro:', err);
     res.status(500).json({ error: err.message });
@@ -2016,49 +2222,42 @@ app.post('/api/files', async (req: Request, res: Response) => {
 });
 
 app.delete('/api/files/:id', async (req: Request, res: Response) => {
-  const supabase = getSupabaseServerClient();
   const fileId = req.params.id;
-
-  if (!supabase) return res.status(503).json({ error: 'Supabase não conectado' });
-
   try {
-    const { data: fileRow } = await supabase
-      .from('files')
-      .select('*')
-      .eq('id', fileId)
-      .single();
+    // 1. Remove from in-memory and disk
+    const targetFile = persistedFiles.find(f => f.id === fileId);
+    persistedFiles = persistedFiles.filter(f => f.id !== fileId);
+    savePersistedFiles();
 
-    if (fileRow?.storage_key) {
+    // 2. Remove from R2
+    if (targetFile?.storage_key) {
       const { client, bucketName, isConfigured } = getR2Client();
       if (isConfigured && client) {
         try {
           await client.send(new DeleteObjectCommand({
             Bucket: bucketName,
-            Key: fileRow.storage_key,
+            Key: targetFile.storage_key,
           }));
-          console.log('[R2] Objeto excluído com sucesso do bucket:', fileRow.storage_key);
-        } catch (r2Err) {
-          console.warn('[R2] Erro ao excluir do bucket R2:', r2Err);
-        }
+        } catch (r2Err) {}
       }
     }
 
-    const { error: dbError } = await supabase.from('files').delete().eq('id', fileId);
-    if (dbError) {
-      return res.status(400).json({ error: dbError.message });
+    // 3. Remove from Supabase if connected
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        await supabase.from('files').delete().eq('id', fileId);
+        await supabase.from('audit_logs').insert({
+          action: 'FILE_DELETE',
+          target_type: 'FILE',
+          target_id: fileId,
+          user_name: 'Evandro (Administrador)',
+          details: { name: targetFile?.name, storage_key: targetFile?.storage_key },
+        });
+      } catch (sbErr) {}
     }
 
-    try {
-      await supabase.from('audit_logs').insert({
-        action: 'FILE_DELETE',
-        target_type: 'FILE',
-        target_id: fileId,
-        user_name: 'Evandro (Administrador)',
-        details: { name: fileRow?.name, storage_key: fileRow?.storage_key },
-      });
-    } catch {}
-
-    res.json({ status: 'success', message: 'Arquivo excluído do Supabase e Cloudflare R2' });
+    res.json({ status: 'success', message: 'Arquivo excluído com sucesso' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

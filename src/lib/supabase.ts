@@ -1,10 +1,22 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+let supabaseClient: SupabaseClient | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase URL or Anon Key is missing');
+export function getSupabase() {
+  if (!supabaseClient) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase configuration missing, Supabase features will be disabled.');
+      return null;
+    }
+    
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+  }
+  return supabaseClient;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Keep export for backward compatibility if used directly, 
+// but it might be null if not configured
+export const supabase = getSupabase();

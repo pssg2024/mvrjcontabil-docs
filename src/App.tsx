@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
@@ -49,6 +49,7 @@ import {
   fetchSystemStatusFromApi,
   fetchProfilesFromApi
 } from './lib/storage-service';
+import { getSupabase } from './lib/supabase';
 
 export default function App() {
   // Profiles & Auth State (Prioritizing Evandro as Master Administrator)
@@ -132,6 +133,9 @@ export default function App() {
     const saved = localStorage.getItem('mvrj_audit_logs');
     return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
   });
+
+  // Track timestamp of recent folder operations to prevent sync race conditions
+  const lastFolderActionRef = useRef<number>(0);
 
   // Navigation & Modals
   const [activeView, setActiveView] = useState<'drive' | 'admin'>('drive');
@@ -294,14 +298,61 @@ export default function App() {
     let isSyncing = false;
     const syncData = async () => {
       if (isSyncing) return;
+      // If user created, edited or deleted a folder in the last 12 seconds, postpone background sync to prevent race conditions
+      if (Date.now() - lastFolderActionRef.current < 12000) return;
       isSyncing = true;
       try {
         const [apiFolders, apiFiles] = await Promise.all([
           fetchFoldersFromApi().catch(() => null),
           fetchFilesFromApi().catch(() => null),
         ]);
-        if (apiFolders) setFolders(apiFolders);
-        if (apiFiles) setFiles(apiFiles);
+
+        if (apiFolders && Array.isArray(apiFolders) && apiFolders.length > 0) {
+          setFolders(prev => {
+            const map = new Map<string, Folder>();
+            for (const f of apiFolders) {
+              map.set(f.id, f);
+            }
+            // Keep local folders that might not have reached server yet or match by name/sector
+            for (const f of prev) {
+              if (!map.has(f.id)) {
+                const existsEquivalent = apiFolders.some(af => 
+                  af.name.trim().toLowerCase() === f.name.trim().toLowerCase() && 
+                  af.sector === f.sector && 
+                  af.parent_id === f.parent_id
+                );
+                if (!existsEquivalent) {
+                  map.set(f.id, f);
+                }
+              }
+            }
+            const merged = Array.from(map.values());
+            localStorage.setItem('mvrj_folders', JSON.stringify(merged));
+            return merged;
+          });
+        }
+
+        if (apiFiles && Array.isArray(apiFiles) && apiFiles.length > 0) {
+          setFiles(prev => {
+            const map = new Map<string, DocumentFile>();
+            for (const f of apiFiles) {
+              map.set(f.id, f);
+            }
+            for (const f of prev) {
+              if (!map.has(f.id)) {
+                const existsEquivalent = apiFiles.some(af => 
+                  af.name === f.name && af.folder_id === f.folder_id
+                );
+                if (!existsEquivalent) {
+                  map.set(f.id, f);
+                }
+              }
+            }
+            const merged = Array.from(map.values());
+            localStorage.setItem('mvrj_files', JSON.stringify(merged));
+            return merged;
+          });
+        }
       } finally {
         isSyncing = false;
       }
@@ -363,13 +414,35 @@ export default function App() {
       }
     };
 
-    // Initial load
+    // Initial load with intelligent merge
     fetchFoldersFromApi().then(apiFolders => {
-      if (apiFolders) setFolders(apiFolders);
+      if (apiFolders && Array.isArray(apiFolders) && apiFolders.length > 0) {
+        setFolders(prev => {
+          const map = new Map<string, Folder>();
+          for (const f of apiFolders) map.set(f.id, f);
+          for (const f of prev) {
+            if (!map.has(f.id)) map.set(f.id, f);
+          }
+          const merged = Array.from(map.values());
+          localStorage.setItem('mvrj_folders', JSON.stringify(merged));
+          return merged;
+        });
+      }
     }).catch(() => {});
 
     fetchFilesFromApi().then(apiFiles => {
-      if (apiFiles) setFiles(apiFiles);
+      if (apiFiles && Array.isArray(apiFiles) && apiFiles.length > 0) {
+        setFiles(prev => {
+          const map = new Map<string, DocumentFile>();
+          for (const f of apiFiles) map.set(f.id, f);
+          for (const f of prev) {
+            if (!map.has(f.id)) map.set(f.id, f);
+          }
+          const merged = Array.from(map.values());
+          localStorage.setItem('mvrj_files', JSON.stringify(merged));
+          return merged;
+        });
+      }
     }).catch(() => {});
 
     fetchAuditLogsFromApi().then(apiLogs => {
@@ -388,10 +461,28 @@ export default function App() {
     const profilesInterval = setInterval(syncProfiles, 8000);
     const metricsInterval = setInterval(fetchStorageMetrics, 30000);
 
+    // Realtime subscription for folders
+    const supabaseClient = getSupabase();
+    let channel: any = null;
+    if (supabaseClient) {
+      channel = supabaseClient.channel('realtime:folders')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'folders' }, (payload) => {
+          const newFolder = payload.new as Folder;
+          setFolders(prev => {
+            if (prev.some(f => f.id === newFolder.id)) return prev;
+            return [...prev, newFolder];
+          });
+        })
+        .subscribe();
+    }
+
     return () => {
       clearInterval(syncInterval);
       clearInterval(profilesInterval);
       clearInterval(metricsInterval);
+      if (channel) {
+        supabaseClient?.removeChannel(channel);
+      }
     };
   }, []);
 
@@ -412,9 +503,13 @@ export default function App() {
 
     // 2. Default Sector matching
     const folder = folders.find(f => f.id === folderId);
-    if (folder && (folder.sector === currentUser.sector || folder.sector === 'Geral')) {
-      if (minLevel === 'viewer') return true;
-      if (minLevel === 'editor' && currentUser.role === 'editor') return true;
+    if (folder) {
+      // Creator always has full access to their own folder
+      if (folder.created_by === currentUser.id) return true;
+      if (folder.sector === currentUser.sector || folder.sector === 'Geral') {
+        if (minLevel === 'viewer') return true;
+        if (minLevel === 'editor' && currentUser.role === 'editor') return true;
+      }
     }
 
     return false;
@@ -600,23 +695,41 @@ export default function App() {
   };
 
   const handleCreateFolder = async (name: string, parentId: string | null, sector: Sector) => {
+    lastFolderActionRef.current = Date.now();
+    const folderId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `fold-${Date.now()}`;
+    const optimisticFolder: Folder = {
+      id: folderId,
+      parent_id: parentId,
+      name: name.trim(),
+      sector,
+      created_by: currentUser?.id || '57e1d483-669b-4791-b09e-7496570e63ea',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // 1. Instantly save to local state and localStorage
+    setFolders(prev => {
+      const updated = [...prev, optimisticFolder];
+      localStorage.setItem('mvrj_folders', JSON.stringify(updated));
+      return updated;
+    });
+    logAudit('FOLDER_CREATE', 'FOLDER', folderId, { name, sector, parentId });
+
     try {
-      const created = await createFolderInApi(name, parentId, sector, currentUser?.id);
-      setFolders(prev => [...prev, created]);
-      logAudit('FOLDER_CREATE', 'FOLDER', created.id, { name, sector, parentId });
+      const created = await createFolderInApi(name, parentId, sector, currentUser?.id, folderId);
+      lastFolderActionRef.current = Date.now();
+      if (created && created.id) {
+        setFolders(prev => {
+          const updated = prev.map(f => (f.id === folderId ? { ...f, ...created } : f));
+          if (!updated.some(f => f.id === created.id || f.id === folderId)) {
+            updated.push(created);
+          }
+          localStorage.setItem('mvrj_folders', JSON.stringify(updated));
+          return updated;
+        });
+      }
     } catch (err) {
-      console.warn('Erro ao criar pasta no Supabase, mantendo localmente:', err);
-      const newFolder: Folder = {
-        id: `fold-${Date.now()}`,
-        parent_id: parentId,
-        name,
-        sector,
-        created_by: currentUser?.id || 'usr-admin-1',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setFolders(prev => [...prev, newFolder]);
-      logAudit('FOLDER_CREATE', 'FOLDER', newFolder.id, { name, sector, parentId });
+      console.warn('Aviso ao sincronizar pasta com a API (mantida localmente):', err);
     }
   };
 
@@ -627,7 +740,11 @@ export default function App() {
       id: fileId,
       name: file?.name || fileId,
       action: async () => {
-        setFiles(prev => prev.filter(f => f.id !== fileId));
+        setFiles(prev => {
+          const updated = prev.filter(f => f.id !== fileId);
+          localStorage.setItem('mvrj_files', JSON.stringify(updated));
+          return updated;
+        });
         if (file) {
           logAudit('FILE_DELETE', 'FILE', fileId, { name: file.name, storage_key: file.storage_key });
         }
@@ -649,18 +766,27 @@ export default function App() {
       id: folderId,
       name: folder?.name || folderId,
       action: async () => {
+        lastFolderActionRef.current = Date.now();
+        // Remove pasta excluída e eventuais subpastas vinculadas imediatamente
+        setFolders(prev => {
+          const updated = prev.filter(f => f.id !== folderId && f.parent_id !== folderId);
+          localStorage.setItem('mvrj_folders', JSON.stringify(updated));
+          return updated;
+        });
+        // Remove arquivos pertencentes a esta pasta da listagem local
+        setFiles(prev => {
+          const updated = prev.filter(file => file.folder_id !== folderId);
+          localStorage.setItem('mvrj_files', JSON.stringify(updated));
+          return updated;
+        });
+        if (folder) {
+          logAudit('FOLDER_DELETE', 'FOLDER', folderId, { name: folder.name });
+        }
         try {
           await deleteFolderInApi(folderId);
-          // Remove pasta excluída e eventuais subpastas vinculadas
-          setFolders(prev => prev.filter(f => f.id !== folderId && f.parent_id !== folderId));
-          // Remove arquivos pertencentes a esta pasta da listagem local
-          setFiles(prev => prev.filter(file => file.folder_id !== folderId));
           fetchStorageMetrics();
-          if (folder) {
-            logAudit('FOLDER_DELETE', 'FOLDER', folderId, { name: folder.name });
-          }
         } catch (err: any) {
-          alert(`Erro ao excluir pasta no Supabase: ${err.message || 'Falha na requisição'}`);
+          console.warn('Aviso ao excluir pasta na API:', err);
         }
       }
     });

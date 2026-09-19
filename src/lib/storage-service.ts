@@ -755,7 +755,7 @@ export async function resetAuthHeaderConfig(
 // ==============================================================================
 
 /**
- * Fetch folders from Supabase
+ * Fetch folders from Supabase / Unified Storage
  */
 export async function fetchFoldersFromApi(): Promise<Folder[]> {
   try {
@@ -765,8 +765,17 @@ export async function fetchFoldersFromApi(): Promise<Folder[]> {
     if (!contentType.includes('application/json')) throw new Error('Not JSON');
     const data = await res.json();
     if (Array.isArray(data.folders)) {
-      localStorage.setItem('mvrj_folders', JSON.stringify(data.folders));
-      return data.folders;
+      if (data.folders.length > 0) {
+        localStorage.setItem('mvrj_folders', JSON.stringify(data.folders));
+        return data.folders;
+      } else {
+        const cached = localStorage.getItem('mvrj_folders');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+        return data.folders;
+      }
     }
   } catch (err) {
     console.warn('[StorageService] Falha ao buscar pastas da API, usando fallback:', err);
@@ -776,18 +785,19 @@ export async function fetchFoldersFromApi(): Promise<Folder[]> {
 }
 
 /**
- * Create folder in Supabase
+ * Create folder in Supabase / Unified Storage
  */
 export async function createFolderInApi(
   name: string,
   parentId: string | null,
   sector: Sector,
-  createdBy?: string | null
+  createdBy?: string | null,
+  customId?: string
 ): Promise<Folder> {
   const res = await fetch('/api/folders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, parent_id: parentId, sector, created_by: createdBy }),
+    body: JSON.stringify({ name, parent_id: parentId, sector, created_by: createdBy, id: customId }),
   });
 
   if (!res.ok) {
@@ -800,7 +810,7 @@ export async function createFolderInApi(
 }
 
 /**
- * Delete folder in Supabase
+ * Delete folder in Supabase / Unified Storage
  */
 export async function deleteFolderInApi(folderId: string): Promise<void> {
   const res = await fetch(`/api/folders/${folderId}`, {
@@ -814,7 +824,7 @@ export async function deleteFolderInApi(folderId: string): Promise<void> {
 }
 
 /**
- * Fetch files from Supabase
+ * Fetch files from Supabase / Unified Storage
  */
 export async function fetchFilesFromApi(): Promise<DocumentFile[]> {
   try {
@@ -824,8 +834,17 @@ export async function fetchFilesFromApi(): Promise<DocumentFile[]> {
     if (!contentType.includes('application/json')) throw new Error('Not JSON');
     const data = await res.json();
     if (Array.isArray(data.files)) {
-      localStorage.setItem('mvrj_files', JSON.stringify(data.files));
-      return data.files;
+      if (data.files.length > 0) {
+        localStorage.setItem('mvrj_files', JSON.stringify(data.files));
+        return data.files;
+      } else {
+        const cached = localStorage.getItem('mvrj_files');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+        return data.files;
+      }
     }
   } catch (err) {
     console.warn('[StorageService] Falha ao buscar arquivos da API, usando fallback:', err);

@@ -37,7 +37,8 @@ import {
   Bell,
   Clock,
   XCircle,
-  CheckCircle2
+  CheckCircle2,
+  Check
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -607,59 +608,63 @@ export const FileManager: React.FC<FileManagerProps> = ({
               return (
                 <div
                   key={file.id}
-                  className="bg-white rounded-2xl border border-gray-200 hover:border-blue-400 shadow-2xs hover:shadow-md transition-all p-4 flex flex-col justify-between group relative overflow-hidden"
+                  className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#C59B4B]/50 transition-all p-5 flex flex-col justify-between group relative"
                 >
-                  <div className="space-y-3">
-                    {/* Header with Type icon & Savings Badge */}
+                  <div>
+                    {/* Top Bar: File Icon & Status Badge */}
                     <div className="flex items-start justify-between">
-                      <div className={`p-2.5 rounded-xl text-white shadow-xs ${
-                        isPfx ? 'bg-purple-600' :
-                        isPdf ? 'bg-red-600' :
-                        isImage ? 'bg-blue-600' :
-                        isSpreadsheet ? 'bg-emerald-600' :
-                        isXml ? 'bg-amber-600' :
-                        isZip ? 'bg-teal-600' : 'bg-[#1B357B]'
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                        isPdf ? 'bg-rose-50 text-rose-600 border border-rose-100' :
+                        isImage ? 'bg-blue-50 text-[#1B357B] border border-blue-100' :
+                        (isSpreadsheet || isXml) ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                        isPfx ? 'bg-purple-50 text-purple-600 border border-purple-100' :
+                        isZip ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                        'bg-slate-50 text-slate-600 border border-slate-200/70'
                       }`}>
-                        {isPfx ? <KeyRound className="w-5 h-5" /> :
-                         isPdf ? <FileText className="w-5 h-5" /> :
+                        {isPdf ? <FileText className="w-5 h-5" /> :
                          isImage ? <ImageIcon className="w-5 h-5" /> :
                          isSpreadsheet ? <FileSpreadsheet className="w-5 h-5" /> :
                          isXml ? <FileCode className="w-5 h-5" /> :
+                         isPfx ? <KeyRound className="w-5 h-5" /> :
                          isZip ? <FileArchive className="w-5 h-5" /> :
                          <FileGenericIcon className="w-5 h-5" />}
                       </div>
 
-                      {file.compression_ratio > 0 ? (
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          -{file.compression_ratio}% Otimizado
+                      {isPfx ? (
+                        <span className="bg-purple-50 text-purple-700 border border-purple-200/60 text-[10px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                          <KeyRound className="w-3 h-3 text-purple-600" />
+                          <span>Certificado</span>
                         </span>
-                      ) : isPfx ? (
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-50 text-purple-800 border border-purple-200">
-                          Certificado Digital
+                      ) : file.compression_ratio > 0 ? (
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[10px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>-{file.compression_ratio}% Otimizado</span>
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                          Íntegro
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[10px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>Íntegro</span>
                         </span>
                       )}
                     </div>
 
-                    {/* File Title & Sector */}
+                    {/* File Title & Sector/Folder */}
                     <div>
                       <h4 
                         onClick={() => onOpenFileViewer(file)}
-                        className="font-bold text-xs sm:text-sm text-gray-900 group-hover:text-blue-600 cursor-pointer transition-colors truncate" 
+                        className="text-sm font-bold text-slate-800 truncate group-hover:text-[#1B357B] transition-colors mt-3 cursor-pointer" 
                         title={file.name}
                       >
                         {file.name}
                       </h4>
-                      <p className="text-[11px] text-gray-500 mt-0.5 flex items-center space-x-1 flex-wrap">
+                      <p className="text-xs text-slate-400 font-medium mb-3 flex items-center gap-1">
+                        <FolderIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>{file.sector}</span>
                         {file.pages_count && file.pages_count > 1 && (
-                          <span>• {file.pages_count} págs</span>
+                          <span className="text-slate-400">• {file.pages_count} págs</span>
                         )}
-                        {file.tags.find(t => t.startsWith('Ref: ')) && (
-                          <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-md font-medium">
+                        {file.tags && file.tags.find(t => t.startsWith('Ref: ')) && (
+                          <span className="bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-medium ml-1">
                             {file.tags.find(t => t.startsWith('Ref: '))}
                           </span>
                         )}
@@ -671,7 +676,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       const dueInfo = getDueDateInfo(file.due_date || (file as any).dataVencimento);
                       if (!dueInfo) return null;
                       return (
-                        <div className={`px-2.5 py-1.5 rounded-xl border text-[11px] flex items-center justify-between gap-1.5 ${dueInfo.cardClass}`}>
+                        <div className={`px-2.5 py-1.5 rounded-xl border text-[11px] flex items-center justify-between gap-1.5 mb-2.5 ${dueInfo.cardClass}`}>
                           <span className="flex items-center gap-1.5 font-medium text-slate-700">
                             <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                             <span>Vencimento:</span>
@@ -683,20 +688,16 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       );
                     })()}
 
-                    {/* Size Comparison Widget */}
-                    <div className="p-2 bg-gray-50 rounded-lg text-[11px] flex justify-between items-center text-gray-600">
-                      <span className="text-gray-400">Tamanho:</span>
-                      <div className="flex items-center space-x-1.5 font-mono">
-                        <span className="line-through text-gray-400 text-[10px]">{formatBytes(file.original_size)}</span>
-                        <span className="font-bold text-gray-900">{formatBytes(file.optimized_size)}</span>
-                      </div>
+                    {/* Size Pill */}
+                    <div className="text-xs font-semibold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg w-fit mb-3">
+                      {formatBytes(file.optimized_size || file.original_size)}
                     </div>
 
-                    {/* Tags */}
-                    {file.tags && file.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {file.tags.slice(0, 3).map(tag => (
-                          <span key={tag} className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded">
+                    {/* Minimalist Tags */}
+                    {file.tags && file.tags.filter(t => !t.startsWith('Ref: ')).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {file.tags.filter(t => !t.startsWith('Ref: ')).slice(0, 3).map(tag => (
+                          <span key={tag} className="bg-slate-100 text-slate-600 border border-slate-200/70 text-[11px] font-medium px-2 py-0.5 rounded-md">
                             #{tag}
                           </span>
                         ))}
@@ -705,49 +706,53 @@ export const FileManager: React.FC<FileManagerProps> = ({
                   </div>
 
                   {/* Footer Actions */}
-                  <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-                    <span className="text-[10px] text-gray-400">
+                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-slate-400">
                       {new Date(file.created_at).toLocaleDateString('pt-BR')}
                     </span>
 
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={() => onOpenFileViewer(file)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Visualizar no Leitor Seguro"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                    <div className="flex items-center space-x-1">
+                      <button
+                        type="button"
+                        onClick={() => onOpenFileViewer(file)}
+                        className="p-2 rounded-lg text-slate-500 hover:text-[#1B357B] hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Visualizar documento"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
 
-                        <button
-                          onClick={() => {
-                            const url = `https://wa.me/?text=${encodeURIComponent(`Olá! Segue o documento contábil solicitado referente aos serviços da MVRJ Contábil: ${file.name} - ${window.location.origin}/preview/${file.id}`)}`;
-                            window.open(url, '_blank');
-                          }}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                          title="Enviar via WhatsApp"
-                        >
-                          <Phone className="w-4 h-4" />
-                        </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = `https://wa.me/?text=${encodeURIComponent(`Olá! Segue o documento contábil solicitado referente aos serviços da MVRJ Contábil: ${file.name} - ${window.location.origin}/preview/${file.id}`)}`;
+                          window.open(url, '_blank');
+                        }}
+                        className="p-2 rounded-lg text-slate-500 hover:text-[#1B357B] hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Enviar via WhatsApp"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </button>
 
-                        <button
-                          onClick={() => handleDirectDownload(file)}
-                          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Download com Presigned GET URL"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDirectDownload(file)}
+                        className="p-2 rounded-lg text-slate-500 hover:text-[#1B357B] hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Download seguro"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
 
-                        {currentUser.role === 'admin' && (
-                          <button
-                            onClick={() => onDeleteFile(file.id)}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Excluir Arquivo (Admin)"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
+                      {currentUser.role === 'admin' && onDeleteFile && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteFile(file.id)}
+                          className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Excluir Arquivo (Admin)"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
