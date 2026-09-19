@@ -2063,8 +2063,26 @@ app.delete('/api/folders/:id', async (req: Request, res: Response) => {
 
     // 3. Remove files from R2 and Supabase
     if (supabase) {
+      const uuidId = toDeterministicUuid(folderId);
+      
+      // Delete files in Supabase first
+      const { error: filesDeleteError } = await supabase
+        .from('files')
+        .delete()
+        .or(`folder_id.eq.${folderId},folder_id.eq.${uuidId}`);
+      
+      if (filesDeleteError) throw new Error(`Erro ao excluir arquivos no Supabase: ${filesDeleteError.message}`);
+
+      // Delete folders in Supabase
+      const { error: foldersDeleteError } = await supabase
+        .from('folders')
+        .delete()
+        .or(`id.eq.${folderId},id.eq.${uuidId}`);
+      
+      if (foldersDeleteError) throw new Error(`Erro ao excluir pasta no Supabase: ${foldersDeleteError.message}`);
+
+      // Handle R2 files
       try {
-        const uuidId = toDeterministicUuid(folderId);
         const { data: folderFiles } = await supabase.from('files').select('id, storage_key, name').or(`folder_id.eq.${folderId},folder_id.eq.${uuidId}`);
         if (Array.isArray(folderFiles) && isConfigured && client) {
           for (const f of folderFiles) {
@@ -2081,16 +2099,12 @@ app.delete('/api/folders/:id', async (req: Request, res: Response) => {
             }
           }
         }
-        await supabase.from('files').delete().or(`folder_id.eq.${folderId},folder_id.eq.${uuidId}`);
-        await supabase.from('folders').delete().or(`parent_id.eq.${folderId},parent_id.eq.${uuidId}`);
-        await supabase.from('folders').delete().or(`id.eq.${folderId},id.eq.${uuidId}`);
-      } catch (sbErr: any) {
-        console.warn('[Delete Folder Supabase Aviso]', sbErr.message);
-      }
+      } catch (e) {}
     }
 
     res.json({ status: 'success', message: 'Pasta e conteúdos removidos com sucesso' });
   } catch (err: any) {
+    console.error('[Delete Folder Error]', err);
     res.status(500).json({ error: err.message });
   }
 });
