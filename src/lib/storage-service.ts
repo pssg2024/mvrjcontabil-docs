@@ -765,23 +765,12 @@ export async function fetchFoldersFromApi(): Promise<Folder[]> {
     if (!contentType.includes('application/json')) throw new Error('Not JSON');
     const data = await res.json();
     if (Array.isArray(data.folders)) {
-      if (data.folders.length > 0) {
-        localStorage.setItem('mvrj_folders', JSON.stringify(data.folders));
         return data.folders;
-      } else {
-        const cached = localStorage.getItem('mvrj_folders');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-        return data.folders;
-      }
     }
   } catch (err) {
-    console.warn('[StorageService] Falha ao buscar pastas da API, usando fallback:', err);
+    console.warn('[StorageService] Falha ao buscar pastas da API:', err);
   }
-  const cached = localStorage.getItem('mvrj_folders');
-  return cached ? JSON.parse(cached) : [];
+  return [];
 }
 
 /**
@@ -834,23 +823,12 @@ export async function fetchFilesFromApi(): Promise<DocumentFile[]> {
     if (!contentType.includes('application/json')) throw new Error('Not JSON');
     const data = await res.json();
     if (Array.isArray(data.files)) {
-      if (data.files.length > 0) {
-        localStorage.setItem('mvrj_files', JSON.stringify(data.files));
-        return data.files;
-      } else {
-        const cached = localStorage.getItem('mvrj_files');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-        return data.files;
-      }
+      return data.files;
     }
   } catch (err) {
-    console.warn('[StorageService] Falha ao buscar arquivos da API, usando fallback:', err);
+    console.warn('[StorageService] Falha ao buscar arquivos da API:', err);
   }
-  const cached = localStorage.getItem('mvrj_files');
-  return cached ? JSON.parse(cached) : [];
+  return [];
 }
 
 /**
@@ -895,14 +873,12 @@ export async function fetchAuditLogsFromApi(): Promise<AuditLog[]> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (Array.isArray(data.logs)) {
-      localStorage.setItem('mvrj_audit_logs', JSON.stringify(data.logs));
       return data.logs;
     }
   } catch (err) {
     console.warn('[StorageService] Falha ao buscar logs de auditoria:', err);
   }
-  const cached = localStorage.getItem('mvrj_audit_logs');
-  return cached ? JSON.parse(cached) : [];
+  return [];
 }
 
 /**
@@ -929,14 +905,12 @@ export async function fetchFolderPermissionsFromApi(): Promise<FolderPermission[
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (Array.isArray(data.permissions)) {
-      localStorage.setItem('mvrj_folder_perms', JSON.stringify(data.permissions));
       return data.permissions;
     }
   } catch (err) {
     console.warn('[StorageService] Falha ao buscar permissões:', err);
   }
-  const cached = localStorage.getItem('mvrj_folder_perms');
-  return cached ? JSON.parse(cached) : [];
+  return [];
 }
 
 /**

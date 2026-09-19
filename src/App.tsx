@@ -114,25 +114,13 @@ export default function App() {
   const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null);
 
   // Data State
-  const [folders, setFolders] = useState<Folder[]>(() => {
-    const saved = localStorage.getItem('mvrj_folders');
-    return saved ? JSON.parse(saved) : INITIAL_FOLDERS;
-  });
+  const [folders, setFolders] = useState<Folder[]>([]);
 
-  const [files, setFiles] = useState<DocumentFile[]>(() => {
-    const saved = localStorage.getItem('mvrj_files');
-    return saved ? JSON.parse(saved) : INITIAL_FILES;
-  });
+  const [files, setFiles] = useState<DocumentFile[]>([]);
 
-  const [folderPermissions, setFolderPermissions] = useState<FolderPermission[]>(() => {
-    const saved = localStorage.getItem('mvrj_folder_perms');
-    return saved ? JSON.parse(saved) : INITIAL_FOLDER_PERMISSIONS;
-  });
+  const [folderPermissions, setFolderPermissions] = useState<FolderPermission[]>([]);
 
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
-    const saved = localStorage.getItem('mvrj_audit_logs');
-    return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
-  });
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // Track timestamp of recent folder operations to prevent sync race conditions
   const lastFolderActionRef = useRef<number>(0);
@@ -307,51 +295,12 @@ export default function App() {
           fetchFilesFromApi().catch(() => null),
         ]);
 
-        if (apiFolders && Array.isArray(apiFolders) && apiFolders.length > 0) {
-          setFolders(prev => {
-            const map = new Map<string, Folder>();
-            for (const f of apiFolders) {
-              map.set(f.id, f);
-            }
-            // Keep local folders that might not have reached server yet or match by name/sector
-            for (const f of prev) {
-              if (!map.has(f.id)) {
-                const existsEquivalent = apiFolders.some(af => 
-                  af.name.trim().toLowerCase() === f.name.trim().toLowerCase() && 
-                  af.sector === f.sector && 
-                  af.parent_id === f.parent_id
-                );
-                if (!existsEquivalent) {
-                  map.set(f.id, f);
-                }
-              }
-            }
-            const merged = Array.from(map.values());
-            localStorage.setItem('mvrj_folders', JSON.stringify(merged));
-            return merged;
-          });
+        if (apiFolders && Array.isArray(apiFolders)) {
+          setFolders(apiFolders);
         }
 
-        if (apiFiles && Array.isArray(apiFiles) && apiFiles.length > 0) {
-          setFiles(prev => {
-            const map = new Map<string, DocumentFile>();
-            for (const f of apiFiles) {
-              map.set(f.id, f);
-            }
-            for (const f of prev) {
-              if (!map.has(f.id)) {
-                const existsEquivalent = apiFiles.some(af => 
-                  af.name === f.name && af.folder_id === f.folder_id
-                );
-                if (!existsEquivalent) {
-                  map.set(f.id, f);
-                }
-              }
-            }
-            const merged = Array.from(map.values());
-            localStorage.setItem('mvrj_files', JSON.stringify(merged));
-            return merged;
-          });
+        if (apiFiles && Array.isArray(apiFiles)) {
+          setFiles(apiFiles);
         }
       } finally {
         isSyncing = false;
@@ -414,34 +363,16 @@ export default function App() {
       }
     };
 
-    // Initial load with intelligent merge
+    // Initial load
     fetchFoldersFromApi().then(apiFolders => {
-      if (apiFolders && Array.isArray(apiFolders) && apiFolders.length > 0) {
-        setFolders(prev => {
-          const map = new Map<string, Folder>();
-          for (const f of apiFolders) map.set(f.id, f);
-          for (const f of prev) {
-            if (!map.has(f.id)) map.set(f.id, f);
-          }
-          const merged = Array.from(map.values());
-          localStorage.setItem('mvrj_folders', JSON.stringify(merged));
-          return merged;
-        });
+      if (apiFolders && Array.isArray(apiFolders)) {
+        setFolders(apiFolders);
       }
     }).catch(() => {});
 
     fetchFilesFromApi().then(apiFiles => {
-      if (apiFiles && Array.isArray(apiFiles) && apiFiles.length > 0) {
-        setFiles(prev => {
-          const map = new Map<string, DocumentFile>();
-          for (const f of apiFiles) map.set(f.id, f);
-          for (const f of prev) {
-            if (!map.has(f.id)) map.set(f.id, f);
-          }
-          const merged = Array.from(map.values());
-          localStorage.setItem('mvrj_files', JSON.stringify(merged));
-          return merged;
-        });
+      if (apiFiles && Array.isArray(apiFiles)) {
+        setFiles(apiFiles);
       }
     }).catch(() => {});
 
@@ -461,21 +392,20 @@ export default function App() {
     const profilesInterval = setInterval(syncProfiles, 8000);
     const metricsInterval = setInterval(fetchStorageMetrics, 30000);
 
-    // Realtime subscription for folders
+    // Realtime subscription for folders and files
     const supabaseClient = getSupabase();
     let channel: any = null;
     if (supabaseClient) {
-      channel = supabaseClient.channel('realtime:folders')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'folders' }, (payload) => {
-          const newFolder = payload.new as Folder;
-          setFolders(prev => {
-            if (prev.some(f => f.id === newFolder.id)) return prev;
-            return [...prev, newFolder];
-          });
+      channel = supabaseClient.channel('realtime:all')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'folders' }, async () => {
+          // Refetch folders to ensure consistency
+          const updatedFolders = await fetchFoldersFromApi();
+          setFolders(updatedFolders);
         })
-        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'folders' }, (payload) => {
-          const deletedFolder = payload.old as Folder;
-          setFolders(prev => prev.filter(f => f.id !== deletedFolder.id));
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, async () => {
+          // Refetch files to ensure consistency
+          const updatedFiles = await fetchFilesFromApi();
+          setFiles(updatedFiles);
         })
         .subscribe();
     }
