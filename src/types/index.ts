@@ -62,7 +62,6 @@ export interface DocumentFile {
   uploader_name?: string;
   sector: Sector;
   checksum_sha256?: string;
-  due_date?: string; // Data de Vencimento da Guia / Obrigação (YYYY-MM-DD)
   is_archived?: boolean;
   created_at: string;
   updated_at: string;

@@ -28,15 +28,11 @@ import {
   KeyRound,
   FileCode,
   FileArchive,
-  File as FileGenericIcon,
-  Clock,
-  AlertCircle,
-  AlertTriangle
+  File as FileGenericIcon
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
 import { getPresignedDownloadUrl } from '../lib/storage-service';
-import { getDueDateInfo } from '../lib/due-date-utils';
 import { StorageStatsWidget } from './StorageStatsCard';
 import { StorageLimitModal } from './StorageLimitModal';
 
@@ -71,19 +67,11 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const [selectedSector, setSelectedSector] = useState<Sector | 'ALL'>('ALL');
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
-  const [dueFilter, setDueFilter] = useState<'ALL' | 'EXPIRING_OR_OVERDUE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'size'>('date');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-
-  // Count files expiring soon (<= 7 days) or overdue
-  const expiringOrOverdueCount = files.filter(f => {
-    if (!f.due_date) return false;
-    const dueInfo = getDueDateInfo(f.due_date);
-    return dueInfo && (dueInfo.status === 'expired' || dueInfo.diffDays <= 7);
-  }).length;
 
   // Breadcrumbs calculation
   const getBreadcrumbs = (): Folder[] => {
@@ -102,7 +90,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
   // Filter folders: only direct children of current folder & sector filter
   const visibleFolders = folders.filter(folder => {
-    if (dueFilter === 'EXPIRING_OR_OVERDUE') return false; // Hide folders in due-date alert view to emphasize urgent documents
     const isDirectChild = currentFolderId 
       ? folder.parent_id === currentFolderId 
       : (!folder.parent_id || folder.parent_id === null || folder.parent_id === '');
@@ -123,15 +110,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
     // Filter by competence if provided (assuming tags contain competence, e.g., 'Ref: 08/2026')
     const matchesCompetence = (selectedMonth === 'ALL' || file.tags.some(t => t.includes(selectedMonth))) &&
                               (selectedYear === 'ALL' || file.tags.some(t => t.includes(selectedYear)));
-
-    // Filter by Due Date alert: Vencidos ou a vencer nos próximos 7 dias
-    if (dueFilter === 'EXPIRING_OR_OVERDUE') {
-      if (!file.due_date) return false;
-      const dueInfo = getDueDateInfo(file.due_date);
-      if (!dueInfo || (dueInfo.status !== 'expired' && dueInfo.diffDays > 7)) return false;
-      if (selectedSector !== 'ALL' && file.sector !== selectedSector) return false;
-      return matchesSearch && matchesCompetence && (file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true);
-    }
 
     if (searchQuery) {
       // Global search returns matching files the user has permission to see
@@ -414,45 +392,18 @@ export const FileManager: React.FC<FileManagerProps> = ({
             <div className="h-4 w-px bg-slate-200 mx-1.5" />
             
             {/* Clear Filters Button */}
-            {(selectedSector !== 'ALL' || selectedMonth !== 'ALL' || selectedYear !== 'ALL' || dueFilter !== 'ALL') && (
+            {(selectedSector !== 'ALL' || selectedMonth !== 'ALL' || selectedYear !== 'ALL') && (
               <button
                 onClick={() => {
                   setSelectedSector('ALL');
                   setSelectedMonth('ALL');
                   setSelectedYear('ALL');
-                  setDueFilter('ALL');
                 }}
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-all cursor-pointer"
               >
                 Limpar Filtros
               </button>
             )}
-
-            <div className="h-4 w-px bg-slate-200 mx-1.5" />
-            
-            {/* Quick Filter: Perto de Vencer */}
-            <button
-              id="filter-expiring-btn"
-              onClick={() => setDueFilter(prev => prev === 'EXPIRING_OR_OVERDUE' ? 'ALL' : 'EXPIRING_OR_OVERDUE')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center space-x-1.5 cursor-pointer shrink-0 ${
-                dueFilter === 'EXPIRING_OR_OVERDUE'
-                  ? 'bg-amber-500 text-slate-950 shadow-xs font-bold ring-2 ring-amber-300'
-                  : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/90'
-              }`}
-              title="Filtrar guias e obrigações vencidas ou com vencimento nos próximos 7 dias"
-            >
-              <Clock className={`w-3.5 h-3.5 ${dueFilter === 'EXPIRING_OR_OVERDUE' ? 'text-slate-950' : 'text-amber-700'}`} />
-              <span>⚠️ A Vencer / Vencidos</span>
-              {expiringOrOverdueCount > 0 && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                  dueFilter === 'EXPIRING_OR_OVERDUE'
-                    ? 'bg-slate-950 text-amber-300'
-                    : 'bg-rose-500 text-white'
-                }`}>
-                  {expiringOrOverdueCount}
-                </span>
-              )}
-            </button>
 
             <div className="h-4 w-px bg-slate-200 mx-1.5" />
             {(['ALL', 'Fiscal', 'Departamento Pessoal', 'Contábil', 'Diretoria', 'Financeiro'] as const).map(sec => (
@@ -682,20 +633,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
                     {/* File Title & Sector */}
                     <div>
-                      {file.due_date && (() => {
-                        const dueInfo = getDueDateInfo(file.due_date);
-                        if (!dueInfo) return null;
-                        return (
-                          <div className="mb-1.5">
-                            <span className={dueInfo.badgeClass} title={`Data de Vencimento: ${dueInfo.formattedDate}`}>
-                              {dueInfo.status === 'expired' && <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />}
-                              {dueInfo.status === 'soon' && <Clock className="w-3 h-3 text-amber-600 shrink-0" />}
-                              {dueInfo.status === 'ok' && <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />}
-                              <span>{dueInfo.label}</span>
-                            </span>
-                          </div>
-                        );
-                      })()}
                       <h4 
                         onClick={() => onOpenFileViewer(file)}
                         className="font-bold text-xs sm:text-sm text-gray-900 group-hover:text-blue-600 cursor-pointer transition-colors truncate" 
@@ -837,18 +774,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
                           >
                             {file.name}
                           </span>
-                          {file.due_date && (() => {
-                            const dueInfo = getDueDateInfo(file.due_date);
-                            if (!dueInfo) return null;
-                            return (
-                              <span className={dueInfo.badgeClass} title={`Data de Vencimento: ${dueInfo.formattedDate}`}>
-                                {dueInfo.status === 'expired' && <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />}
-                                {dueInfo.status === 'soon' && <Clock className="w-3 h-3 text-amber-600 shrink-0" />}
-                                {dueInfo.status === 'ok' && <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />}
-                                <span>{dueInfo.label}</span>
-                              </span>
-                            );
-                          })()}
                           {isPfx && (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
                               PFX

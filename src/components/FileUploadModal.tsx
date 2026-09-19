@@ -49,7 +49,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
   const resetForm = () => {
     setSelectedFile(null);
-    setDueDate('');
     setTags(['Contábil', '2026']);
     setTagInput('');
     setIsProcessing(false);
@@ -70,7 +69,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     }
   }, [isOpen, currentFolder, allFolders]);
 
-  const [dueDate, setDueDate] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>(['Contábil', '2026']);
 
@@ -199,7 +197,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         uploader_name: currentUser.full_name,
         sector: targetFolder.sector,
         checksum_sha256: checksum,
-        due_date: dueDate ? dueDate : undefined,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         preview_url: optResult.dataUrl,
@@ -303,27 +300,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                 </select>
               </div>
             </div>
-          </div>
-
-          {/* Due Date Field (Vencimento da Guia / Obrigação) */}
-          <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 space-y-1">
-            <label className="block text-xs font-semibold text-slate-800 mb-1 flex items-center justify-between">
-              <span className="flex items-center space-x-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#1B357B]" />
-                <span>Data de Vencimento da Guia / Obrigação</span>
-              </span>
-              <span className="bg-slate-100 text-slate-500 text-[10px] font-medium px-2 py-0.5 rounded-full">(Opcional)</span>
-            </label>
-            <input
-              type="date"
-              disabled={isProcessing}
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full py-2.5 px-3.5 text-xs text-slate-700 bg-slate-50/60 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/15 outline-none transition-all font-medium"
-            />
-            <p className="text-slate-400 text-[11px] mt-1 flex items-center space-x-1">
-              <span>Usado para destacar prazos de tributos, parcelamentos e certidões.</span>
-            </p>
           </div>
 
           {/* Storage Quota Warning or Tracker */}
