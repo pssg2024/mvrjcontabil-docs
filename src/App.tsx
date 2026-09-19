@@ -54,7 +54,14 @@ export default function App() {
   // Profiles & Auth State (Prioritizing Evandro as Master Administrator)
   const [profiles, setProfiles] = useState<UserProfile[]>(() => {
     const saved = localStorage.getItem('mvrj_profiles');
-    let loaded: UserProfile[] = saved ? JSON.parse(saved) : INITIAL_PROFILES;
+    let loaded: UserProfile[] = saved ? JSON.parse(saved) : [];
+    
+    // Merge with INITIAL_PROFILES if missing
+    INITIAL_PROFILES.forEach(ip => {
+      if (!loaded.find(p => p.id === ip.id || p.email.toLowerCase() === ip.email.toLowerCase())) {
+        loaded.push(ip);
+      }
+    });
     
     // Assegura que evandro230655@gmail.com sempre existe como Administrador ativo
     const evandroExists = loaded.find(p => p.email.toLowerCase() === 'evandro230655@gmail.com');
@@ -252,10 +259,10 @@ export default function App() {
     // Polling interval to keep folders, files and configs in sync across all devices and sessions
     const syncInterval = setInterval(() => {
       fetchFoldersFromApi().then(apiFolders => {
-        if (apiFolders && apiFolders.length > 0) setFolders(apiFolders);
+        if (apiFolders) setFolders(apiFolders);
       }).catch(() => {});
       fetchFilesFromApi().then(apiFiles => {
-        if (apiFiles && apiFiles.length > 0) setFiles(apiFiles);
+        if (apiFiles) setFiles(apiFiles);
       }).catch(() => {});
       getAuthHeaderConfig().then(authConfig => {
         if (authConfig) setAuthHeaderConfig(authConfig);
@@ -301,7 +308,7 @@ export default function App() {
       fetch('/api/profiles')
         .then(res => res.json())
         .then(data => {
-          if (data && data.profiles && Array.isArray(data.profiles) && data.profiles.length > 0) {
+          if (data && data.profiles && Array.isArray(data.profiles)) {
             setProfiles(data.profiles);
 
             setCurrentUser(prevUser => {
