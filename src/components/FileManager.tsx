@@ -311,30 +311,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
         />
       )}
 
-      {/* Alerta Automático de Guias e Obrigações Próximas ao Vencimento ou Vencidas */}
-      {expiringOrOverdueCount > 0 && dueFilter !== 'EXPIRING_OR_OVERDUE' && (
-        <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-amber-500 text-slate-950 rounded-xl shadow-xs shrink-0">
-              <Clock className="w-5 h-5 animate-pulse" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-amber-900">Alerta Automático: Guias e Obrigações Próximas ao Vencimento</h4>
-              <p className="text-xs text-amber-800 mt-0.5">
-                Existem <strong className="font-bold">{expiringOrOverdueCount}</strong> documentos vencidos ou com vencimento nos próximos 7 dias que requerem atenção imediata.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setDueFilter('EXPIRING_OR_OVERDUE')}
-            className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow-xs transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
-          >
-            <span>Ver Documentos Urgentes</span>
-            <span className="bg-slate-950 text-amber-300 text-[10px] px-1.5 py-0.5 rounded-full font-bold">{expiringOrOverdueCount}</span>
-          </button>
-        </div>
-      )}
-
       {/* Control Toolbar (Search, Sector Pills, View toggle, Actions) */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-xs p-4 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
