@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Folder as FolderIcon, 
   FolderPlus, 
@@ -20,27 +20,29 @@ import {
   Grid, 
   List, 
   ShieldCheck, 
-  Lock,
-  ArrowUpDown,
-  FileSpreadsheet,
-  AlertOctagon,
-  Phone,
-  KeyRound,
-  FileCode,
-  FileArchive,
-  File as FileGenericIcon,
-  AlertTriangle,
-  FileUp,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
-  Bell,
-  Clock,
-  XCircle,
-  CheckCircle2,
-  Check,
-  RefreshCw,
-  Files
+  Lock, 
+  ArrowUpDown, 
+  FileSpreadsheet, 
+  AlertOctagon, 
+  Phone, 
+  KeyRound, 
+  FileCode, 
+  FileArchive, 
+  File as FileGenericIcon, 
+  AlertTriangle, 
+  FileUp, 
+  ExternalLink, 
+  ChevronDown, 
+  ChevronUp, 
+  Bell, 
+  Clock, 
+  XCircle, 
+  CheckCircle2, 
+  Check, 
+  RefreshCw, 
+  Files,
+  Building2,
+  X
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -61,6 +63,9 @@ interface FileManagerProps {
   onDeleteFolder?: (folderId: string) => void;
   onDeleteFile: (fileId: string) => void;
   hasFolderPermission: (folderId: string, minLevel: PermissionLevel) => boolean;
+  onOpenCompanyModal?: (initialQuery?: string) => void;
+  externalSearchQuery?: string;
+  onClearExternalSearch?: () => void;
 }
 
 export const FileManager: React.FC<FileManagerProps> = ({
@@ -75,12 +80,21 @@ export const FileManager: React.FC<FileManagerProps> = ({
   onDeleteFolder,
   onDeleteFile,
   hasFolderPermission,
+  onOpenCompanyModal,
+  externalSearchQuery,
+  onClearExternalSearch,
 }) => {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [selectedSector, setSelectedSector] = useState<Sector | 'ALL'>('ALL');
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(externalSearchQuery || '');
+
+  useEffect(() => {
+    if (externalSearchQuery !== undefined) {
+      setSearchQuery(externalSearchQuery);
+    }
+  }, [externalSearchQuery]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'size'>('date');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
@@ -102,8 +116,14 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const breadcrumbs = getBreadcrumbs();
   const currentFolder = currentFolderId ? folders.find(f => f.id === currentFolderId) || null : null;
 
-  // Filter folders: only direct children of current folder & sector filter
+  // Filter folders: direct children or search results across drive
   const visibleFolders = folders.filter(folder => {
+    if (searchQuery.trim()) {
+      const matchesSearch = folder.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+      if (!matchesSearch) return false;
+      if (selectedSector !== 'ALL' && folder.sector !== selectedSector) return false;
+      return hasFolderPermission(folder.id, 'viewer');
+    }
     const isDirectChild = currentFolderId 
       ? folder.parent_id === currentFolderId 
       : (!folder.parent_id || folder.parent_id === null || folder.parent_id === '');
@@ -228,30 +248,30 @@ export const FileManager: React.FC<FileManagerProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="w-full space-y-4 sm:space-y-6 overflow-x-hidden">
       
-      {/* Top Storage & Bandwidth Optimization Banner */}
-      <div className="bg-gradient-to-r from-[#0F1E42] via-[#162B60] to-[#1B357B] rounded-3xl p-8 sm:p-10 shadow-xl border border-white/10 relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 text-white">
-        {/* Subtle radial glow in background */}
-        <div className="absolute -right-20 -top-20 w-80 h-80 bg-[#C59B4B]/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Top Storage & Bandwidth Optimization Banner (Refinamento Executivo Enterprise) */}
+      <div className="bg-gradient-to-br from-[#0B1528] via-[#102244] to-[#18356E] rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl border border-white/10 relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 lg:gap-8 text-white w-full max-w-full">
+        {/* Efeito de profundidade: círculo de brilho radial dourado no fundo */}
+        <div className="absolute -right-16 -top-16 w-72 h-72 bg-[#C59B4B]/15 rounded-full blur-3xl pointer-events-none" />
 
         {/* Lado Esquerdo (Títulos e Descrição) */}
-        <div className="relative z-10 space-y-0 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[#C59B4B] text-xs font-semibold uppercase tracking-wider mb-4">
+        <div className="relative z-10 space-y-0 w-full lg:max-w-xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[#C59B4B] text-xs font-semibold uppercase tracking-wider mb-3">
             <ShieldCheck className="w-3.5 h-3.5 text-[#C59B4B]" />
             <span>Drive Corporativo MVRJ Contábil</span>
           </div>
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight mb-3">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-black text-white tracking-tight leading-tight mb-2">
             Gestão Eletrônica de Documentos Contábeis
           </h2>
-          <p className="text-slate-300 text-sm sm:text-base max-w-xl font-normal leading-relaxed">
+          <p className="text-slate-300 text-xs sm:text-sm lg:text-base max-w-xl font-normal leading-relaxed">
             Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais.
           </p>
         </div>
 
-        {/* Lado Direito (Card de Métricas / Armazenamento - Glassmorphism) */}
-        <div className="relative z-10 w-full lg:w-auto shrink-0">
-          <div className="bg-white/[0.07] backdrop-blur-xl border border-white/15 rounded-2xl p-5 w-full lg:w-72 shadow-2xl flex flex-col gap-4">
+        {/* Lado Direito (Card de Métricas / Armazenamento - Glassmorphism Refinado) */}
+        <div className="relative z-10 w-full lg:w-72 shrink-0">
+          <div className="bg-white/[0.08] backdrop-blur-xl border border-white/15 rounded-2xl p-4 sm:p-5 w-full shadow-xl flex flex-col gap-3.5 sm:gap-4">
             {/* Topo do Card */}
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-white/90 font-medium">
@@ -259,7 +279,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <span>Documentos Ativos</span>
+                <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">Documentos Ativos</span>
               </div>
               <span className="bg-[#C59B4B]/20 text-[#DFC17B] px-2 py-0.5 rounded-md font-bold text-[11px] border border-[#C59B4B]/30">
                 {documentsPercent}%
@@ -277,17 +297,17 @@ export const FileManager: React.FC<FileManagerProps> = ({
             </div>
 
             {/* Barra de Progresso */}
-            <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden relative">
+            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden relative">
               <div 
-                className="h-full bg-gradient-to-r from-[#C59B4B] to-[#F3D78A] rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-[#C59B4B] to-[#F1D58A] rounded-full transition-all duration-500"
                 style={{ width: `${Math.max(currentFilesCount > 0 ? 3 : 0, Math.min(100, documentsPercent))}%` }}
               />
             </div>
 
             {/* Rodapé do Card */}
-            <div className="flex items-center justify-between text-[11px] font-medium text-slate-300 pt-1">
-              <span>Disponíveis: <strong className="text-white font-semibold">{remainingFilesCount.toLocaleString('pt-BR')}</strong></span>
-              <span>Capacidade: <strong className="text-white font-semibold">{maxFilesCapacity >= 1000 ? `${(maxFilesCapacity / 1000).toFixed(0)}k` : maxFilesCapacity}</strong></span>
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300 uppercase tracking-wider pt-1">
+              <span>Disponíveis: <strong className="text-white font-semibold normal-case text-xs">{remainingFilesCount.toLocaleString('pt-BR')}</strong></span>
+              <span>Capacidade: <strong className="text-white font-semibold normal-case text-xs">{maxFilesCapacity >= 1000 ? `${(maxFilesCapacity / 1000).toFixed(0)}k` : maxFilesCapacity}</strong></span>
             </div>
           </div>
         </div>
@@ -347,76 +367,105 @@ export const FileManager: React.FC<FileManagerProps> = ({
         />
       )}
 
-      {/* Control Toolbar (Search, Sector Pills, View toggle, Actions) */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-xs p-4 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* Control Toolbar (Search, Sector Pills, View toggle, Actions - Refinamento Executivo Enterprise) */}
+      <div className="w-full max-w-full overflow-hidden p-3 sm:p-4 rounded-2xl bg-white/95 border border-slate-200/80 shadow-sm flex flex-col gap-3">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           
-          {/* Instant Search Bar */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-            <input
-              id="search-docs-input"
-              type="text"
-              placeholder="Buscar por nome de documento, tags ou setor..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden transition-all"
-            />
+          {/* Instant Search Bar & CNPJ Company Lookup */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                id="search-docs-input"
+                type="text"
+                placeholder="Buscar por documento, CNPJ ou empresa..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-9 text-sm focus:bg-white focus:border-[#C59B4B]/70 focus:ring-2 focus:ring-[#C59B4B]/20 outline-hidden transition-all shadow-2xs placeholder:text-slate-400 text-slate-800"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    if (onClearExternalSearch) onClearExternalSearch();
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1.5 rounded-md cursor-pointer transition-colors"
+                  title="Limpar busca"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Quick CNPJ consultation button */}
+            {onOpenCompanyModal && (
+              <button
+                id="lookup-company-btn"
+                type="button"
+                onClick={() => onOpenCompanyModal(searchQuery)}
+                className="w-full sm:w-auto h-11 px-4 rounded-xl border border-slate-200 font-semibold text-xs flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 transition-all shadow-sm shrink-0 cursor-pointer group"
+                title="Consultar Situação Cadastral de Empresa na Receita Federal (BrasilAPI)"
+              >
+                <Building2 className="w-4 h-4 text-[#C59B4B] group-hover:scale-110 transition-transform flex-shrink-0" />
+                <span>Consultar CNPJ</span>
+              </button>
+            )}
           </div>
 
-          {/* Action Buttons: New Folder & Upload */}
-          <div className="flex items-center space-x-2 shrink-0">
+          {/* Action Buttons: New Folder, Upload & View Mode Toggle */}
+          <div className="flex flex-row items-center gap-2 w-full lg:w-auto justify-between lg:justify-end shrink-0">
             {canCreateSubfolder && (
               <button
                 id="create-folder-btn"
                 onClick={() => setIsCreatingFolder(true)}
-                className="px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-xl flex items-center space-x-1.5 transition-colors"
+                className="flex-1 lg:flex-initial h-11 px-3 sm:px-4 rounded-xl border border-slate-200 bg-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm text-slate-700 hover:bg-slate-50 transition-all cursor-pointer group"
               >
-                <FolderPlus className="w-4 h-4 text-blue-600" />
-                <span>Nova Pasta</span>
+                <FolderPlus className="w-4 h-4 text-[#1B357B] group-hover:scale-110 transition-transform flex-shrink-0" />
+                <span className="whitespace-nowrap">Nova Pasta</span>
               </button>
             )}
-
-
 
             {isQuotaExceeded ? (
               <button
                 id="upload-blocked-btn"
                 onClick={() => setShowBlockedLimitModal(true)}
-                className="px-3.5 py-2 text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 border border-rose-300 dark:border-rose-800 rounded-xl flex items-center space-x-1.5 transition-colors shadow-2xs"
+                className="flex-1 lg:flex-initial h-11 px-3 sm:px-4 text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 border border-rose-300 dark:border-rose-800 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm"
                 title="Limite de armazenamento 100% atingido. Clique para ver detalhes e suporte."
               >
-                <AlertOctagon className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                <span>Upload Bloqueado (Limite)</span>
+                <AlertOctagon className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0" />
+                <span className="whitespace-nowrap">Bloqueado</span>
               </button>
             ) : canUpload ? (
               <button
                 id="upload-doc-btn"
                 onClick={() => onOpenUploadModal(currentFolderId)}
-                className="px-4 py-2 text-xs font-bold text-slate-950 bg-[#C59B4B] hover:bg-[#b0873b] active:bg-[#9e7732] rounded-xl shadow-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
+                className="flex-1 lg:flex-initial h-11 px-3 sm:px-5 rounded-xl bg-gradient-to-r from-[#C59B4B] to-[#B38739] hover:brightness-105 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
               >
-                <UploadCloud className="w-4 h-4 text-slate-950" />
-                <span>Upload de Documento</span>
+                <UploadCloud className="w-4 h-4 text-white flex-shrink-0" />
+                <span className="whitespace-nowrap sm:hidden">Upload</span>
+                <span className="whitespace-nowrap hidden sm:inline">Upload de Documento</span>
               </button>
             ) : (
-              <div className="px-3 py-2 text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-xl flex items-center space-x-1" title="Apenas usuários com papel Editor ou Admin nesta pasta podem fazer upload.">
-                <Lock className="w-3.5 h-3.5" />
-                <span>Upload Bloqueado (Leitor)</span>
+              <div className="flex-1 lg:flex-initial h-11 px-3 sm:px-4 text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center gap-1.5" title="Apenas usuários com papel Editor ou Admin nesta pasta podem fazer upload.">
+                <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="whitespace-nowrap sm:hidden">Bloqueado</span>
+                <span className="whitespace-nowrap hidden sm:inline">Upload Bloqueado</span>
               </div>
             )}
 
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl h-11 gap-1 flex-shrink-0 border border-slate-200/80 shadow-2xs">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#1B357B] text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-[#1B357B] text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
                 title="Visualização em Grade"
               >
                 <Grid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-[#1B357B] text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'list' ? 'bg-[#1B357B] text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
                 title="Visualização em Lista"
               >
                 <List className="w-4 h-4" />
@@ -425,45 +474,65 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
         </div>
 
-          {/* Competence Selectors & Clear Filter */}
-          <div className="flex items-center space-x-1.5 overflow-x-auto pt-1 pb-1">
-            <span className="text-xs font-bold text-slate-400 mr-1 flex items-center space-x-1">
-              <Filter className="w-3 h-3" />
-              <span>Filtro de Período:</span>
-            </span>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="rounded-xl border-slate-200 text-xs text-slate-700 bg-white focus:border-[#1B357B] py-1.5"
-            >
-              <option value="ALL">Todos os Meses</option>
-              {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="rounded-xl border-slate-200 text-xs text-slate-700 bg-white focus:border-[#1B357B] py-1.5"
-            >
-              <option value="ALL">Todos os Anos</option>
-              {['2024', '2025', '2026', '2027'].map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-            
-            {/* Clear Filters Button */}
-            {(selectedMonth !== 'ALL' || selectedYear !== 'ALL') && (
-              <>
-                <div className="h-4 w-px bg-slate-200 mx-1.5" />
+        {/* Competence Selectors & Clear Filter */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+          {searchQuery && (
+            <>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1B357B]/10 text-[#1B357B] border border-[#1B357B]/25 text-xs font-semibold shrink-0">
+                <Building2 className="w-3.5 h-3.5 text-[#C59B4B] flex-shrink-0" />
+                <span className="truncate max-w-[160px] sm:max-w-xs">Filtro: {searchQuery}</span>
                 <button
                   onClick={() => {
-                    setSelectedMonth('ALL');
-                    setSelectedYear('ALL');
+                    setSearchQuery('');
+                    if (onClearExternalSearch) onClearExternalSearch();
                   }}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-all cursor-pointer"
+                  className="p-0.5 hover:bg-[#1B357B]/20 rounded-md text-[#1B357B] cursor-pointer"
+                  title="Remover filtro"
                 >
-                  Limpar Filtro
+                  <X className="w-3.5 h-3.5" />
                 </button>
-              </>
-            )}
-          </div>
+              </div>
+              <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
+            </>
+          )}
+
+          <span className="text-xs font-bold text-slate-400 mr-1 flex items-center space-x-1 shrink-0">
+            <Filter className="w-3 h-3 flex-shrink-0" />
+            <span>Filtro de Período:</span>
+          </span>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 focus:border-[#1B357B] focus:bg-white outline-hidden cursor-pointer"
+          >
+            <option value="ALL">Todos os Meses</option>
+            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 focus:border-[#1B357B] focus:bg-white outline-hidden cursor-pointer"
+          >
+            <option value="ALL">Todos os Anos</option>
+            {['2024', '2025', '2026', '2027'].map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          
+          {/* Clear Filters Button */}
+          {(selectedMonth !== 'ALL' || selectedYear !== 'ALL') && (
+            <>
+              <div className="h-4 w-px bg-slate-200 mx-1.5 hidden sm:block" />
+              <button
+                onClick={() => {
+                  setSelectedMonth('ALL');
+                  setSelectedYear('ALL');
+                }}
+                className="h-9 px-3 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-all cursor-pointer flex items-center"
+              >
+                Limpar Filtro
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Inline Create Folder Input */}
@@ -540,24 +609,24 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
       {/* FOLDERS SECTION */}
       {!searchQuery && visibleFolders.length > 0 && (
-        <section className="space-y-3">
+        <section className="space-y-3 w-full">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Pastas no Nível Atual</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
             {visibleFolders.map(folder => (
               <div
                 key={folder.id}
                 onClick={() => setCurrentFolderId(folder.id)}
-                className="p-4 rounded-2xl border border-slate-200/80 hover:border-[#C59B4B]/50 bg-white hover:bg-slate-50/80 cursor-pointer transition-all group shadow-2xs hover:shadow-md flex items-center justify-between"
+                className="bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200/80 p-4 shadow-sm hover:shadow-md hover:border-[#C59B4B]/50 transition-all flex items-center justify-between group cursor-pointer min-w-0 overflow-hidden"
               >
                 <div className="flex items-center space-x-3.5 min-w-0 flex-1">
-                  <div className="p-2.5 bg-[#1B357B]/10 group-hover:bg-[#1B357B] text-[#1B357B] group-hover:text-white rounded-xl transition-colors shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#1B357B] group-hover:bg-[#1B357B] group-hover:text-white transition-all flex items-center justify-center font-bold shrink-0">
                     <FolderIcon className="w-5 h-5" />
                   </div>
                   <div className="truncate flex-1 min-w-0">
-                    <h4 className="font-bold text-xs sm:text-sm text-slate-900 truncate group-hover:text-[#112354] transition-colors">
+                    <h4 className="text-sm font-bold text-slate-800 group-hover:text-[#1B357B] transition-colors truncate">
                       {folder.name}
                     </h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5 truncate">{folder.sector}</p>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5 truncate">{folder.sector}</p>
                   </div>
                 </div>
 
@@ -570,7 +639,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         e.stopPropagation();
                         onDeleteFolder(folder.id);
                       }}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      className="text-slate-300 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50 cursor-pointer"
                       title="Excluir Pasta (Admin)"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -606,18 +675,24 @@ export const FileManager: React.FC<FileManagerProps> = ({
         </div>
 
         {sortedFiles.length === 0 ? (
-          <div className="bg-white/90 rounded-2xl border border-slate-200/80 py-12 px-6 text-center shadow-sm">
-            <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h4 className="text-sm font-bold text-slate-800">Nenhum documento encontrado</h4>
-            <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
-              {currentFolderId 
-                ? 'Esta pasta ainda não possui arquivos armazenados.' 
-                : 'Nenhum arquivo na raiz. Selecione uma pasta acima ou faça o upload de um documento.'}
-            </p>
+          <div className="bg-white/60 backdrop-blur-sm rounded-2xl border-2 border-dashed border-slate-200/90 p-12 text-center flex flex-col items-center justify-center gap-3">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#1B357B]/10 to-[#C59B4B]/15 flex items-center justify-center ring-8 ring-[#C59B4B]/5">
+                <FileText className="w-8 h-8 text-[#1B357B]" />
+              </div>
+            </div>
+            <div className="max-w-sm">
+              <h4 className="text-base font-bold text-slate-800">Nenhum documento encontrado</h4>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                {currentFolderId 
+                  ? 'Esta pasta ainda não possui arquivos armazenados.' 
+                  : 'Nenhum arquivo na raiz. Selecione uma pasta acima ou faça o upload de um documento.'}
+              </p>
+            </div>
             {isQuotaExceeded ? (
               <button
                 onClick={() => setShowBlockedLimitModal(true)}
-                className="mt-4 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold inline-flex items-center space-x-1.5 transition-colors cursor-pointer"
+                className="mt-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold inline-flex items-center space-x-2 transition-colors cursor-pointer shadow-sm"
               >
                 <AlertOctagon className="w-4 h-4" />
                 <span>Upload Bloqueado (Limite de Quota Atingido)</span>
@@ -625,16 +700,16 @@ export const FileManager: React.FC<FileManagerProps> = ({
             ) : canUpload ? (
               <button
                 onClick={() => onOpenUploadModal(currentFolderId)}
-                className="mt-4 px-4 py-2.5 bg-[#C59B4B] hover:bg-[#b0873b] active:bg-[#9e7732] text-slate-950 font-bold rounded-xl shadow-xs inline-flex items-center space-x-1.5 transition-colors cursor-pointer"
+                className="mt-2 bg-gradient-to-r from-[#C59B4B] to-[#B38739] hover:brightness-105 text-white font-bold shadow-md hover:shadow-lg rounded-xl px-5 py-2.5 inline-flex items-center gap-2 text-sm transition-all cursor-pointer"
               >
-                <UploadCloud className="w-4 h-4 text-slate-950" />
-                <span>Upload de Arquivo</span>
+                <UploadCloud className="w-4 h-4 text-white" />
+                <span>Upload de Documento</span>
               </button>
             ) : null}
           </div>
         ) : viewMode === 'grid' ? (
           /* GRID VIEW */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
             {sortedFiles.map(file => {
               const lowerName = file.name.toLowerCase();
               const isPfx = file.mime_type.includes('pkcs12') || /\.(pfx|p12|cer|crt|key)$/i.test(lowerName);
@@ -647,7 +722,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               return (
                 <div
                   key={file.id}
-                  className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#C59B4B]/50 transition-all p-5 flex flex-col justify-between group relative"
+                  className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#C59B4B]/50 transition-all p-4 sm:p-5 flex flex-col justify-between group relative min-w-0 overflow-hidden"
                 >
                   <div>
                     {/* Top Bar: File Icon & Status Badge */}
@@ -688,22 +763,22 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     </div>
 
                     {/* File Title & Sector/Folder */}
-                    <div>
+                    <div className="min-w-0">
                       <h4 
                         onClick={() => onOpenFileViewer(file)}
-                        className="text-sm font-bold text-slate-800 truncate group-hover:text-[#1B357B] transition-colors mt-3 cursor-pointer" 
+                        className="text-sm font-bold text-slate-800 break-words line-clamp-2 group-hover:text-[#1B357B] transition-colors mt-3 cursor-pointer" 
                         title={file.name}
                       >
                         {file.name}
                       </h4>
-                      <p className="text-xs text-slate-400 font-medium mb-3 flex items-center gap-1">
+                      <p className="text-xs text-slate-400 font-medium mb-3 flex items-center gap-1 min-w-0 truncate">
                         <FolderIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>{file.sector}</span>
+                        <span className="truncate">{file.sector}</span>
                         {file.pages_count && file.pages_count > 1 && (
-                          <span className="text-slate-400">• {file.pages_count} págs</span>
+                          <span className="text-slate-400 shrink-0">• {file.pages_count} págs</span>
                         )}
                         {file.tags && file.tags.find(t => t.startsWith('Ref: ')) && (
-                          <span className="bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-medium ml-1">
+                          <span className="bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-medium ml-1 shrink-0">
                             {file.tags.find(t => t.startsWith('Ref: '))}
                           </span>
                         )}

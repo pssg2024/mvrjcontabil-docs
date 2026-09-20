@@ -45,14 +45,19 @@ export const BackgroundModal: React.FC<BackgroundModalProps> = ({
       >
         {/* Modal Top Bar */}
         <div className="bg-white px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shrink-0">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-[#1B357B]/10 text-[#1B357B] border border-[#1B357B]/20 flex items-center justify-center shrink-0">
               <Palette className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-black text-gray-900 leading-tight">
-                Central de Personalização Visual & Branding
-              </h2>
+              <div className="flex items-center space-x-2">
+                <h2 className="text-base font-black text-gray-900 leading-tight">
+                  Central de Personalização Visual & Branding
+                </h2>
+                <span className="bg-[#C59B4B]/20 text-[#967028] border border-[#C59B4B]/30 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                  MVRJ Admin
+                </span>
+              </div>
               <p className="text-xs text-gray-500">
                 Acesso exclusivo para Administradores da MVRJCONTÁBIL
               </p>
@@ -60,30 +65,30 @@ export const BackgroundModal: React.FC<BackgroundModalProps> = ({
           </div>
 
           <div className="flex items-center space-x-3">
-            {/* Tab Selector */}
-            <div className="flex items-center bg-gray-100 p-1 rounded-xl text-xs font-bold">
+            {/* Tab Selector Segmented */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setActiveTab('site-background')}
-                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
                   activeTab === 'site-background'
-                    ? 'bg-white text-purple-700 shadow-xs font-black'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-[#1B357B] shadow-sm font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <ImageIcon className="w-3.5 h-3.5 text-purple-600" />
+                <ImageIcon className="w-3.5 h-3.5 text-[#C59B4B]" />
                 <span>Fundo do Site</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('auth-header')}
-                className={`px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
                   activeTab === 'auth-header'
-                    ? 'bg-white text-blue-700 shadow-xs font-black'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-[#1B357B] shadow-sm font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                <Sparkles className="w-3.5 h-3.5 text-[#1B357B]" />
                 <span>Cabeçalho de Login</span>
               </button>
             </div>

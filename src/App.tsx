@@ -11,6 +11,10 @@ import { FirstAccessModal } from './components/FirstAccessModal';
 import { LgpdTermsModal } from './components/LgpdTermsModal';
 import { BackgroundModal } from './components/BackgroundModal';
 import { PasswordConfirmModal } from './components/PasswordConfirmModal';
+import { CompanyConsultModal } from './components/CompanyConsultModal';
+import { DueNoticeBanner } from './components/DueNoticeBanner';
+import { DueNoticeModal } from './components/DueNoticeModal';
+import { isDueAlert } from './lib/due-date-utils';
 import { ShieldCheck } from 'lucide-react';
 import { 
   UserProfile, 
@@ -44,6 +48,7 @@ import {
   createFolderInApi,
   deleteFolderInApi,
   deleteFileInApi,
+  updateFileInApi,
   saveAuditLogInApi,
   saveFolderPermissionToApi,
   fetchSystemStatusFromApi,
@@ -136,6 +141,40 @@ export default function App() {
   const [isBackgroundModalOpen, setIsBackgroundModalOpen] = useState(false);
   const [backgroundModalTab, setBackgroundModalTab] = useState<'site-background' | 'auth-header'>('site-background');
   const [viewingFile, setViewingFile] = useState<DocumentFile | null>(null);
+
+  // CNPJ & Company Consultation Modal State
+  const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const [driveFilterSearch, setDriveFilterSearch] = useState('');
+
+  // Central de Disparos de Vencimentos State
+  const [isDueNoticeModalOpen, setIsDueNoticeModalOpen] = useState(false);
+
+  const dueAlertCount = React.useMemo(() => {
+    return files.filter(f => !f.is_archived && isDueAlert(f.due_date)).length;
+  }, [files]);
+
+  const handleUpdateFile = async (fileId: string, updates: Partial<DocumentFile>) => {
+    // 1. Atualização otimista no estado local
+    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, ...updates, updated_at: new Date().toISOString() } : f));
+
+    // 2. Persistência no backend e Supabase
+    try {
+      await updateFileInApi(fileId, updates);
+    } catch (err: any) {
+      console.warn('Erro ao atualizar metadados do arquivo:', err);
+    }
+  };
+
+  const handleOpenCompanyModal = (initialQuery?: string) => {
+    setCompanySearchQuery(initialQuery || '');
+    setIsCompanyModalOpen(true);
+  };
+
+  const handleFilterGedByCompany = (searchTerm: string) => {
+    setDriveFilterSearch(searchTerm);
+    setActiveView('drive');
+  };
 
   // Site Background Configuration State (Admin-customizable)
   const [siteBackgroundConfig, setSiteBackgroundConfig] = useState<SiteBackgroundConfig>(() => {
@@ -916,7 +955,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-gray-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white relative">
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-gray-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white relative">
       {/* Dynamic Background Image Layer */}
       {siteBackgroundConfig.enabled && siteBackgroundConfig.imageUrl && (
         <div
@@ -965,6 +1004,9 @@ export default function App() {
             setBackgroundModalTab('site-background');
             setIsBackgroundModalOpen(true);
           }}
+          onOpenCompanyModal={() => handleOpenCompanyModal()}
+          onOpenDueNoticeModal={() => setIsDueNoticeModalOpen(true)}
+          dueAlertCount={dueAlertCount}
           onSwitchUser={handleSwitchUser}
           onLogout={handleLogout}
           allProfiles={profiles}
@@ -973,8 +1015,16 @@ export default function App() {
           authHeaderConfig={authHeaderConfig}
         />
 
+        {/* 1. BANNER / LINHA DE AVISO NO CABEÇALHO (RESUMO DINÂMICO DE VENCIMENTOS) */}
+        {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
+          <DueNoticeBanner
+            files={files}
+            onOpenDueNoticeModal={() => setIsDueNoticeModalOpen(true)}
+          />
+        )}
+
         {/* Main View Area */}
-        <main className="flex-1">
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
           {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') ? (
             activeView === 'drive' ? (
               <FileManager
@@ -992,6 +1042,9 @@ export default function App() {
                 onDeleteFolder={handleDeleteFolder}
                 onDeleteFile={handleDeleteFile}
                 hasFolderPermission={checkFolderPermission}
+                onOpenCompanyModal={handleOpenCompanyModal}
+                externalSearchQuery={driveFilterSearch}
+                onClearExternalSearch={() => setDriveFilterSearch('')}
               />
             ) : (
               <AdminPanel
@@ -1189,6 +1242,26 @@ export default function App() {
             ? `Deseja realmente excluir permanentemente a pasta "${pendingDeleteAction?.name || ''}" e todo o seu conteúdo?`
             : `Deseja realmente excluir permanentemente o usuário "${pendingDeleteAction?.name || ''}"?`
         }
+      />
+
+      {/* Consulta Rápida de Empresa / CNPJ Modal */}
+      <CompanyConsultModal
+        isOpen={isCompanyModalOpen}
+        onClose={() => setIsCompanyModalOpen(false)}
+        onFilterGed={handleFilterGedByCompany}
+        existingFiles={files}
+        existingFolders={folders}
+        initialSearchQuery={companySearchQuery}
+      />
+
+      {/* 2. Central de Disparos de Vencimentos Modal */}
+      <DueNoticeModal
+        isOpen={isDueNoticeModalOpen}
+        onClose={() => setIsDueNoticeModalOpen(false)}
+        files={files}
+        profiles={profiles}
+        onUpdateFile={handleUpdateFile}
+        onOpenFilePreview={(file) => setViewingFile(file)}
       />
     </div>
   );

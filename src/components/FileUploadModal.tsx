@@ -50,6 +50,10 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   const resetForm = () => {
     setSelectedFile(null);
     setDueDate('');
+    setCompanyName('');
+    setClientPhone('');
+    setDocumentType('');
+    setAmount('');
     setTags(['Contábil', '2026']);
     setTagInput('');
     setIsProcessing(false);
@@ -71,6 +75,10 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   }, [isOpen, currentFolder, allFolders]);
 
   const [dueDate, setDueDate] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [documentType, setDocumentType] = useState('DAS - Simples Nacional');
+  const [amount, setAmount] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>(['Contábil', '2026']);
 
@@ -200,6 +208,11 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         sector: targetFolder.sector,
         checksum_sha256: checksum,
         due_date: dueDate || undefined,
+        company_name: companyName.trim() || undefined,
+        client_phone: clientPhone.trim() || undefined,
+        document_type: documentType.trim() || undefined,
+        amount: amount ? parseFloat(amount) : undefined,
+        notification_sent: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         preview_url: optResult.dataUrl,
@@ -444,6 +457,89 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   </div>
                 );
               })()}
+
+              {/* Metadados Contábeis & Vencimento (Central de Disparos MVRJ) */}
+              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[#1B357B] uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-[#C59B4B]" />
+                    <span>Dados de Vencimento & Notificação (Opcional)</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">Integração WhatsApp</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Empresa / Cliente</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Alfa Comércio Ltda"
+                      value={companyName}
+                      disabled={isProcessing}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#1B357B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">WhatsApp Cliente (com DDD)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: (21) 97396-0077"
+                      value={clientPhone}
+                      disabled={isProcessing}
+                      onChange={(e) => setClientPhone(e.target.value)}
+                      className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#1B357B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Tipo de Guia / Documento</label>
+                    <select
+                      value={documentType}
+                      disabled={isProcessing}
+                      onChange={(e) => setDocumentType(e.target.value)}
+                      className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-hidden focus:border-[#1B357B]"
+                    >
+                      <option value="DAS - Simples Nacional">DAS - Simples Nacional</option>
+                      <option value="DARF Previdenciário">DARF Previdenciário</option>
+                      <option value="DARF IRPJ / CSLL">DARF IRPJ / CSLL</option>
+                      <option value="FGTS Digital">FGTS Digital</option>
+                      <option value="GPS - Previdência">GPS - Previdência Social</option>
+                      <option value="Honorários Contábeis">Honorários Contábeis</option>
+                      <option value="Boleto Bancário">Boleto Bancário</option>
+                      <option value="Declaração Anual">Declaração Anual</option>
+                      <option value="Outros">Outros</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Vencimento</label>
+                      <input
+                        type="date"
+                        value={dueDate}
+                        disabled={isProcessing}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        className="w-full text-xs px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-hidden focus:border-[#1B357B]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Valor (R$)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="0,00"
+                        value={amount}
+                        disabled={isProcessing}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="w-full text-xs px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#1B357B]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Tags input */}
               <div>

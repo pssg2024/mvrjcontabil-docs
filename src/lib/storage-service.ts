@@ -854,6 +854,25 @@ export async function saveFileRecordToApi(file: DocumentFile): Promise<DocumentF
 }
 
 /**
+ * Update file metadata (due date, company, client_phone, notification_sent, amount, etc.) in Supabase & Backend
+ */
+export async function updateFileInApi(fileId: string, updates: Partial<DocumentFile>): Promise<DocumentFile> {
+  const res = await fetch(`/api/files/${encodeURIComponent(fileId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erro ao atualizar dados do documento');
+  }
+
+  const data = await res.json();
+  return data.file;
+}
+
+/**
  * Delete file from Supabase & Cloudflare R2
  */
 export async function deleteFileInApi(fileId: string): Promise<void> {

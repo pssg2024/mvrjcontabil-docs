@@ -244,48 +244,59 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header Info Card */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
+      {/* Header Info Card - Gradiente Executivo Profundo */}
+      <div className="bg-gradient-to-r from-[#0B1528] via-[#102244] to-[#18356E] border border-white/10 rounded-2xl p-6 shadow-xl text-white relative overflow-hidden">
+        {/* Halo dourado sutil no fundo */}
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-[#C59B4B]/15 rounded-full blur-3xl pointer-events-none" />
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 border border-blue-400/30 text-xs font-semibold uppercase tracking-wider flex items-center space-x-1.5">
-                <Palette className="w-3.5 h-3.5" />
+              <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-[#DFC17B] border border-[#C59B4B]/30 text-xs font-semibold uppercase tracking-wider flex items-center space-x-1.5 backdrop-blur-md">
+                <Palette className="w-3.5 h-3.5 text-[#C59B4B]" />
                 <span>Personalização Visual Corporativa</span>
               </span>
               {formData.enabled && (
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 text-[11px] font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold backdrop-blur-md">
                   Fundo Personalizado Ativo
                 </span>
               )}
             </div>
             <h2 className="text-xl sm:text-2xl font-black mt-2 tracking-tight">Imagem de Fundo do GED MVRJCONTÁBIL</h2>
-            <p className="text-xs text-blue-200/80 mt-1 max-w-xl leading-relaxed">
+            <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
               Como Administrador, você pode alterar a imagem e o estilo de fundo de todo o sistema. As alterações são sincronizadas e refletidas imediatamente para todos os funcionários e clientes.
             </p>
           </div>
 
-          {/* Quick Toggle Switch */}
-          <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/15">
+          {/* Quick Toggle Switch Redesenhado em Tom Dourado/Esmeralda */}
+          <div className="flex items-center space-x-3.5 bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/15 shrink-0">
             <div className="text-right">
               <span className="text-xs font-bold block text-white">Status do Fundo</span>
-              <span className="text-[11px] text-blue-200 block">
-                {formData.enabled ? 'Personalizado' : 'Padrão Neutro'}
+              <span className="text-[11px] text-slate-300 block">
+                {formData.enabled ? 'Personalizado Ativo' : 'Padrão Neutro'}
               </span>
             </div>
             <button
               id="toggle-background-enabled"
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, enabled: !prev.enabled }))}
-              className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ${
-                formData.enabled ? 'bg-emerald-500' : 'bg-gray-600'
+              className={`w-14 h-7 flex items-center rounded-full p-1 transition-all duration-300 cursor-pointer shadow-inner ${
+                formData.enabled 
+                  ? 'bg-gradient-to-r from-[#C59B4B] to-emerald-500 ring-2 ring-[#C59B4B]/30' 
+                  : 'bg-slate-700/80 ring-1 ring-white/10'
               }`}
             >
               <div
-                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
-                  formData.enabled ? 'translate-x-6' : 'translate-x-0'
+                className={`bg-white w-5 h-5 rounded-full shadow-lg transform transition-transform duration-300 flex items-center justify-center ${
+                  formData.enabled ? 'translate-x-7' : 'translate-x-0'
                 }`}
-              />
+              >
+                {formData.enabled ? (
+                  <Check className="w-3 h-3 text-[#C59B4B] stroke-[3]" />
+                ) : (
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                )}
+              </div>
             </button>
           </div>
         </div>
@@ -371,7 +382,7 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                 <p className="text-xs text-gray-500">
                   Selecione uma composição corporativa refinada, pré-calibrada para máxima legibilidade de tabelas fiscais e documentos:
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
                   {BACKGROUND_PRESETS.map((preset) => {
                     const isSelected = formData.presetId === preset.id;
                     return (
@@ -379,31 +390,37 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                         key={preset.id}
                         id={`preset-card-${preset.id}`}
                         onClick={() => handleSelectPreset(preset)}
-                        className={`group relative rounded-xl border p-2 cursor-pointer transition-all overflow-hidden ${
+                        className={`group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 cursor-pointer aspect-video bg-slate-100 ${
                           isSelected
-                            ? 'border-blue-600 bg-blue-50/50 ring-2 ring-blue-600/20'
-                            : 'border-gray-200 hover:border-gray-300 hover:shadow-xs bg-gray-50/50'
+                            ? 'border-[#C59B4B] ring-2 ring-[#C59B4B]/40 shadow-lg'
+                            : 'border-slate-200/90 hover:border-[#C59B4B] hover:shadow-lg'
                         }`}
                       >
-                        <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-200 mb-2">
-                          <img
-                            src={preset.thumbnail}
-                            alt={preset.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                          {isSelected && (
-                            <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-xs">
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                            </div>
-                          )}
-                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-900/80 text-white backdrop-blur-xs">
-                            {preset.category}
-                          </span>
-                        </div>
-                        <div className="space-y-0.5">
-                          <h4 className="text-xs font-bold text-gray-900 truncate">{preset.name}</h4>
-                          <p className="text-[10px] text-gray-500 line-clamp-1">{preset.description}</p>
+                        <img
+                          src={preset.thumbnail}
+                          alt={preset.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                        {/* Gradiente escuro sutil inferior */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent pointer-events-none" />
+
+                        {/* Efeito de seleção ativa: anel dourado com badge no canto */}
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 bg-[#C59B4B] text-white p-1 rounded-full shadow">
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          </div>
+                        )}
+
+                        {/* Etiquetas sobre a imagem em vidro */}
+                        <span className="absolute top-2 left-2 backdrop-blur-md bg-black/40 text-white border border-white/20 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-xs">
+                          {preset.category}
+                        </span>
+
+                        {/* Título e descrição dentro do cartão */}
+                        <div className="absolute bottom-2 left-2.5 right-2.5 text-white pointer-events-none">
+                          <h4 className="text-xs font-bold truncate leading-tight drop-shadow-sm">{preset.name}</h4>
+                          <p className="text-[10px] text-slate-200/90 line-clamp-1 drop-shadow-xs">{preset.description}</p>
                         </div>
                       </div>
                     );
@@ -524,7 +541,7 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
           {/* Fine Tuning Sliders Card */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-xs p-5 space-y-5">
             <h3 className="text-sm font-bold text-gray-900 flex items-center space-x-2">
-              <Sliders className="w-4 h-4 text-blue-600" />
+              <Sliders className="w-4 h-4 text-[#1B357B]" />
               <span>2. Ajustes Finos & Legibilidade WCAG</span>
             </h3>
 
@@ -534,7 +551,7 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                 <label htmlFor="bg-opacity-slider" className="font-bold text-gray-700">
                   Opacidade da Imagem
                 </label>
-                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                <span className="font-mono font-bold text-[#1B357B] bg-[#1B357B]/10 border border-[#1B357B]/20 px-2.5 py-0.5 rounded-lg text-xs">
                   {formData.opacity}%
                 </span>
               </div>
@@ -546,7 +563,7 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                 step="5"
                 value={formData.opacity}
                 onChange={(e) => setFormData(prev => ({ ...prev, opacity: Number(e.target.value) }))}
-                className="w-full accent-blue-600 cursor-pointer"
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#C59B4B]"
               />
               <p className="text-[11px] text-gray-500">
                 Recomendado: 15% a 35% para que tabelas de cálculo, notas fiscais e relatórios permaneçam 100% legíveis.
@@ -559,7 +576,7 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                 <label htmlFor="bg-blur-slider" className="font-bold text-gray-700">
                   Desfoque Artístico (Blur)
                 </label>
-                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                <span className="font-mono font-bold text-[#1B357B] bg-[#1B357B]/10 border border-[#1B357B]/20 px-2.5 py-0.5 rounded-lg text-xs">
                   {formData.blur} px
                 </span>
               </div>
@@ -571,7 +588,7 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                 step="1"
                 value={formData.blur}
                 onChange={(e) => setFormData(prev => ({ ...prev, blur: Number(e.target.value) }))}
-                className="w-full accent-blue-600 cursor-pointer"
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#C59B4B]"
               />
               <p className="text-[11px] text-gray-500">
                 Suaviza detalhes de fotos para criar texturas elegantes sem poluir a interface.
@@ -580,18 +597,18 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
 
             {/* Overlay Type & Opacity */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-700 block">Camada de Sobreposição</label>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="bg-slate-100 p-1 rounded-xl flex gap-1">
                   {(['light', 'dark', 'none'] as const).map((type) => (
                     <button
                       key={type}
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, overlayType: type }))}
-                      className={`py-1.5 px-2 text-xs font-bold rounded-lg border transition-all text-center ${
+                      className={`flex-1 py-1.5 px-2 text-xs rounded-lg transition-all text-center cursor-pointer ${
                         formData.overlayType === type
-                          ? 'border-blue-600 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                          ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                          : 'text-slate-600 hover:text-slate-900 font-medium'
                       }`}
                     >
                       {type === 'light' ? 'Claro' : type === 'dark' ? 'Escuro' : 'Nenhum'}
@@ -605,7 +622,7 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                   <label htmlFor="bg-overlay-slider" className="font-bold text-gray-700">
                     Filtro de Contraste
                   </label>
-                  <span className="font-mono font-bold text-gray-700">{formData.overlayOpacity}%</span>
+                  <span className="font-mono font-bold text-slate-700">{formData.overlayOpacity}%</span>
                 </div>
                 <input
                   id="bg-overlay-slider"
@@ -616,28 +633,28 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                   disabled={formData.overlayType === 'none'}
                   value={formData.overlayOpacity}
                   onChange={(e) => setFormData(prev => ({ ...prev, overlayOpacity: Number(e.target.value) }))}
-                  className="w-full accent-blue-600 cursor-pointer disabled:opacity-40"
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#C59B4B] disabled:opacity-40"
                 />
               </div>
             </div>
 
-            {/* Position / Sizing */}
-            <div className="space-y-1.5 pt-2 border-t border-gray-100">
+            {/* Position / Sizing - Segmented Buttons */}
+            <div className="space-y-2 pt-2 border-t border-gray-100">
               <label className="text-xs font-bold text-gray-700 block">Enquadramento do Fundo</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="bg-slate-100 p-1 rounded-xl flex gap-1">
                 {[
                   { id: 'cover', label: 'Cobrir Tela (Cover)' },
                   { id: 'contain', label: 'Ajustar (Contain)' },
-                  { id: 'repeat', label: 'Repetir Padrão (Tile)' },
+                  { id: 'repeat', label: 'Repetir (Tile)' },
                 ].map((pos) => (
                   <button
                     key={pos.id}
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, position: pos.id as any }))}
-                    className={`py-1.5 px-2 text-xs font-bold rounded-lg border transition-all text-center ${
+                    className={`flex-1 py-1.5 px-2 text-xs rounded-lg transition-all text-center cursor-pointer ${
                       formData.position === pos.id
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'bg-white text-slate-800 shadow-sm font-semibold'
+                        : 'text-slate-600 hover:text-slate-900 font-medium'
                     }`}
                   >
                     {pos.label}
@@ -778,12 +795,13 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
               Publicar Alterações no GED
             </h4>
 
+            {/* Botão Salvar e Aplicar em Todo o Site - Destaque Executivo Dourado */}
             <button
               id="btn-save-background"
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-2 shadow-sm transition-colors cursor-pointer"
+              className="w-full py-3.5 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#C59B4B] to-[#B38739] hover:brightness-105 shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isSaving ? (
                 <>
@@ -792,20 +810,21 @@ export const BackgroundCustomizer: React.FC<BackgroundCustomizerProps> = ({
                 </>
               ) : (
                 <>
-                  <Check className="w-4 h-4" />
+                  <Check className="w-4 h-4 stroke-[2.5]" />
                   <span>Salvar e Aplicar em Todo o Site</span>
                 </>
               )}
             </button>
 
+            {/* Botão Restaurar Fundo Padrão Neutro - Contorno Suave */}
             <button
               id="btn-reset-background"
               type="button"
               onClick={handleReset}
               disabled={isSaving}
-              className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 disabled:opacity-50 text-gray-700 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition-colors cursor-pointer"
+              className="w-full border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              <RotateCcw className="w-4 h-4 text-gray-500" />
+              <RotateCcw className="w-4 h-4 text-slate-500" />
               <span>Restaurar Fundo Padrão Neutro</span>
             </button>
 

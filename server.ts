@@ -1733,6 +1733,11 @@ interface StoredFile {
   sector: string;
   checksum_sha256?: string;
   due_date?: string;
+  company_name?: string;
+  client_phone?: string;
+  notification_sent?: boolean;
+  document_type?: string;
+  amount?: number;
   is_archived?: boolean;
   created_at: string;
   updated_at: string;
@@ -2074,6 +2079,11 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
             sector: resolvedSector,
             checksum_sha256: f.checksum_sha256,
             due_date: f.due_date || undefined,
+            company_name: f.company_name || undefined,
+            client_phone: f.client_phone || undefined,
+            notification_sent: f.notification_sent !== undefined ? Boolean(f.notification_sent) : false,
+            document_type: f.document_type || undefined,
+            amount: f.amount !== undefined && f.amount !== null ? Number(f.amount) : undefined,
             is_archived: f.is_archived || false,
             created_at: f.created_at,
             updated_at: f.updated_at,
@@ -2124,6 +2134,11 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
                   uploaded_by: uploaderUuid,
                   checksum_sha256: localFile.checksum_sha256 || null,
                   due_date: localFile.due_date || null,
+                  company_name: localFile.company_name || null,
+                  client_phone: localFile.client_phone || null,
+                  notification_sent: localFile.notification_sent !== undefined ? Boolean(localFile.notification_sent) : false,
+                  document_type: localFile.document_type || null,
+                  amount: localFile.amount !== undefined ? localFile.amount : null,
                   created_at: localFile.created_at,
                   updated_at: localFile.updated_at,
                 });
@@ -2360,6 +2375,11 @@ app.post('/api/files', async (req: Request, res: Response) => {
       uploaded_by,
       checksum_sha256,
       due_date,
+      company_name,
+      client_phone,
+      notification_sent,
+      document_type,
+      amount,
       sector,
     } = req.body;
 
@@ -2385,6 +2405,11 @@ app.post('/api/files', async (req: Request, res: Response) => {
       sector: sector || 'Fiscal',
       checksum_sha256: checksum_sha256 || undefined,
       due_date: due_date || undefined,
+      company_name: company_name || undefined,
+      client_phone: client_phone || undefined,
+      notification_sent: notification_sent !== undefined ? Boolean(notification_sent) : false,
+      document_type: document_type || undefined,
+      amount: amount !== undefined && amount !== null ? Number(amount) : undefined,
       is_archived: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -2446,6 +2471,11 @@ app.post('/api/files', async (req: Request, res: Response) => {
         };
 
         if (due_date) payload.due_date = due_date;
+        if (company_name) payload.company_name = company_name;
+        if (client_phone) payload.client_phone = client_phone;
+        if (notification_sent !== undefined) payload.notification_sent = Boolean(notification_sent);
+        if (document_type) payload.document_type = document_type;
+        if (amount !== undefined && amount !== null) payload.amount = Number(amount);
 
         const { error: sbFileErr } = await supabase.from('files').upsert(payload);
         if (sbFileErr) {
@@ -2466,6 +2496,10 @@ app.post('/api/files', async (req: Request, res: Response) => {
             optimized_size: newFile.optimized_size,
             compression_ratio: `${newFile.compression_ratio}%`,
             due_date: due_date || newFile.due_date,
+            company_name: company_name || newFile.company_name,
+            client_phone: client_phone || newFile.client_phone,
+            document_type: document_type || newFile.document_type,
+            amount: amount || newFile.amount,
           },
         });
       } catch (sbErr: any) {
@@ -2476,6 +2510,86 @@ app.post('/api/files', async (req: Request, res: Response) => {
     res.status(201).json({ status: 'success', file: newFile });
   } catch (err: any) {
     console.error('[POST /api/files] Erro:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 14b. Update File Metadata (due date, company, client_phone, notification_sent, amount, tags)
+app.patch('/api/files/:id', async (req: Request, res: Response) => {
+  const fileId = req.params.id;
+  try {
+    const {
+      due_date,
+      company_name,
+      client_phone,
+      notification_sent,
+      document_type,
+      amount,
+      name,
+      tags,
+      is_archived,
+    } = req.body;
+
+    const fileIdx = persistedFiles.findIndex(f => f.id === fileId || toDeterministicUuid(f.id) === fileId);
+    let updatedFile: StoredFile | null = null;
+
+    if (fileIdx >= 0) {
+      persistedFiles[fileIdx] = {
+        ...persistedFiles[fileIdx],
+        ...(due_date !== undefined ? { due_date: due_date || undefined } : {}),
+        ...(company_name !== undefined ? { company_name: company_name || undefined } : {}),
+        ...(client_phone !== undefined ? { client_phone: client_phone || undefined } : {}),
+        ...(notification_sent !== undefined ? { notification_sent: Boolean(notification_sent) } : {}),
+        ...(document_type !== undefined ? { document_type: document_type || undefined } : {}),
+        ...(amount !== undefined ? { amount: amount !== null && amount !== '' ? Number(amount) : undefined } : {}),
+        ...(name !== undefined ? { name } : {}),
+        ...(tags !== undefined ? { tags } : {}),
+        ...(is_archived !== undefined ? { is_archived } : {}),
+        updated_at: new Date().toISOString(),
+      };
+      updatedFile = persistedFiles[fileIdx];
+      savePersistedFiles();
+      saveR2Files(persistedFiles).catch(() => {});
+    }
+
+    // Sync update to Supabase
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      const updates: any = { updated_at: new Date().toISOString() };
+      if (due_date !== undefined) updates.due_date = due_date || null;
+      if (company_name !== undefined) updates.company_name = company_name || null;
+      if (client_phone !== undefined) updates.client_phone = client_phone || null;
+      if (notification_sent !== undefined) updates.notification_sent = Boolean(notification_sent);
+      if (document_type !== undefined) updates.document_type = document_type || null;
+      if (amount !== undefined) updates.amount = amount !== null && amount !== '' ? Number(amount) : null;
+      if (name !== undefined) updates.name = name;
+      if (tags !== undefined) updates.tags = tags;
+      if (is_archived !== undefined) updates.is_archived = is_archived;
+
+      try {
+        const { data } = await supabase
+          .from('files')
+          .update(updates)
+          .or(`id.eq.${fileId},id.eq.${toDeterministicUuid(fileId)}`)
+          .select();
+        
+        if (data && data[0] && !updatedFile) {
+          updatedFile = {
+            ...data[0],
+            preview_url: `/api/r2/view?key=${encodeURIComponent(data[0].storage_key)}&name=${encodeURIComponent(data[0].name)}`
+          };
+        }
+      } catch (sbErr: any) {
+        console.warn('[PATCH /api/files/:id] Erro Supabase:', sbErr.message);
+      }
+    }
+
+    if (!updatedFile) {
+      return res.status(404).json({ error: 'Arquivo não encontrado' });
+    }
+
+    res.json({ status: 'success', file: updatedFile });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -2643,6 +2757,103 @@ app.post('/api/folder-permissions', async (req: Request, res: Response) => {
     res.status(200).json({ status: 'success', permission: data[0] });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ==============================================================================
+// 16.1. CNPJ CONSULTATION ENDPOINT (BrasilAPI + Fallback)
+// ==============================================================================
+app.get('/api/cnpj/:cnpj', async (req: Request, res: Response) => {
+  const rawCnpj = req.params.cnpj || '';
+  const cleanCnpj = rawCnpj.replace(/\D/g, '');
+
+  if (!cleanCnpj || cleanCnpj.length !== 14) {
+    return res.status(400).json({
+      error: 'CNPJ inválido. Digite exatamente os 14 dígitos numéricos.',
+      type: 'invalid_format',
+    });
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
+
+    const brasilApiRes = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanCnpj}`, {
+      headers: {
+        'User-Agent': 'MVRJ-Contabil-GED/1.0',
+        'Accept': 'application/json',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (brasilApiRes.ok) {
+      const data = await brasilApiRes.json();
+      return res.json({
+        success: true,
+        source: 'brasilapi',
+        data,
+      });
+    }
+
+    if (brasilApiRes.status === 404) {
+      return res.status(404).json({
+        error: 'Empresa não encontrada na base da Receita Federal.',
+        type: 'not_found',
+      });
+    }
+
+    // If BrasilAPI returned error, try ReceitaWS as fallback
+    try {
+      const rwsRes = await fetch(`https://receitaws.com.br/v1/cnpj/${cleanCnpj}`, {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (rwsRes.ok) {
+        const rwsData = (await rwsRes.json()) as any;
+        if (rwsData.status === 'ERROR') {
+          return res.status(404).json({
+            error: 'Empresa não encontrada na base da Receita Federal.',
+            type: 'not_found',
+          });
+        }
+        const normalized = {
+          cnpj: cleanCnpj,
+          razao_social: rwsData.nome,
+          nome_fantasia: rwsData.fantasia,
+          descricao_situacao_cadastral: rwsData.situacao,
+          data_situacao_cadastral: rwsData.data_situacao,
+          descricao_motivo_situacao_cadastral: rwsData.motivo_situacao,
+          cnae_fiscal: rwsData.atividade_principal?.[0]?.code,
+          cnae_fiscal_descricao: rwsData.atividade_principal?.[0]?.text,
+          municipio: rwsData.municipio,
+          uf: rwsData.uf,
+          logradouro: rwsData.logradouro,
+          numero: rwsData.numero,
+          bairro: rwsData.bairro,
+          cep: rwsData.cep,
+          ddd_telefone_1: rwsData.telefone,
+          email: rwsData.email,
+          natureza_juridica: rwsData.natureza_juridica,
+          porte: rwsData.porte,
+        };
+        return res.json({
+          success: true,
+          source: 'receitaws',
+          data: normalized,
+        });
+      }
+    } catch {}
+
+    const errJson = (await brasilApiRes.json().catch(() => ({}))) as any;
+    return res.status(brasilApiRes.status).json({
+      error: errJson.message || 'Empresa não encontrada na base da Receita Federal.',
+      type: errJson.type || 'error',
+    });
+  } catch (err: any) {
+    return res.status(502).json({
+      error: 'Não foi possível conectar ao serviço da Receita Federal no momento.',
+      details: err.message,
+    });
   }
 });
 

@@ -63,6 +63,11 @@ export interface DocumentFile {
   sector: Sector;
   checksum_sha256?: string;
   due_date?: string; // Data de Vencimento da Guia / Obrigação (YYYY-MM-DD)
+  company_name?: string; // Nome da empresa ou cliente
+  client_phone?: string; // Telefone do cliente para WhatsApp
+  notification_sent?: boolean; // Indicador se o aviso já foi disparado
+  document_type?: string; // Tipo de Guia (DAS, DARF, FGTS, etc.)
+  amount?: number; // Valor da Guia (opcional)
   is_archived?: boolean;
   created_at: string;
   updated_at: string;
@@ -165,4 +170,39 @@ export interface StorageMetrics {
   savingsPercent: number;
   quotaTier: string;
   bySector?: Record<string, { usedBytes: number; filesCount: number }>;
+}
+
+export interface CompanyCnpjData {
+  cnpj: string;
+  razao_social: string;
+  nome_fantasia?: string;
+  descricao_situacao_cadastral: string;
+  data_situacao_cadastral?: string;
+  descricao_motivo_situacao_cadastral?: string;
+  cnae_fiscal?: number | string;
+  cnae_fiscal_descricao?: string;
+  cnaes_secundarios?: Array<{ codigo: number | string; descricao: string }>;
+  municipio?: string;
+  uf?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cep?: string;
+  ddd_telefone_1?: string;
+  ddd_telefone_2?: string;
+  email?: string | null;
+  natureza_juridica?: string;
+  porte?: string;
+  capital_social?: number;
+  opcao_pelo_simples?: boolean;
+  data_opcao_pelo_simples?: string | null;
+  opcao_pelo_mei?: boolean;
+  data_opcao_pelo_mei?: string | null;
+  qsa?: Array<{
+    nome_socio: string;
+    qualificacao_socio?: string;
+    faixa_etaria?: string;
+    pais?: string | null;
+  }>;
 }

@@ -70,11 +70,27 @@ CREATE TABLE IF NOT EXISTS public.files (
   tags TEXT[] DEFAULT '{}',
   checksum_sha256 TEXT,
   due_date DATE,                    -- Data de vencimento da guia / obrigação
+  company_name TEXT,                -- Nome da empresa ou cliente
+  client_phone TEXT,                -- Telefone do cliente para WhatsApp
+  notification_sent BOOLEAN DEFAULT FALSE, -- Indicador se o aviso de vencimento já foi disparado
+  document_type TEXT,               -- Tipo de Guia (DAS, DARF, FGTS, etc.)
+  amount NUMERIC(12,2),             -- Valor da Guia (opcional)
   is_archived BOOLEAN DEFAULT FALSE,
   uploaded_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- ALIAS / COMPATIBILIDADE: public.documents aponta para public.files
+CREATE OR REPLACE VIEW public.documents AS SELECT * FROM public.files;
+
+-- MIGRAÇÃO AUTOMÁTICA DE COLUNAS SE A TABELA JÁ EXISTIR NO BANCO
+ALTER TABLE public.files ADD COLUMN IF NOT EXISTS due_date DATE;
+ALTER TABLE public.files ADD COLUMN IF NOT EXISTS company_name TEXT;
+ALTER TABLE public.files ADD COLUMN IF NOT EXISTS client_phone TEXT;
+ALTER TABLE public.files ADD COLUMN IF NOT EXISTS notification_sent BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.files ADD COLUMN IF NOT EXISTS document_type TEXT;
+ALTER TABLE public.files ADD COLUMN IF NOT EXISTS amount NUMERIC(12,2);
 
 -- 6. TABELA DE PERMISSÕES GRANULARES POR PASTA (Matriz RBAC)
 CREATE TABLE IF NOT EXISTS public.folder_permissions (
