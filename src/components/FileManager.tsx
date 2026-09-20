@@ -12,6 +12,7 @@ import {
   Eye, 
   Download, 
   Trash2, 
+  Edit2,
   Tag, 
   Calendar, 
   User, 
@@ -47,7 +48,6 @@ import {
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
 import { getPresignedDownloadUrl } from '../lib/storage-service';
-import { getDueDateInfo } from '../lib/due-date-utils';
 import { StorageStatsWidget } from './StorageStatsCard';
 import { StorageLimitModal } from './StorageLimitModal';
 
@@ -62,6 +62,7 @@ interface FileManagerProps {
   onCreateFolder: (name: string, parentId: string | null, sector: Sector) => Promise<any> | void;
   onDeleteFolder?: (folderId: string) => void;
   onDeleteFile: (fileId: string) => void;
+  onRenameFile?: (fileId: string, newName: string) => void;
   hasFolderPermission: (folderId: string, minLevel: PermissionLevel) => boolean;
   onOpenCompanyModal?: (initialQuery?: string) => void;
   externalSearchQuery?: string;
@@ -79,6 +80,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   onCreateFolder,
   onDeleteFolder,
   onDeleteFile,
+  onRenameFile,
   hasFolderPermission,
   onOpenCompanyModal,
   externalSearchQuery,
@@ -89,6 +91,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState(externalSearchQuery || '');
+  
+  const [renamingFile, setRenamingFile] = useState<DocumentFile | null>(null);
+  const [newNameInput, setNewNameInput] = useState('');
 
   useEffect(() => {
     if (externalSearchQuery !== undefined) {
@@ -785,22 +790,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       </p>
                     </div>
 
-                    {/* Due Date Indicator Badge */}
-                    {(() => {
-                      const dueInfo = getDueDateInfo(file.due_date || (file as any).dataVencimento);
-                      if (!dueInfo) return null;
-                      return (
-                        <div className={`px-2.5 py-1.5 rounded-xl border text-[11px] flex items-center justify-between gap-1.5 mb-2.5 ${dueInfo.cardClass}`}>
-                          <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                            <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span>Vencimento:</span>
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold ${dueInfo.badgeClass}`}>
-                            {dueInfo.badgeText}
-                          </span>
-                        </div>
-                      );
-                    })()}
+
 
                     {/* Size Pill */}
                     <div className="text-xs font-semibold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg w-fit mb-3">
@@ -856,6 +846,20 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         <Download className="w-4 h-4" />
                       </button>
 
+                      {(currentUser.role === 'admin' || currentUser.role === 'editor') && onRenameFile && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRenamingFile(file);
+                            setNewNameInput(file.name);
+                          }}
+                          className="p-2 rounded-lg text-slate-500 hover:text-[#1B357B] hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Renomear documento"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
+
                       {currentUser.role === 'admin' && onDeleteFile && (
                         <button
                           type="button"
@@ -880,7 +884,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
                   <th className="p-3">Nome do Documento</th>
                   <th className="p-3">Setor</th>
-                  <th className="p-3">Vencimento</th>
                   <th className="p-3">Tamanho Original</th>
                   <th className="p-3">Tamanho Otimizado</th>
                   <th className="p-3">Economia R2</th>
@@ -897,7 +900,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
                   const isSpreadsheet = /\.(xlsx|xls|csv|ods)$/i.test(lowerName) || file.mime_type.includes('spreadsheet') || file.mime_type.includes('excel') || file.mime_type.includes('csv');
                   const isXml = /\.(xml|nfe|cte|sped|ofx|rem|ret)$/i.test(lowerName) || file.mime_type.includes('xml');
                   const isZip = /\.(zip|rar|7z|tar|gz)$/i.test(lowerName) || file.mime_type.includes('zip') || file.mime_type.includes('compressed');
-                  const dueInfo = getDueDateInfo(file.due_date || (file as any).dataVencimento);
 
                   return (
                     <tr key={file.id} className="hover:bg-gray-50 transition-colors">
@@ -938,16 +940,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         </div>
                       </td>
                       <td className="p-3 text-gray-600">{file.sector}</td>
-                      <td className="p-3 whitespace-nowrap">
-                        {dueInfo ? (
-                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[10px] font-bold ${dueInfo.badgeClass}`}>
-                            <Calendar className="w-3 h-3 shrink-0" />
-                            <span>{dueInfo.badgeText}</span>
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 text-[11px]">—</span>
-                        )}
-                      </td>
+
                       <td className="p-3 font-mono text-gray-400 line-through">{formatBytes(file.original_size)}</td>
                       <td className="p-3 font-mono font-bold text-gray-800">{formatBytes(file.optimized_size)}</td>
                       <td className="p-3 font-bold text-emerald-600">
@@ -970,6 +963,18 @@ export const FileManager: React.FC<FileManagerProps> = ({
                           >
                             <Download className="w-4 h-4" />
                           </button>
+                          {(currentUser.role === 'admin' || currentUser.role === 'editor') && onRenameFile && (
+                            <button
+                              onClick={() => {
+                                setRenamingFile(file);
+                                setNewNameInput(file.name);
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-[#1B357B] hover:bg-slate-100 rounded-lg"
+                              title="Renomear"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
                           {currentUser.role === 'admin' && (
                             <button
                               onClick={() => onDeleteFile(file.id)}
@@ -997,6 +1002,70 @@ export const FileManager: React.FC<FileManagerProps> = ({
         usedBytes={effectiveUsedBytes}
         totalCapacityBytes={totalQuotaBytes}
       />
+
+      {/* Rename File Modal */}
+      {renamingFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs">
+          <div className="bg-white w-[90%] max-w-md mx-auto rounded-2xl shadow-2xl border border-slate-200 p-5 animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="text-slate-900 font-bold text-base mb-1">Renomear Documento</h3>
+            <p className="text-slate-500 text-xs mb-4">Insira o novo nome para o documento abaixo.</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Nome Atual</label>
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 font-medium truncate">
+                  {renamingFile.name}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Novo Nome</label>
+                <input
+                  type="text"
+                  value={newNameInput}
+                  onChange={(e) => setNewNameInput(e.target.value)}
+                  placeholder="Digite o novo nome..."
+                  className="w-full h-10 px-3 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-1 focus:ring-[#1B357B]/20 outline-none transition-all font-medium"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const trimmed = newNameInput.trim();
+                      if (trimmed && trimmed !== renamingFile.name && onRenameFile) {
+                        onRenameFile(renamingFile.id, trimmed);
+                      }
+                      setRenamingFile(null);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            
+            <div className="mt-5 flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setRenamingFile(null)}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const trimmed = newNameInput.trim();
+                  if (trimmed && trimmed !== renamingFile.name && onRenameFile) {
+                    onRenameFile(renamingFile.id, trimmed);
+                  }
+                  setRenamingFile(null);
+                }}
+                disabled={!newNameInput.trim() || newNameInput.trim() === renamingFile.name}
+                className="px-4 py-2 bg-[#1B357B] hover:bg-[#C59B4B] disabled:opacity-50 disabled:hover:bg-[#1B357B] text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

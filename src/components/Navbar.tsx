@@ -35,8 +35,6 @@ interface NavbarProps {
   onOpenFirstAccessModal?: () => void;
   onOpenBackgroundModal?: () => void;
   onOpenCompanyModal?: () => void;
-  onOpenDueNoticeModal?: () => void;
-  dueAlertCount?: number;
   onSwitchUser: (profile: UserProfile) => void;
   onLogout: () => void;
   allProfiles: UserProfile[];
@@ -55,8 +53,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenFirstAccessModal,
   onOpenBackgroundModal,
   onOpenCompanyModal,
-  onOpenDueNoticeModal,
-  dueAlertCount,
   onSwitchUser,
   onLogout,
   allProfiles,
@@ -189,24 +185,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Central de Avisos de Vencimento */}
-            {onOpenDueNoticeModal && (
-              <button
-                id="navbar-due-notices-btn"
-                onClick={onOpenDueNoticeModal}
-                className="h-11 flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-[#1B357B] hover:bg-slate-100/80 transition-all duration-200 group cursor-pointer relative"
-                title="Central de Disparos de Vencimentos de Guias via WhatsApp"
-              >
-                <Bell className="w-4 h-4 flex-shrink-0 text-slate-400 group-hover:text-[#1B357B]" />
-                <span className="hidden xl:inline">Avisos de Vencimento</span>
-                <span className="xl:hidden hidden lg:inline">Avisos</span>
-                {(dueAlertCount || 0) > 0 && (
-                  <span className="ml-0.5 px-1.5 py-0.5 bg-amber-500 text-slate-900 text-[10px] font-bold rounded-full ring-2 ring-white shadow-2xs">
-                    {dueAlertCount}
-                  </span>
-                )}
-              </button>
-            )}
+
           </nav>
         )}
 
@@ -388,7 +367,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 aria-label="Abrir Menu Móvel"
               >
                 <Menu className="w-5 h-5 text-slate-700" />
-                {(pendingUsersCount > 0 || (dueAlertCount || 0) > 0) && (
+                {pendingUsersCount > 0 && (
                   <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white"></span>
                 )}
               </button>
@@ -530,26 +509,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </button>
                 )}
 
-                {/* Avisos de Vencimento */}
-                {onOpenDueNoticeModal && (
-                  <button
-                    onClick={() => {
-                      onOpenDueNoticeModal();
-                      setShowMobileMenu(false);
-                    }}
-                    className="w-full h-12 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70 flex items-center justify-between px-4 font-semibold text-sm transition-all cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Bell className="w-5 h-5 text-[#C59B4B] shrink-0" />
-                      <span>Avisos de Vencimento</span>
-                    </div>
-                    {(dueAlertCount || 0) > 0 && (
-                      <span className="px-2 py-0.5 bg-amber-500 text-slate-900 text-xs font-bold rounded-full">
-                        {dueAlertCount}
-                      </span>
-                    )}
-                  </button>
-                )}
+
               </div>
             </div>
 

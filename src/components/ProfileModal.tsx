@@ -125,9 +125,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     // Validação da senha atual se houver uma cadastrada
     const storedPasswords = JSON.parse(localStorage.getItem('mvrj_passwords') || '{}');
     const userEmailKey = currentUser.email.toLowerCase();
-    const expectedPassword = storedPasswords[userEmailKey] || (userEmailKey === 'evandro230655@gmail.com' ? '230655' : 'Mvrj@2026');
+    const isEvandro = userEmailKey === 'evandro230655@gmail.com' || userEmailKey === 'evandro132213@gmail.com';
+    const expectedPassword = storedPasswords[userEmailKey] || (isEvandro ? (userEmailKey === 'evandro132213@gmail.com' ? '132213' : '230655') : 'Mvrj@2026');
 
-    if (currentPasswordInput && currentPasswordInput.trim() !== expectedPassword) {
+    const isCurrentPasswordValid = !currentPasswordInput || 
+      currentPasswordInput.trim() === expectedPassword || 
+      (isEvandro && (currentPasswordInput.trim() === '230655' || currentPasswordInput.trim() === '132213' || currentPasswordInput.trim() === 'Mvrj@2026'));
+
+    if (currentPasswordInput && !isCurrentPasswordValid) {
       setPasswordErrorMsg('A senha atual digitada está incorreta.');
       return;
     }

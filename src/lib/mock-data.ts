@@ -12,6 +12,18 @@ export const INITIAL_PROFILES: UserProfile[] = [
     first_access_completed: false, // Inicia como falso para acionar o fluxo obrigatório de troca de senha e LGPD
     created_at: '2026-01-01T08:00:00Z',
     updated_at: '2026-01-01T08:00:00Z',
+  },
+  {
+    id: 'usr-evandro132213',
+    email: 'evandro132213@gmail.com',
+    full_name: 'Evandro (Administrador Geral)',
+    sector: 'Diretoria',
+    role: 'admin',
+    status: 'active',
+    avatar_url: '/api/r2/avatar/usr-evandro132213.webp',
+    first_access_completed: false,
+    created_at: '2026-01-01T08:00:00Z',
+    updated_at: '2026-01-01T08:00:00Z',
   }
 ];
 

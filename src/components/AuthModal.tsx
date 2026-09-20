@@ -116,9 +116,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     // Validação de senha: verifica senha atualizada no localStorage ou senha padrão
     const storedPasswords = JSON.parse(localStorage.getItem('mvrj_passwords') || '{}');
     const userEmailKey = user.email.toLowerCase();
-    const expectedPassword = storedPasswords[userEmailKey] || (userEmailKey === 'evandro230655@gmail.com' ? '230655' : 'Mvrj@2026');
+    const isEvandro = userEmailKey === 'evandro230655@gmail.com' || userEmailKey === 'evandro132213@gmail.com';
+    const expectedPassword = storedPasswords[userEmailKey] || (isEvandro ? (userEmailKey === 'evandro132213@gmail.com' ? '132213' : '230655') : 'Mvrj@2026');
 
-    if (loginPassword.trim() !== expectedPassword && (userEmailKey === 'evandro230655@gmail.com' || storedPasswords[userEmailKey])) {
+    const isValid = loginPassword.trim() === expectedPassword || (isEvandro && (loginPassword.trim() === '230655' || loginPassword.trim() === '132213' || loginPassword.trim() === 'Mvrj@2026'));
+
+    if (!isValid && (isEvandro || storedPasswords[userEmailKey])) {
       setLoginStatusMessage({
         type: 'error',
         text: 'Senha incorreta. Por favor, verifique a senha digitada.',

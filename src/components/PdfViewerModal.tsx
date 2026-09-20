@@ -12,7 +12,6 @@ import {
 import { DocumentFile } from '../types';
 import { formatBytes } from '../lib/optimization';
 import { getPresignedDownloadUrl, getPermanentViewUrl } from '../lib/storage-service';
-import { getDueDateInfo } from '../lib/due-date-utils';
 
 interface PdfViewerModalProps {
   isOpen: boolean;
@@ -78,16 +77,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           <div>
             <div className="flex items-center space-x-2 flex-wrap gap-y-1">
               <h3 className="font-bold text-sm text-[#112354]">{file.name}</h3>
-              {(() => {
-                const dueInfo = getDueDateInfo(file.due_date || (file as any).dataVencimento);
-                if (!dueInfo) return null;
-                return (
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border text-[11px] font-bold ${dueInfo.badgeClass}`}>
-                    <Calendar className="w-3.5 h-3.5 shrink-0" />
-                    <span>{dueInfo.badgeText}</span>
-                  </span>
-                );
-              })()}
             </div>
             <p className="text-[10px] text-slate-500 mt-0.5">
               {file.sector} • {new Date(file.created_at).toLocaleDateString('pt-BR')}

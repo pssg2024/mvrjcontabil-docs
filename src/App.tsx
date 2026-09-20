@@ -12,9 +12,6 @@ import { LgpdTermsModal } from './components/LgpdTermsModal';
 import { BackgroundModal } from './components/BackgroundModal';
 import { PasswordConfirmModal } from './components/PasswordConfirmModal';
 import { CompanyConsultModal } from './components/CompanyConsultModal';
-import { DueNoticeBanner } from './components/DueNoticeBanner';
-import { DueNoticeModal } from './components/DueNoticeModal';
-import { isDueAlert } from './lib/due-date-utils';
 import { ShieldCheck } from 'lucide-react';
 import { 
   UserProfile, 
@@ -69,17 +66,46 @@ export default function App() {
       }
     });
     
-    // Assegura que evandro230655@gmail.com sempre existe como Administrador ativo
-    const evandroExists = loaded.find(p => p.email.toLowerCase() === 'evandro230655@gmail.com');
-    if (!evandroExists) {
-      loaded = [INITIAL_PROFILES[0], ...loaded];
-    } else {
-      loaded = loaded.map(p => 
-        p.email.toLowerCase() === 'evandro230655@gmail.com'
-          ? { ...p, role: 'admin', status: 'active' }
-          : p
-      );
+    // Assegura que evandro230655@gmail.com e evandro132213@gmail.com sempre existem como Administradores ativos
+    const evandroExists1 = loaded.find(p => p.email.toLowerCase() === 'evandro230655@gmail.com');
+    if (!evandroExists1) {
+      loaded.push({
+        id: '57e1d483-669b-4791-b09e-7496570e63ea',
+        email: 'evandro230655@gmail.com',
+        full_name: 'Evandro (Administrador Geral)',
+        sector: 'Diretoria',
+        role: 'admin',
+        status: 'active',
+        avatar_url: '/api/r2/avatar/57e1d483-669b-4791-b09e-7496570e63ea.webp',
+        first_access_completed: false,
+        created_at: '2026-01-01T08:00:00Z',
+        updated_at: '2026-01-01T08:00:00Z',
+      });
     }
+    const evandroExists2 = loaded.find(p => p.email.toLowerCase() === 'evandro132213@gmail.com');
+    if (!evandroExists2) {
+      loaded.push({
+        id: 'usr-evandro132213',
+        email: 'evandro132213@gmail.com',
+        full_name: 'Evandro (Administrador Geral)',
+        sector: 'Diretoria',
+        role: 'admin',
+        status: 'active',
+        avatar_url: '/api/r2/avatar/usr-evandro132213.webp',
+        first_access_completed: false,
+        created_at: '2026-01-01T08:00:00Z',
+        updated_at: '2026-01-01T08:00:00Z',
+      });
+    }
+    
+    loaded = loaded.map(p => {
+      const email = p.email.toLowerCase();
+      if (email === 'evandro230655@gmail.com' || email === 'evandro132213@gmail.com') {
+        return { ...p, role: 'admin', status: 'active' };
+      }
+      return p;
+    });
+    
     return loaded;
   });
 
@@ -147,12 +173,7 @@ export default function App() {
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [driveFilterSearch, setDriveFilterSearch] = useState('');
 
-  // Central de Disparos de Vencimentos State
-  const [isDueNoticeModalOpen, setIsDueNoticeModalOpen] = useState(false);
 
-  const dueAlertCount = React.useMemo(() => {
-    return files.filter(f => !f.is_archived && isDueAlert(f.due_date)).length;
-  }, [files]);
 
   const handleUpdateFile = async (fileId: string, updates: Partial<DocumentFile>) => {
     // 1. Atualização otimista no estado local
@@ -787,6 +808,39 @@ export default function App() {
     });
   };
 
+  const handleRenameFile = async (fileId: string, newName: string) => {
+    const file = files.find(f => f.id === fileId);
+    if (!file) return;
+
+    let finalName = newName.trim();
+    if (!finalName) return;
+
+    // Se o arquivo original tinha extensão e o novo nome não tem, mantém de forma inteligente
+    const dotIndex = file.name.lastIndexOf('.');
+    if (dotIndex >= 0) {
+      const ext = file.name.substring(dotIndex);
+      if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
+        finalName += ext;
+      }
+    }
+
+    logAudit('FILE_RENAME', 'FILE', fileId, { old_name: file.name, new_name: finalName });
+
+    // Atualização otimista
+    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, name: finalName, updated_at: new Date().toISOString() } : f));
+
+    try {
+      await updateFileInApi(fileId, { name: finalName });
+      fetchStorageMetrics();
+      notifyBroadcastSync();
+    } catch (err: any) {
+      console.error('Erro ao renomear arquivo:', err);
+      alert('Erro ao renomear arquivo: ' + (err.message || 'Erro desconhecido'));
+      const updatedFiles = await fetchFilesFromApi();
+      setFiles(updatedFiles);
+    }
+  };
+
   // 3. Exclusão de Pastas pelo Admin com deleção no Supabase (DELETE /api/folders/:id)
   const handleDeleteFolder = async (folderId: string) => {
     const folder = folders.find(f => f.id === folderId);
@@ -1005,8 +1059,6 @@ export default function App() {
             setIsBackgroundModalOpen(true);
           }}
           onOpenCompanyModal={() => handleOpenCompanyModal()}
-          onOpenDueNoticeModal={() => setIsDueNoticeModalOpen(true)}
-          dueAlertCount={dueAlertCount}
           onSwitchUser={handleSwitchUser}
           onLogout={handleLogout}
           allProfiles={profiles}
@@ -1015,13 +1067,7 @@ export default function App() {
           authHeaderConfig={authHeaderConfig}
         />
 
-        {/* 1. BANNER / LINHA DE AVISO NO CABEÇALHO (RESUMO DINÂMICO DE VENCIMENTOS) */}
-        {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
-          <DueNoticeBanner
-            files={files}
-            onOpenDueNoticeModal={() => setIsDueNoticeModalOpen(true)}
-          />
-        )}
+
 
         {/* Main View Area */}
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
@@ -1041,6 +1087,7 @@ export default function App() {
                 onCreateFolder={handleCreateFolder}
                 onDeleteFolder={handleDeleteFolder}
                 onDeleteFile={handleDeleteFile}
+                onRenameFile={handleRenameFile}
                 hasFolderPermission={checkFolderPermission}
                 onOpenCompanyModal={handleOpenCompanyModal}
                 externalSearchQuery={driveFilterSearch}
@@ -1254,15 +1301,7 @@ export default function App() {
         initialSearchQuery={companySearchQuery}
       />
 
-      {/* 2. Central de Disparos de Vencimentos Modal */}
-      <DueNoticeModal
-        isOpen={isDueNoticeModalOpen}
-        onClose={() => setIsDueNoticeModalOpen(false)}
-        files={files}
-        profiles={profiles}
-        onUpdateFile={handleUpdateFile}
-        onOpenFilePreview={(file) => setViewingFile(file)}
-      />
+
     </div>
   );
 }

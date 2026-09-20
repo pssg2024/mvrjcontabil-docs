@@ -9,7 +9,6 @@ import {
   ArrowRight, 
   AlertCircle,
   FolderTree,
-  HardDrive,
   AlertOctagon,
   Phone,
   Calendar,
@@ -17,7 +16,9 @@ import {
   FileCode,
   FileSpreadsheet,
   FileArchive,
-  File as FileGenericIcon
+  File as FileGenericIcon,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, StorageMetrics } from '../types';
 import { optimizeFile, formatBytes, computeChecksum } from '../lib/optimization';
@@ -43,17 +44,25 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   storageMetrics,
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [customFileName, setCustomFileName] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string>(
     currentFolder ? currentFolder.id : (allFolders[0]?.id || '')
   );
 
+  const [tagInput, setTagInput] = useState('');
+  const [tags, setTags] = useState<string[]>(['Contábil', '2026']);
+
+  // Pipeline execution state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [optimizationStage, setOptimizationStage] = useState<'idle' | 'optimizing' | 'requesting-url' | 'uploading-r2' | 'finished'>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const resetForm = () => {
     setSelectedFile(null);
-    setDueDate('');
-    setCompanyName('');
-    setClientPhone('');
-    setDocumentType('');
-    setAmount('');
+    setCustomFileName('');
     setTags(['Contábil', '2026']);
     setTagInput('');
     setIsProcessing(false);
@@ -73,22 +82,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       resetForm();
     }
   }, [isOpen, currentFolder, allFolders]);
-
-  const [dueDate, setDueDate] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
-  const [documentType, setDocumentType] = useState('DAS - Simples Nacional');
-  const [amount, setAmount] = useState('');
-  const [tagInput, setTagInput] = useState('');
-  const [tags, setTags] = useState<string[]>(['Contábil', '2026']);
-
-  // Pipeline execution state
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [optimizationStage, setOptimizationStage] = useState<'idle' | 'optimizing' | 'requesting-url' | 'uploading-r2' | 'finished'>('idle');
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -117,6 +110,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       return;
     }
     setSelectedFile(file);
+    setCustomFileName(file.name);
     setOptimizationStage('idle');
     setErrorMessage(null);
 
@@ -167,10 +161,23 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         pagesCount: optResult.pagesCount || 1,
       };
 
+      let finalName = customFileName.trim();
+      if (!finalName) {
+        finalName = selectedFile.name;
+      }
+      // Se originalFile possui extensão e finalName não possui a mesma, anexa de forma inteligente
+      const dotIndex = selectedFile.name.lastIndexOf('.');
+      if (dotIndex >= 0) {
+        const ext = selectedFile.name.substring(dotIndex);
+        if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
+          finalName += ext;
+        }
+      }
+
       // ETAPA 2: SOLICITAÇÃO DA PRESIGNED URL AO BACKEND
       setOptimizationStage('requesting-url');
       const presignedData = await getPresignedUploadUrl(
-        optResult.file instanceof File ? optResult.file.name : selectedFile.name,
+        finalName,
         optResult.mimeType,
         targetFolder.sector,
         targetFolder.id,
@@ -179,7 +186,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
       // ETAPA 3: UPLOAD DIRETO PARA CLOUDFLARE R2 COM FALLBACK RESILIENTE
       setOptimizationStage('uploading-r2');
-      const finalDocName = optResult.file instanceof File ? optResult.file.name : selectedFile.name;
+      const finalDocName = finalName;
       await uploadToPresignedUrl(
         presignedData.uploadUrl,
         optResult.file,
@@ -195,7 +202,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       const tempDoc: DocumentFile = {
         id: `file-${Date.now()}`,
         folder_id: targetFolder.id,
-        name: optResult.file instanceof File ? optResult.file.name : selectedFile.name,
+        name: finalName,
         storage_key: presignedData.storageKey,
         mime_type: optResult.mimeType,
         original_size: stats.originalSize,
@@ -207,12 +214,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         uploader_name: currentUser.full_name,
         sector: targetFolder.sector,
         checksum_sha256: checksum,
-        due_date: dueDate || undefined,
-        company_name: companyName.trim() || undefined,
-        client_phone: clientPhone.trim() || undefined,
-        document_type: documentType.trim() || undefined,
-        amount: amount ? parseFloat(amount) : undefined,
-        notification_sent: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         preview_url: optResult.dataUrl,
@@ -224,8 +225,9 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         if (saved && saved.id) {
           finalDoc = { ...saved, preview_url: optResult.dataUrl || saved.preview_url };
         }
-      } catch (dbErr) {
-        console.warn('Falha ao registrar documento no Supabase, mantendo cópia em memória:', dbErr);
+      } catch (dbErr: any) {
+        console.error('Falha ao registrar documento:', dbErr);
+        alert('Erro ao salvar documento: ' + (dbErr.message || 'Erro desconhecido'));
       }
 
       // Notifica sucesso imediatamente e fecha o modal após 1 segundo
@@ -243,145 +245,99 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     }
   };
 
+  const hasAccordionData = false;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden animate-in fade-in zoom-in-95 duration-150 p-5 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs">
+      <div className="bg-white w-[94%] max-w-lg mx-auto rounded-2xl shadow-2xl border border-slate-200/80 max-h-[85vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
         
-        {/* Header */}
-        <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-[#1B357B]/10 text-[#1B357B] p-2.5 rounded-xl shrink-0">
-              <UploadCloud className="w-5 h-5" />
+        {/* Header Compacto */}
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <div className="bg-[#1B357B]/10 text-[#1B357B] p-2 rounded-xl shrink-0">
+              <UploadCloud className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h3 className="text-slate-900 font-bold text-base leading-tight">Upload de Documentos & Certificados</h3>
-              <p className="text-slate-500 text-xs mt-0.5">Aceita qualquer formato: Certificados (PFX, P12), PDFs, Imagens, XMLs e Planilhas</p>
+            <div className="min-w-0">
+              <h3 className="text-slate-900 font-bold text-sm sm:text-base leading-tight truncate">
+                Upload de Documentos
+              </h3>
+              <p className="text-slate-500 text-[10px] sm:text-xs truncate">
+                PDFs, Imagens, XMLs, Certificados (PFX) e Planilhas
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
             disabled={isProcessing && optimizationStage !== 'finished'}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
+            aria-label="Fechar"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="pt-4 space-y-4">
+        {/* Corpo com Scroll Vertical Suave */}
+        <div className="p-3.5 sm:p-5 space-y-3 overflow-y-auto flex-1">
           {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start space-x-2">
+            <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start space-x-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
 
-          {/* Folder Target Selector & Competence */}
-          <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Pasta de Destino no GED</label>
-              <div className="relative">
-                <FolderTree className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                <select
-                  disabled={isProcessing}
-                  value={selectedFolderId}
-                  onChange={(e) => setSelectedFolderId(e.target.value)}
-                  className="w-full py-2.5 px-3.5 pl-9 text-xs text-slate-700 bg-slate-50/60 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/15 outline-none transition-all font-medium"
-                >
-                  {allFolders.map(folder => (
-                    <option key={folder.id} value={folder.id}>
-                      {folder.sector} » {folder.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Data de Vencimento</label>
-              <div className="relative">
-                <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                <input
-                  type="date"
-                  disabled={isProcessing}
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full py-2.5 px-3.5 pl-9 text-xs text-slate-700 bg-slate-50/60 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/15 outline-none transition-all font-medium"
-                />
-              </div>
+          {/* Seletor de Pasta de Destino Unificado */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Pasta de Destino no GED
+            </label>
+            <div className="relative">
+              <FolderTree className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
+                disabled={isProcessing}
+                value={selectedFolderId}
+                onChange={(e) => setSelectedFolderId(e.target.value)}
+                className="w-full h-9 sm:h-10 px-3 pl-9 text-xs text-slate-700 bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-1 focus:ring-[#1B357B]/20 outline-none transition-all font-medium truncate cursor-pointer"
+              >
+                {allFolders.map(folder => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.sector} » {folder.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Storage Quota Warning or Tracker */}
-          {isQuotaExceeded ? (
-            <div className="p-4 bg-rose-50 border-2 border-rose-400/80 rounded-xl space-y-3 text-xs text-rose-950">
+          {/* Aviso Crítico de Bloqueio se Espaço Total For Excedido */}
+          {isQuotaExceeded && (
+            <div className="p-3 bg-rose-50 border-2 border-rose-400/80 rounded-xl space-y-2 text-xs text-rose-950">
               <div className="flex items-center space-x-2">
-                <AlertOctagon className="w-5 h-5 text-rose-600 shrink-0" />
-                <strong className="text-sm font-bold text-rose-900">Capacidade Máxima de Armazenamento Atingida</strong>
+                <AlertOctagon className="w-4 h-4 text-rose-600 shrink-0" />
+                <strong className="text-xs font-bold text-rose-900">Capacidade Máxima Atingida</strong>
               </div>
-              <p className="text-rose-800">
-                O limite de armazenamento foi atingido e novos arquivos não podem ser salvos no momento. Para solicitar liberação ou aumento de capacidade, contate imediatamente o suporte de TI:
+              <p className="text-[11px] text-rose-800">
+                Novos uploads bloqueados. Entre em contato com o suporte de TI:
               </p>
-              <div className="p-3 bg-white rounded-lg border border-rose-200 flex flex-col sm:flex-row items-center justify-between gap-2">
-                <div className="flex items-center space-x-2">
-                  <Phone className="w-4 h-4 text-blue-600 shrink-0" />
-                  <div>
-                    <span className="text-[10px] text-gray-500 uppercase font-semibold block">Suporte Técnico TI</span>
-                    <strong className="text-sm font-mono text-gray-900">(21) 97396-0077</strong>
-                  </div>
-                </div>
+              <div className="p-2 bg-white rounded-lg border border-rose-200 flex items-center justify-between gap-2">
+                <span className="text-xs font-mono font-bold text-gray-900">(21) 97396-0077</span>
                 <a
                   href="https://wa.me/5521973960077?text=Ol%C3%A1%2C%20o%20limite%20de%20armazenamento%20do%20GED%20MVRJCONT%C3%81BIL%20foi%20atingido.%20Preciso%20de%20suporte."
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                  className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px]"
                 >
                   WhatsApp TI
                 </a>
               </div>
             </div>
-          ) : storageMetrics ? (
-            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2 text-xs">
-              <div className="flex items-center justify-between text-slate-700 font-medium">
-                <span className="flex items-center space-x-1.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="font-semibold text-slate-800">Capacidade do Sistema:</span>
-                </span>
-                <span className="text-[11px] text-[#C59B4B] font-bold">
-                  {(storageMetrics.remainingFilesCapacity ?? (10000 - storageMetrics.filesCount)).toLocaleString('pt-BR')} vagas para documentos
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-500">
-                <span>Documentos: <strong className="text-slate-700 font-semibold">{storageMetrics.filesCount.toLocaleString('pt-BR')}</strong> / {(storageMetrics.maxFilesCapacity || 10000).toLocaleString('pt-BR')}</span>
-                <span>Espaço Livre: <strong className="text-slate-700 font-semibold">{formatBytes(storageMetrics.freeBytes || (storageMetrics.totalCapacityBytes - storageMetrics.usedBytes))}</strong></span>
-              </div>
-              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-[#C59B4B] to-[#E2B963]"
-                  style={{ 
-                    width: `${Math.max(2, storageMetrics.usedPercent)}%`
-                  }}
-                />
-              </div>
-            </div>
-          ) : null}
+          )}
 
-          {/* Dropzone */}
-          {isQuotaExceeded ? (
-            <div className="border-2 border-dashed border-rose-300 bg-rose-50/40 rounded-2xl p-8 text-center">
-              <AlertOctagon className="w-10 h-10 text-rose-500 mx-auto mb-2" />
-              <h4 className="text-xs font-bold text-rose-900">Envio de documentos temporariamente bloqueado</h4>
-              <p className="text-[11px] text-rose-700 mt-1 max-w-sm mx-auto">
-                Para desbloquear o upload, entre em contato com o suporte de TI (21) 97396-0077 para expandir o plano de armazenamento.
-              </p>
-            </div>
-          ) : !selectedFile ? (
+          {/* Dropzone ou Card do Arquivo Selecionado */}
+          {!selectedFile ? (
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-200 hover:border-[#C59B4B] bg-slate-50/50 hover:bg-[#C59B4B]/5 rounded-2xl p-6 transition-all cursor-pointer flex flex-col items-center justify-center text-center group"
+              className="border-2 border-dashed border-slate-200 hover:border-[#C59B4B] bg-slate-50/50 hover:bg-[#C59B4B]/5 rounded-xl p-4 sm:p-5 transition-all cursor-pointer flex flex-col items-center justify-center text-center group"
             >
               <input
                 ref={fileInputRef}
@@ -393,13 +349,13 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   }
                 }}
               />
-              <UploadCloud className="text-[#C59B4B] group-hover:scale-110 transition-transform w-10 h-10 mb-2" />
-              <p className="text-xs font-semibold text-slate-800">Clique para selecionar ou arraste o arquivo aqui</p>
-              <p className="text-[11px] text-slate-400 mt-1">Formatos suportados: PDFs, Imagens, XMLs, Planilhas e Certificados Digitais</p>
+              <UploadCloud className="text-[#C59B4B] group-hover:scale-110 transition-transform w-8 h-8 mb-1.5" />
+              <p className="text-xs font-semibold text-slate-800">Clique para selecionar ou arraste o arquivo</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">PDFs, Imagens, XMLs, Planilhas e Certificados</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Selected File Card */}
+            <div className="space-y-2.5">
+              {/* Card Compacto de Arquivo Selecionado em Linha Única */}
               {(() => {
                 const lowerName = selectedFile.name.toLowerCase();
                 const isPfx = /\.(pfx|p12|cer|crt|key)$/i.test(lowerName);
@@ -410,9 +366,9 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                 const isZip = /\.(zip|rar|7z|tar|gz)$/i.test(lowerName);
 
                 return (
-                  <div className="bg-slate-50/80 border border-slate-200/70 rounded-xl p-3 flex items-center justify-between">
-                    <div className="flex items-center space-x-3 overflow-hidden">
-                      <div className={`p-2.5 rounded-xl shadow-xs text-white shrink-0 ${
+                  <div className="bg-slate-50/90 border border-slate-200/80 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                    <div className="flex items-center space-x-2.5 min-w-0 overflow-hidden">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-xs ${
                         isPfx ? 'bg-purple-600' :
                         isPdf ? 'bg-rose-600' :
                         isImg ? 'bg-blue-600' :
@@ -420,36 +376,29 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                         isXml ? 'bg-amber-600' :
                         isZip ? 'bg-teal-600' : 'bg-[#1B357B]'
                       }`}>
-                        {isPfx ? <KeyRound className="w-5 h-5" /> :
-                         isPdf ? <FileText className="w-5 h-5" /> :
-                         isImg ? <ImageIcon className="w-5 h-5" /> :
-                         isSpreadsheet ? <FileSpreadsheet className="w-5 h-5" /> :
-                         isXml ? <FileCode className="w-5 h-5" /> :
-                         isZip ? <FileArchive className="w-5 h-5" /> :
-                         <FileGenericIcon className="w-5 h-5" />}
+                        {isPfx ? <KeyRound className="w-4 h-4" /> :
+                         isPdf ? <FileText className="w-4 h-4" /> :
+                         isImg ? <ImageIcon className="w-4 h-4" /> :
+                         isSpreadsheet ? <FileSpreadsheet className="w-4 h-4" /> :
+                         isXml ? <FileCode className="w-4 h-4" /> :
+                         isZip ? <FileArchive className="w-4 h-4" /> :
+                         <FileGenericIcon className="w-4 h-4" />}
                       </div>
-                      <div className="overflow-hidden">
-                        <div className="flex items-center space-x-2">
-                          <h4 className="text-xs font-semibold text-slate-800 truncate max-w-[180px] sm:max-w-xs">{selectedFile.name}</h4>
-                          {isPfx && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
-                              Certificado
-                            </span>
-                          )}
-                          {isXml && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
-                              XML
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Tamanho: <strong className="text-slate-600">{formatBytes(selectedFile.size)}</strong></p>
+                      <div className="min-w-0 overflow-hidden">
+                        <h4 className="text-xs font-semibold text-slate-800 truncate" title={selectedFile.name}>
+                          {selectedFile.name}
+                        </h4>
+                        <p className="text-[10px] text-slate-400">
+                          {formatBytes(selectedFile.size)}
+                        </p>
                       </div>
                     </div>
 
                     {!isProcessing && (
                       <button
+                        type="button"
                         onClick={() => setSelectedFile(null)}
-                        className="text-xs font-medium text-[#1B357B] hover:text-[#C59B4B] hover:underline transition-colors shrink-0 ml-2"
+                        className="text-xs font-semibold text-[#1B357B] hover:text-[#C59B4B] hover:underline transition-colors shrink-0 px-2 py-1 cursor-pointer"
                       >
                         Trocar Arquivo
                       </button>
@@ -458,99 +407,35 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                 );
               })()}
 
-              {/* Metadados Contábeis & Vencimento (Central de Disparos MVRJ) */}
-              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3.5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-[#1B357B] uppercase tracking-wider flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-[#C59B4B]" />
-                    <span>Dados de Vencimento & Notificação (Opcional)</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400">Integração WhatsApp</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Empresa / Cliente</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Alfa Comércio Ltda"
-                      value={companyName}
-                      disabled={isProcessing}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#1B357B]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">WhatsApp Cliente (com DDD)</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: (21) 97396-0077"
-                      value={clientPhone}
-                      disabled={isProcessing}
-                      onChange={(e) => setClientPhone(e.target.value)}
-                      className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#1B357B]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Tipo de Guia / Documento</label>
-                    <select
-                      value={documentType}
-                      disabled={isProcessing}
-                      onChange={(e) => setDocumentType(e.target.value)}
-                      className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-hidden focus:border-[#1B357B]"
-                    >
-                      <option value="DAS - Simples Nacional">DAS - Simples Nacional</option>
-                      <option value="DARF Previdenciário">DARF Previdenciário</option>
-                      <option value="DARF IRPJ / CSLL">DARF IRPJ / CSLL</option>
-                      <option value="FGTS Digital">FGTS Digital</option>
-                      <option value="GPS - Previdência">GPS - Previdência Social</option>
-                      <option value="Honorários Contábeis">Honorários Contábeis</option>
-                      <option value="Boleto Bancário">Boleto Bancário</option>
-                      <option value="Declaração Anual">Declaração Anual</option>
-                      <option value="Outros">Outros</option>
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Vencimento</label>
-                      <input
-                        type="date"
-                        value={dueDate}
-                        disabled={isProcessing}
-                        onChange={(e) => setDueDate(e.target.value)}
-                        className="w-full text-xs px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-hidden focus:border-[#1B357B]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Valor (R$)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0,00"
-                        value={amount}
-                        disabled={isProcessing}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="w-full text-xs px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#1B357B]"
-                      />
-                    </div>
-                  </div>
-                </div>
+              {/* Nome do Documento para Renomear */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  Nome do Documento (personalizável se desejar renomear)
+                </label>
+                <input
+                  type="text"
+                  disabled={isProcessing}
+                  value={customFileName}
+                  onChange={(e) => setCustomFileName(e.target.value)}
+                  placeholder="Nome do arquivo..."
+                  className="w-full h-9 sm:h-10 px-3 text-xs text-slate-700 bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-1 focus:ring-[#1B357B]/20 outline-none transition-all font-medium"
+                />
               </div>
 
-              {/* Tags input */}
+              {/* Tags Compactas */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Tags do Documento</label>
-                <div className="flex flex-wrap gap-1.5 p-2 border border-slate-200 rounded-xl bg-slate-50/50 min-h-[38px] items-center">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Tags do Documento</label>
+                <div className="flex flex-wrap gap-1 p-1.5 border border-slate-200 rounded-xl bg-slate-50/40 min-h-[34px] items-center">
                   {tags.map(tag => (
-                    <span key={tag} className="bg-slate-100 text-slate-700 border border-slate-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1 font-medium">
+                    <span key={tag} className="bg-white text-slate-700 border border-slate-200 text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 font-medium shadow-xs">
                       #{tag}
                       {!isProcessing && (
-                        <button onClick={() => handleRemoveTag(tag)} className="ml-1 text-slate-400 hover:text-slate-700">
-                          <X className="w-3 h-3" />
+                        <button 
+                          type="button"
+                          onClick={() => handleRemoveTag(tag)} 
+                          className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                        >
+                          <X className="w-2.5 h-2.5" />
                         </button>
                       )}
                     </span>
@@ -558,32 +443,31 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   {!isProcessing && (
                     <input
                       type="text"
-                      placeholder="Adicionar tag (Enter)..."
+                      placeholder="Adicionar tag..."
                       value={tagInput}
                       onChange={(e) => setTagInput(e.target.value)}
                       onKeyDown={handleAddTag}
-                      className="text-xs outline-hidden flex-1 min-w-[120px] bg-transparent text-slate-700 placeholder:text-slate-400"
+                      className="text-xs outline-none flex-1 min-w-[90px] bg-transparent text-slate-700 placeholder:text-slate-400 px-1"
                     />
                   )}
                 </div>
               </div>
 
-              {/* Processing Progress Status */}
+              {/* Status do Processamento */}
               {isProcessing && optimizationStage !== 'finished' && (
-                <div className="space-y-2 pt-2">
+                <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-                    <span className="flex items-center space-x-2">
-                      <Sparkles className="w-4 h-4 text-[#1B357B] animate-spin" />
-                      <span>A processar e armazenar documento no Cloudflare R2...</span>
+                    <span className="flex items-center space-x-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#1B357B] animate-spin" />
+                      <span className="text-[11px]">Processando e gravando no R2...</span>
                     </span>
-                    <span>{uploadProgress > 0 ? `${uploadProgress}%` : 'A processar...'}</span>
+                    <span className="text-[11px] font-mono">{uploadProgress > 0 ? `${uploadProgress}%` : '...'}</span>
                   </div>
 
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                     <div 
-                      className="h-full rounded-full transition-all duration-300"
+                      className="h-full rounded-full transition-all duration-300 bg-[#1B357B]"
                       style={{ 
-                        backgroundColor: '#1B357B',
                         width: optimizationStage === 'optimizing' ? '30%' :
                                 optimizationStage === 'requesting-url' ? '60%':
                                 `${Math.max(10, uploadProgress)}%`
@@ -593,57 +477,58 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                 </div>
               )}
 
-              {/* Success Badge after completion */}
+              {/* Sucesso */}
               {optimizationStage === 'finished' && (
                 <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs py-2 px-3 rounded-xl flex items-center gap-2 font-medium animate-in fade-in duration-200">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>✓ Documento guardado e indexado com sucesso!</span>
+                  <span>✓ Documento gravado e indexado com sucesso!</span>
                 </div>
               )}
             </div>
           )}
+        </div>
 
-          {/* Action buttons */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
+        {/* Rodapé Fixo com Ações */}
+        <div className="p-3 sm:p-4 border-t border-slate-100 flex items-center justify-end space-x-2 shrink-0 bg-slate-50/50">
+          <button
+            type="button"
+            disabled={isProcessing && optimizationStage !== 'finished'}
+            onClick={onClose}
+            className="text-slate-500 hover:text-slate-800 text-xs font-medium px-3.5 py-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            Cancelar
+          </button>
+
+          {isQuotaExceeded ? (
+            <div 
+              className="px-3 py-2 bg-rose-100 text-rose-800 rounded-xl text-xs font-bold flex items-center space-x-1.5"
+              title="Armazenamento 100% atingido. Contate o suporte de TI (21) 97396-0077."
+            >
+              <AlertOctagon className="w-4 h-4 text-rose-600" />
+              <span>Upload Bloqueado</span>
+            </div>
+          ) : !selectedFile ? (
             <button
               type="button"
-              disabled={isProcessing && optimizationStage !== 'finished'}
-              onClick={onClose}
-              className="text-slate-500 hover:text-slate-800 text-xs font-medium px-4 py-2.5 rounded-xl hover:bg-slate-100 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-[#1B357B] hover:bg-[#112354] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
             >
-              Cancelar
+              Selecionar Arquivo
             </button>
-
-            {isQuotaExceeded ? (
-              <div 
-                className="px-4 py-2.5 bg-rose-100 text-rose-800 rounded-xl text-xs font-bold flex items-center space-x-1.5"
-                title="Armazenamento 100% atingido. Contate o suporte de TI (21) 97396-0077."
-              >
-                <AlertOctagon className="w-4 h-4 text-rose-600" />
-                <span>Upload Bloqueado (Limite Atingido)</span>
-              </div>
-            ) : !selectedFile ? (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-[#1B357B] hover:bg-[#112354] text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-all"
-              >
-                Selecionar Arquivo
-              </button>
-            ) : !isProcessing && (
-              <button
-                id="start-pipeline-btn"
-                type="button"
-                onClick={handleExecutePipeline}
-                className="bg-[#1B357B] hover:bg-[#112354] text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all"
-              >
-                <span>Otimizar e Salvar Documento</span>
-                <ArrowRight className="w-4 h-4 text-[#C59B4B]" />
-              </button>
-            )}
-          </div>
+          ) : !isProcessing && (
+            <button
+              id="start-pipeline-btn"
+              type="button"
+              onClick={handleExecutePipeline}
+              className="bg-[#1B357B] hover:bg-[#112354] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span>Concluir Upload</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[#C59B4B]" />
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 };
+

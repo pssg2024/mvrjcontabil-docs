@@ -87,6 +87,7 @@ export type AuditAction =
   | 'FILE_UPLOAD'
   | 'FILE_VIEW'
   | 'FILE_DOWNLOAD'
+  | 'FILE_RENAME'
   | 'FILE_DELETE'
   | 'FOLDER_CREATE'
   | 'FOLDER_DELETE'

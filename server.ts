@@ -1062,6 +1062,17 @@ let persistedProfiles: StoredProfile[] = [
     avatar_url: '/api/r2/avatar/57e1d483-669b-4791-b09e-7496570e63ea.webp?t=1789404217549',
     created_at: '2026-09-14T16:21:34.630637+00:00',
     updated_at: '2026-09-14T16:43:39.722+00:00',
+  },
+  {
+    id: 'usr-evandro132213',
+    email: 'evandro132213@gmail.com',
+    full_name: 'Evandro (Administrador)',
+    sector: 'Diretoria',
+    role: 'admin',
+    status: 'active',
+    avatar_url: '/api/r2/avatar/usr-evandro132213.webp?t=1789404217549',
+    created_at: '2026-09-14T16:21:34.630637+00:00',
+    updated_at: '2026-09-14T16:43:39.722+00:00',
   }
 ];
 
@@ -1159,7 +1170,10 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
 
   const supabase = getSupabaseServerClient();
   const profilesMap = new Map<string, StoredProfile>();
-  const masterAdminEmail = 'evandro230655@gmail.com';
+  const isMasterEmail = (email: string) => {
+    const e = email.toLowerCase().trim();
+    return e === 'evandro230655@gmail.com' || e === 'evandro132213@gmail.com';
+  };
 
   // 1. Carregar perfis do Cloudflare R2
   const r2Profiles = await fetchR2Profiles();
@@ -1243,7 +1257,7 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
           if (log.action === 'ACCESS_REQUEST') {
             const email = (log.details?.email || '').toLowerCase().trim();
             const id = String(log.target_id || log.details?.user_id || '').toLowerCase().trim();
-            if (!email || email === masterAdminEmail) continue;
+            if (!email || isMasterEmail(email)) continue;
 
             const logTime = new Date(log.created_at || 0).getTime();
             const delTime = Math.max(lastDeletedTimeByEmail.get(email) || 0, id ? (lastDeletedTimeById.get(id) || 0) : 0);
@@ -1271,7 +1285,7 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
               });
             } else {
               // Se o perfil existe, assegurar status de acordo com aprovação explícita
-              if (email !== masterAdminEmail) {
+              if (!isMasterEmail(email)) {
                 if (isApproved) {
                   existing.status = existing.status === 'active' ? 'active' : 'approved';
                   if (approvedRolesByEmail.has(email)) existing.role = approvedRolesByEmail.get(email) as any;
@@ -1285,7 +1299,7 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
 
         // Limpeza de perfis excluídos
         for (const [key, p] of Array.from(profilesMap.entries())) {
-          if (p.email.toLowerCase() === masterAdminEmail) continue;
+          if (isMasterEmail(p.email)) continue;
           const pEmail = p.email.toLowerCase().trim();
           const pId = p.id?.toLowerCase().trim();
           const delTime = Math.max(
@@ -1303,24 +1317,29 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
     }
   }
 
-  // Assegurar Administrador Master (Evandro)
-  if (profilesMap.has(masterAdminEmail)) {
-    const admin = profilesMap.get(masterAdminEmail)!;
-    admin.role = 'admin';
-    admin.status = 'active';
-  } else {
-    profilesMap.set(masterAdminEmail, {
-      id: '57e1d483-669b-4791-b09e-7496570e63ea',
-      email: masterAdminEmail,
-      full_name: 'Evandro (Administrador)',
-      sector: 'Diretoria',
-      role: 'admin',
-      status: 'active',
-      avatar_url: '/api/r2/avatar/57e1d483-669b-4791-b09e-7496570e63ea.webp?t=1789404217549',
-      created_at: '2026-09-14T16:21:34.630637+00:00',
-      updated_at: new Date().toISOString(),
-    });
-  }
+  // Assegurar Administradores Masters (Evandro)
+  const masterEmails = ['evandro230655@gmail.com', 'evandro132213@gmail.com'];
+  masterEmails.forEach((masterEmail, index) => {
+    if (profilesMap.has(masterEmail)) {
+      const admin = profilesMap.get(masterEmail)!;
+      admin.role = 'admin';
+      admin.status = 'active';
+    } else {
+      profilesMap.set(masterEmail, {
+        id: index === 0 ? '57e1d483-669b-4791-b09e-7496570e63ea' : 'usr-evandro132213',
+        email: masterEmail,
+        full_name: 'Evandro (Administrador)',
+        sector: 'Diretoria',
+        role: 'admin',
+        status: 'active',
+        avatar_url: index === 0 
+          ? '/api/r2/avatar/57e1d483-669b-4791-b09e-7496570e63ea.webp?t=1789404217549' 
+          : '/api/r2/avatar/usr-evandro132213.webp?t=1789404217549',
+        created_at: '2026-09-14T16:21:34.630637+00:00',
+        updated_at: new Date().toISOString(),
+      });
+    }
+  });
 
   const result = Array.from(profilesMap.values());
   persistedProfiles = result;
@@ -2096,8 +2115,8 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
         for (const [id, localFile] of Array.from(filesMap.entries())) {
           if (!dbFileIds.has(id)) {
             const ageMs = Date.now() - new Date(localFile.created_at).getTime();
-            // Apenas sincroniza se for upload recente (< 60s) e não excluído
-            if (ageMs < 60000 && !persistedDeletedFileIds.has(localFile.id)) {
+            // Tenta sincronizar com Supabase se não foi explicitamente excluído
+            if (!persistedDeletedFileIds.has(localFile.id)) {
               try {
                 let resFolderId = localFile.folder_id;
                 if (!isValidUuid(resFolderId)) {
@@ -2120,36 +2139,52 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
                   if (pCheck) uploaderUuid = pCheck.id;
                 }
 
-                await supabase.from('files').upsert({
-                  id: localFile.id,
-                  folder_id: resFolderId,
-                  name: localFile.name,
-                  storage_key: localFile.storage_key,
-                  mime_type: localFile.mime_type,
-                  original_size: localFile.original_size,
-                  optimized_size: localFile.optimized_size,
-                  compression_ratio: localFile.compression_ratio,
-                  pages_count: localFile.pages_count,
-                  tags: localFile.tags,
-                  uploaded_by: uploaderUuid,
-                  checksum_sha256: localFile.checksum_sha256 || null,
-                  due_date: localFile.due_date || null,
-                  company_name: localFile.company_name || null,
-                  client_phone: localFile.client_phone || null,
-                  notification_sent: localFile.notification_sent !== undefined ? Boolean(localFile.notification_sent) : false,
-                  document_type: localFile.document_type || null,
-                  amount: localFile.amount !== undefined ? localFile.amount : null,
-                  created_at: localFile.created_at,
-                  updated_at: localFile.updated_at,
-                });
-              } catch (syncSingleErr) {
-                console.warn('[Sync Local File to DB Error]', localFile.name, syncSingleErr);
+                try {
+                  const { error: syncErr } = await supabase.from('files').upsert({
+                    id: localFile.id,
+                    folder_id: resFolderId,
+                    name: localFile.name,
+                    storage_key: localFile.storage_key,
+                    mime_type: localFile.mime_type,
+                    original_size: localFile.original_size,
+                    optimized_size: localFile.optimized_size,
+                    compression_ratio: localFile.compression_ratio,
+                    pages_count: localFile.pages_count,
+                    tags: localFile.tags,
+                    uploaded_by: uploaderUuid,
+                    checksum_sha256: localFile.checksum_sha256 || null,
+                    due_date: localFile.due_date || null,
+                    company_name: localFile.company_name || null,
+                    client_phone: localFile.client_phone || null,
+                    notification_sent: localFile.notification_sent !== undefined ? Boolean(localFile.notification_sent) : false,
+                    document_type: localFile.document_type || null,
+                    amount: localFile.amount !== undefined ? localFile.amount : null,
+                    created_at: localFile.created_at,
+                    updated_at: localFile.updated_at,
+                  });
+                  if (syncErr) {
+                    await supabase.from('files').upsert({
+                      id: localFile.id,
+                      folder_id: resFolderId,
+                      name: localFile.name,
+                      storage_key: localFile.storage_key,
+                      mime_type: localFile.mime_type,
+                      original_size: localFile.original_size,
+                      optimized_size: localFile.optimized_size,
+                      compression_ratio: localFile.compression_ratio,
+                      pages_count: localFile.pages_count,
+                      tags: localFile.tags,
+                      uploaded_by: uploaderUuid,
+                      created_at: localFile.created_at,
+                      updated_at: localFile.updated_at,
+                    });
+                  }
+                } catch (syncSingleErr) {
+                  console.warn('[Sync Local File to DB Error]', localFile.name, syncSingleErr);
+                }
+              } catch (outerErr) {
+                console.warn('[Sync Outer Error]', outerErr);
               }
-            } else if (ageMs >= 60000) {
-              // Se o arquivo era antigo e não está mais no Supabase, significa que foi apagado
-              filesMap.delete(id);
-              persistedDeletedFileIds.add(id);
-              if (localFile.storage_key) persistedDeletedFileIds.add(localFile.storage_key);
             }
           }
         }
@@ -2454,6 +2489,12 @@ app.post('/api/files', async (req: Request, res: Response) => {
           }
         }
 
+        const combinedTags = Array.isArray(tags) ? [...tags] : [];
+        if (company_name && String(company_name).trim() !== '') combinedTags.push(`Empresa: ${company_name.trim()}`);
+        if (due_date && String(due_date).trim() !== '') combinedTags.push(`Vencimento: ${due_date}`);
+        if (amount !== undefined && amount !== null && String(amount).trim() !== '') combinedTags.push(`Valor: R$ ${amount}`);
+        if (document_type && String(document_type).trim() !== '') combinedTags.push(`Tipo: ${document_type}`);
+
         const payload: any = {
           id: fileId,
           folder_id: resolvedFolderId,
@@ -2464,44 +2505,42 @@ app.post('/api/files', async (req: Request, res: Response) => {
           optimized_size: Number(optimized_size) || 0,
           compression_ratio: Number(compression_ratio) || 0,
           pages_count: Number(pages_count) || 1,
-          tags: Array.isArray(tags) ? tags : [],
+          tags: combinedTags,
           uploaded_by: resolvedUploaderId,
           checksum_sha256: checksum_sha256 || null,
           updated_at: new Date().toISOString(),
         };
 
-        if (due_date) payload.due_date = due_date;
-        if (company_name) payload.company_name = company_name;
-        if (client_phone) payload.client_phone = client_phone;
-        if (notification_sent !== undefined) payload.notification_sent = Boolean(notification_sent);
-        if (document_type) payload.document_type = document_type;
-        if (amount !== undefined && amount !== null) payload.amount = Number(amount);
+        console.log('[UPLOAD PAYLOAD]', payload);
+        const { data: sbData, error: sbFileErr } = await supabase.from('files').upsert(payload).select();
+        console.log('[UPLOAD RESPONSE]', { data: sbData, error: sbFileErr });
 
-        const { error: sbFileErr } = await supabase.from('files').upsert(payload);
         if (sbFileErr) {
           console.error('[Supabase File Sync Error]', sbFileErr.message);
         }
 
-        await supabase.from('audit_logs').insert({
-          action: 'FILE_UPLOAD',
-          target_type: 'FILE',
-          target_id: fileId,
-          profile_id: resolvedUploaderId,
-          user_name: resolvedUploaderName,
-          sector: sector || 'Fiscal',
-          details: {
-            name: newFile.name,
-            storage_key: newFile.storage_key,
-            original_size: newFile.original_size,
-            optimized_size: newFile.optimized_size,
-            compression_ratio: `${newFile.compression_ratio}%`,
-            due_date: due_date || newFile.due_date,
-            company_name: company_name || newFile.company_name,
-            client_phone: client_phone || newFile.client_phone,
-            document_type: document_type || newFile.document_type,
-            amount: amount || newFile.amount,
-          },
-        });
+        try {
+          await supabase.from('audit_logs').insert({
+            action: 'FILE_UPLOAD',
+            target_type: 'FILE',
+            target_id: fileId,
+            profile_id: resolvedUploaderId,
+            user_name: resolvedUploaderName,
+            sector: sector || 'Fiscal',
+            details: {
+              name: newFile.name,
+              storage_key: newFile.storage_key,
+              original_size: newFile.original_size,
+              optimized_size: newFile.optimized_size,
+              compression_ratio: `${newFile.compression_ratio}%`,
+              due_date: due_date || newFile.due_date,
+              company_name: company_name || newFile.company_name,
+              client_phone: client_phone || newFile.client_phone,
+              document_type: document_type || newFile.document_type,
+              amount: amount || newFile.amount,
+            },
+          });
+        } catch {}
       } catch (sbErr: any) {
         console.warn('[Supabase File Sync Error]', sbErr.message);
       }
