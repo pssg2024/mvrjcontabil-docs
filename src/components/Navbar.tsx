@@ -201,6 +201,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="xl:hidden hidden lg:inline">Manual</span>
               </button>
             )}
+
+
           </nav>
         )}
 

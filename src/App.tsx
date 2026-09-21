@@ -494,24 +494,39 @@ export default function App() {
     const profilesInterval = setInterval(syncProfiles, 6000);
     const metricsInterval = setInterval(fetchStorageMetrics, 5000);
 
-    // Realtime subscription for folders and files via Supabase
+    // Canal global de sincronização do GED
     const supabaseClient = getSupabase();
-    let channel: any = null;
-    if (supabaseClient) {
-      channel = supabaseClient.channel('realtime:all')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'folders' }, async () => {
-          // Refetch folders to ensure consistency
-          const updatedFolders = await fetchFoldersFromApi();
-          setFolders(updatedFolders);
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, async () => {
-          // Refetch files and metrics to ensure consistency
-          const updatedFiles = await fetchFilesFromApi();
-          setFiles(updatedFiles);
-          fetchStorageMetrics();
-        })
-        .subscribe();
-    }
+    const gedSyncChannel = supabaseClient
+      ?.channel('ged-database-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'folders' },
+        (payload: any) => {
+          if (payload.eventType === 'INSERT') {
+            setFolders((prev) => [payload.new, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setFolders((prev) => prev.map((f) => f.id === payload.new.id ? payload.new : f));
+          } else if (payload.eventType === 'DELETE') {
+            // Some imediatamente da tela de todos os usuários
+            setFolders((prev) => prev.filter((f) => f.id !== payload.old.id));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'documents' },
+        (payload: any) => {
+          if (payload.eventType === 'INSERT') {
+            setFiles((prev) => [payload.new, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setFiles((prev) => prev.map((d) => d.id === payload.new.id ? payload.new : d));
+          } else if (payload.eventType === 'DELETE') {
+            // Some imediatamente da tela de todos os usuários
+            setFiles((prev) => prev.filter((d) => d.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
 
     return () => {
       clearInterval(syncInterval);
@@ -520,8 +535,8 @@ export default function App() {
       if (bc) {
         try { bc.close(); } catch {}
       }
-      if (channel) {
-        supabaseClient?.removeChannel(channel);
+      if (gedSyncChannel) {
+        supabaseClient?.removeChannel(gedSyncChannel);
       }
     };
   }, []);
@@ -798,11 +813,10 @@ export default function App() {
         
         try {
           await deleteFileInApi(fileId);
-          console.log(`[Sync Debug] Arquivo ${fileId} deletado com sucesso na API.`);
           fetchStorageMetrics();
           notifyBroadcastSync();
         } catch (err) {
-          console.error(`[Sync Debug] ERRO ao excluir arquivo ${fileId} na API:`, err);
+          console.warn('Erro ao excluir no Supabase/R2:', err);
           // Refresh to sync state if failed
           const updatedFiles = await fetchFilesFromApi();
           setFiles(updatedFiles);
@@ -858,17 +872,30 @@ export default function App() {
           logAudit('FOLDER_DELETE', 'FOLDER', folderId, { name: folder.name });
         }
 
-        // Optimistic update
-        setFolders(prev => prev.filter(f => f.id !== folderId && f.parent_id !== folderId));
-        setFiles(prev => prev.filter(f => f.folder_id !== folderId));
-
         try {
+          // 1. Excluir documentos da pasta no Supabase (Direto)
+          const supabaseClient = getSupabase();
+          if (supabaseClient) {
+            const { error: docsError } = await supabaseClient
+              .from('documents') // Assuming table name is 'documents'
+              .delete()
+              .eq('folder_id', folderId);
+            
+            if (docsError) throw docsError;
+          }
+
+          // 2. Excluir a pasta na API
           await deleteFolderInApi(folderId);
-          console.log(`[Sync Debug] Pasta ${folderId} deletada com sucesso na API.`);
+          
           fetchStorageMetrics();
           notifyBroadcastSync();
+          
+          // Optimistic update:
+          // O Realtime irá lidar com a remoção da UI automaticamente.
         } catch (err: any) {
-          console.error(`[Sync Debug] ERRO ao excluir pasta ${folderId} na API:`, err);
+          console.error('[ERRO EXCLUIR PASTA]', err);
+          alert('Erro ao excluir pasta e seus documentos: ' + (err.message || 'Erro desconhecido'));
+          
           // Refresh to sync state if failed
           const updatedFolders = await fetchFoldersFromApi();
           setFolders(updatedFolders);
@@ -1306,10 +1333,13 @@ export default function App() {
         initialSearchQuery={companySearchQuery}
       />
 
+      {/* Manual do Usuário e Guia Operacional Modal */}
       <UserManualModal
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
       />
+
+
     </div>
   );
 }

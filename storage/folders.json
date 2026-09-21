@@ -1,47 +1,29 @@
 [
   {
-    "id": "1ffa0309-01c2-4e56-8b07-4ae578e7a685",
+    "id": "24c17aae-f215-4e14-ad23-8dbfd7945995",
     "parent_id": null,
-    "name": "cliente José",
-    "sector": "Departamento Pessoal",
+    "name": "Diretoria",
+    "sector": "Diretoria",
     "created_by": null,
-    "created_at": "2026-09-21T02:44:02.009814+00:00",
-    "updated_at": "2026-09-21T02:44:01.871+00:00"
+    "created_at": "2026-09-21T06:31:01.814+00:00",
+    "updated_at": "2026-09-21T06:31:01.924492+00:00"
   },
   {
-    "id": "24c17aae-f215-4e14-ad23-8dbfd7945995",
-    "parent_id": "6d90ac39-17ba-400c-981b-bdb5f1b95b43",
-    "name": "Camila",
-    "sector": "Diretoria",
-    "created_by": "57e1d483-669b-4791-b09e-7496570e63ea",
-    "created_at": "2026-09-20T00:37:51.456319+00:00",
-    "updated_at": "2026-09-20T00:37:51.134+00:00"
+    "id": "1ffa0309-01c2-4e56-8b07-4ae578e7a685",
+    "parent_id": null,
+    "name": "Departamento Pessoal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-09-21T06:25:40.161+00:00",
+    "updated_at": "2026-09-21T06:25:40.26426+00:00"
   },
   {
     "id": "3ea9dbcd-dc5b-4a56-8b15-870373e14cd8",
     "parent_id": null,
-    "name": "Cliente William",
+    "name": "Diretoria",
     "sector": "Diretoria",
-    "created_by": "57e1d483-669b-4791-b09e-7496570e63ea",
-    "created_at": "2026-09-19T21:12:07.641043+00:00",
-    "updated_at": "2026-09-19T21:12:07.3+00:00"
-  },
-  {
-    "id": "28d365cf-f04b-4c56-99e4-71393238f486",
-    "parent_id": null,
-    "name": "Cliente Verônica",
-    "sector": "Diretoria",
-    "created_by": "57e1d483-669b-4791-b09e-7496570e63ea",
-    "created_at": "2026-09-19T21:11:47.715826+00:00",
-    "updated_at": "2026-09-19T21:11:47.024+00:00"
-  },
-  {
-    "id": "6d90ac39-17ba-400c-981b-bdb5f1b95b43",
-    "parent_id": null,
-    "name": "Cliente Bruna",
-    "sector": "Diretoria",
-    "created_by": "57e1d483-669b-4791-b09e-7496570e63ea",
-    "created_at": "2026-09-19T21:11:21.472618+00:00",
-    "updated_at": "2026-09-19T21:11:21.111+00:00"
+    "created_by": null,
+    "created_at": "2026-09-21T06:22:33.057+00:00",
+    "updated_at": "2026-09-21T06:22:33.184484+00:00"
   }
 ]

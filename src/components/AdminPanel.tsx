@@ -407,18 +407,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <thead>
                 <tr className="bg-gray-100/70 border-b border-gray-200 text-gray-700">
                   <th className="p-3 font-bold sticky left-0 bg-gray-100 min-w-[220px] z-10">Pasta / Setor</th>
-                  {activeProfiles.map(p => {
-                    return (
-                      <th key={p.id} className="p-3 font-semibold text-center min-w-[150px]">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <span className="font-bold text-gray-900 truncate max-w-[100px]">{p.full_name}</span>
-                        </div>
-                        <div className="text-[10px] text-gray-500 font-normal flex items-center justify-center gap-1">
-                          <span>{p.sector} • {p.role}</span>
-                        </div>
-                      </th>
-                    );
-                  })}
+                  {activeProfiles.map(p => (
+                    <th key={p.id} className="p-3 font-semibold text-center min-w-[150px]">
+                      <div className="font-bold text-gray-900 truncate max-w-[140px] mx-auto">{p.full_name}</div>
+                      <div className="text-[10px] text-gray-500 font-normal">{p.sector} • {p.role}</div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -525,7 +519,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
-                 <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
                   <select
                     value={profile.role}
                     onChange={(e) => onUpdateUserRole(profile.id, e.target.value as UserRole)}
