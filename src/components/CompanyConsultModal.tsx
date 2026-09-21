@@ -12,7 +12,6 @@ import {
   MapPin, 
   Briefcase, 
   Calendar, 
-  Phone, 
   Mail, 
   FileText, 
   ShieldCheck, 

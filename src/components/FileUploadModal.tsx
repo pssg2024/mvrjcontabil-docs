@@ -10,7 +10,6 @@ import {
   AlertCircle,
   FolderTree,
   AlertOctagon,
-  Phone,
   Calendar,
   KeyRound,
   FileCode,

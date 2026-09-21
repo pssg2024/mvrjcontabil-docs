@@ -18,9 +18,7 @@ import {
   ChevronRight,
   Palette,
   Trash2,
-  RefreshCw,
-  Phone,
-  PhoneCall
+  RefreshCw
 } from 'lucide-react';
 import { 
   UserProfile, 
@@ -37,7 +35,6 @@ import {
 import { BackgroundCustomizer } from './BackgroundCustomizer';
 import { AuthHeaderCustomizer } from './AuthHeaderCustomizer';
 import { DEFAULT_AUTH_HEADER_CONFIG } from '../lib/storage-service';
-import { useCall } from './CallManager';
 
 interface AdminPanelProps {
   currentUser: UserProfile;
@@ -84,16 +81,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [selectedSectorForApproval, setSelectedSectorForApproval] = useState<Record<string, Sector>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [auditFilter, setAuditFilter] = useState<string>('ALL');
-
-  const { startCall, onlineUserIds, activeCallUserId, isUserOnline, testMode } = useCall();
-
-  const checkOnline = (p: UserProfile) => {
-    if (testMode) return true;
-    if (isUserOnline) return isUserOnline(p);
-    const uid = String(p.id || '').trim().toLowerCase();
-    const uEmail = String(p.email || '').trim().toLowerCase();
-    return onlineUserIds.has(uid) || onlineUserIds.has(uEmail);
-  };
 
   const pendingProfiles = profiles.filter(p => p.status === 'pending');
   const activeProfiles = profiles.filter(p => p.status !== 'pending');
@@ -421,36 +408,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <tr className="bg-gray-100/70 border-b border-gray-200 text-gray-700">
                   <th className="p-3 font-bold sticky left-0 bg-gray-100 min-w-[220px] z-10">Pasta / Setor</th>
                   {activeProfiles.map(p => {
-                    const isOnline = checkOnline(p);
-                    const isInCall = activeCallUserId === p.id;
-
                     return (
                       <th key={p.id} className="p-3 font-semibold text-center min-w-[150px]">
                         <div className="flex items-center justify-center gap-1.5">
                           <span className="font-bold text-gray-900 truncate max-w-[100px]">{p.full_name}</span>
-                          {currentUser.id !== p.id && (
-                            <button
-                              type="button"
-                              id={`matrix-call-user-${p.id}`}
-                              disabled={isInCall}
-                              onClick={() => startCall(p)}
-                              className={`p-1 rounded-md transition-colors cursor-pointer ${
-                                isOnline
-                                  ? 'text-emerald-600 hover:bg-emerald-100'
-                                  : 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50'
-                              }`}
-                              title={
-                                isOnline
-                                  ? `Iniciar Chamada Interna com ${p.full_name}`
-                                  : `Iniciar chamada de teste com ${p.full_name}`
-                              }
-                            >
-                              <Phone className="w-3.5 h-3.5" />
-                            </button>
-                          )}
                         </div>
                         <div className="text-[10px] text-gray-500 font-normal flex items-center justify-center gap-1">
-                          <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />
                           <span>{p.sector} • {p.role}</span>
                         </div>
                       </th>
@@ -562,22 +525,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  {/* Botão de Chamada Interna WebRTC */}
-                  {currentUser.id !== profile.id && profile.status !== 'pending' && profile.status !== 'rejected' && (
-                    <button
-                      type="button"
-                      id={`call-user-${profile.id}`}
-                      disabled={activeCallUserId === profile.id}
-                      onClick={() => startCall(profile)}
-                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={`Iniciar Chamada Interna com ${profile.full_name}`}
-                    >
-                      <Phone className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Ligar</span>
-                    </button>
-                  )}
-
+                 <div className="flex items-center space-x-2">
                   <select
                     value={profile.role}
                     onChange={(e) => onUpdateUserRole(profile.id, e.target.value as UserRole)}

@@ -25,9 +25,10 @@ import {
   ArrowUpDown, 
   FileSpreadsheet, 
   AlertOctagon, 
-  Phone, 
   Loader2,
-  KeyRound, 
+  KeyRound,
+  Phone,
+  MessageCircle,
   FileCode, 
   FileArchive, 
   File as FileGenericIcon, 
@@ -887,7 +888,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         {sharingFileId === file.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Phone className="w-4 h-4" />
+                          <MessageCircle className="w-4 h-4" />
                         )}
                       </button>
 

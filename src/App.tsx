@@ -13,7 +13,6 @@ import { BackgroundModal } from './components/BackgroundModal';
 import { PasswordConfirmModal } from './components/PasswordConfirmModal';
 import { CompanyConsultModal } from './components/CompanyConsultModal';
 import { UserManualModal } from './components/UserManualModal';
-import { CallManager } from './components/CallManager';
 import { ShieldCheck } from 'lucide-react';
 import { 
   UserProfile, 
@@ -1012,8 +1011,7 @@ export default function App() {
   };
 
   return (
-    <CallManager currentUser={currentUser} profiles={profiles}>
-      <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-gray-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white relative">
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-gray-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white relative">
       {/* Dynamic Background Image Layer */}
       {siteBackgroundConfig.enabled && siteBackgroundConfig.imageUrl && (
         <div
@@ -1306,14 +1304,10 @@ export default function App() {
         initialSearchQuery={companySearchQuery}
       />
 
-      {/* Manual do Usuário e Guia Operacional Modal */}
       <UserManualModal
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
       />
-
-
-      </div>
-    </CallManager>
+    </div>
   );
 }
