@@ -172,23 +172,13 @@ export default function App() {
   const [backgroundModalTab, setBackgroundModalTab] = useState<'site-background' | 'auth-header'>('site-background');
   const [viewingFile, setViewingFile] = useState<DocumentFile | null>(null);
 
-  // Dark Mode / Light Mode Theme Preference
-  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('ged-theme-mode');
-    if (saved === 'dark' || saved === 'light') {
-      return saved;
-    }
-    return 'light';
-  });
-
+  // Standard Theme Setup
   useEffect(() => {
-    localStorage.setItem('ged-theme-mode', themeMode);
-    if (themeMode === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [themeMode]);
+    document.documentElement.classList.remove('dark');
+    try {
+      localStorage.removeItem('ged-theme-mode');
+    } catch {}
+  }, []);
 
   // CNPJ & Company Consultation Modal State
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
@@ -1167,7 +1157,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white relative">
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-900 flex flex-col font-sans relative">
       {/* Dynamic Background Image Layer */}
       {siteBackgroundConfig.enabled && siteBackgroundConfig.imageUrl && (
         <div
@@ -1192,7 +1182,7 @@ export default function App() {
           id="global-site-background-overlay"
           aria-hidden="true"
           className={`fixed inset-0 pointer-events-none z-0 ${
-            siteBackgroundConfig.overlayType === 'dark' ? 'bg-slate-950' : 'bg-slate-50'
+            siteBackgroundConfig.overlayType === 'dark' ? 'bg-slate-900/60' : 'bg-white/80'
           }`}
           style={{
             opacity: (siteBackgroundConfig.overlayOpacity ?? 40) / 100,
@@ -1226,8 +1216,6 @@ export default function App() {
           r2Status={r2Status}
           storageMetrics={storageMetrics}
           authHeaderConfig={authHeaderConfig}
-          themeMode={themeMode}
-          onToggleTheme={() => setThemeMode(prev => prev === 'dark' ? 'light' : 'dark')}
         />
 
 

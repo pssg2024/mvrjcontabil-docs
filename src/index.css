@@ -1,179 +1,45 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 /* Global smooth transition for theme changes */
 *, *::before, *::after {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 200ms;
+  transition-duration: 150ms;
 }
 
-/* Ensure DANFE sheet elements bypass global transition if needed, and maintain light theme style strictly */
+/* Ensure DANFE sheet elements maintain light theme print/screen fidelity strictly */
 .danfe-sheet, .danfe-sheet * {
   transition: none !important;
 }
 
-.dark .danfe-sheet {
-  background-color: #ffffff !important;
-  color: #27272a !important; /* text-zinc-800 */
-  border-color: #d4d4d8 !important; /* border-zinc-300 */
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.4) !important;
+/* Main application background wrapper - Light Mode Native */
+body {
+  background-color: #f8fafc; /* bg-slate-50 */
+  color: #0f172a; /* text-slate-900 */
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-.dark .danfe-sheet * {
-  background-color: transparent !important;
-  color: #27272a !important; /* text-zinc-800 */
-  border-color: #a1a1aa !important; /* border-zinc-400 */
+/* Base custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
 }
 
-/* Specific elements within DANFE that have borders */
-.dark .danfe-sheet div, 
-.dark .danfe-sheet span, 
-.dark .danfe-sheet strong, 
-.dark .danfe-sheet p {
-  border-color: #a1a1aa !important;
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-
-/* =========================================
-   DARK THEME PALETTE FOR GLOBAL OVERRIDES 
-   ========================================= */
-
-/* Main application background wrapper */
-.dark,
-.dark body {
-  background-color: #0f172a !important; /* slate-900 */
-  color: #f1f5f9 !important; /* slate-100 */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-
-/* Cards, Modals, Drawers and side panels */
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-white,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-white\/95,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-white\/90,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-white\/80 {
-  background-color: #1e293b !important; /* slate-800 */
-  color: #f1f5f9 !important;
-}
-
-/* Borders and dividers */
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .border-slate-200,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .border-slate-200\/80,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .border-slate-200\/70,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .border-slate-150,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .border-gray-200,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .border-gray-100,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .border-neutral-100,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .border-neutral-200,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .border-neutral-300,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .border-neutral-200/80,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .divide-slate-200,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .divide-slate-100,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .divide-neutral-100 {
-  border-color: #334155 !important; /* slate-700 */
-  divide-color: #334155 !important;
-}
-
-/* Form inputs, select boxes & textareas */
-.dark :not(.danfe-sheet):not(.danfe-sheet *) input,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) select,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) textarea {
-  background-color: rgba(2, 6, 23, 0.6) !important; /* slate-950/60 */
-  border-color: #334155 !important; /* slate-700 */
-  color: #f1f5f9 !important;
-}
-
-.dark :not(.danfe-sheet):not(.danfe-sheet *) input::placeholder,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) textarea::placeholder {
-  color: #64748b !important; /* slate-500 */
-}
-
-/* Typography elements */
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-slate-800,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-slate-700,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-slate-600,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-slate-900,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-gray-900,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-gray-800,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-gray-700,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-gray-600,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-900,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-800,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-700,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-600 {
-  color: #f1f5f9 !important; /* slate-100 */
-}
-
-/* Secondary/muted texts */
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-slate-500,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-slate-400,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-gray-500,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-gray-400,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-500,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-400 {
-  color: #94a3b8 !important; /* slate-400 */
-}
-
-/* Background states for light gray and neutral highlights */
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-slate-50,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-slate-50\/70,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-slate-100,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-gray-50,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-gray-100,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-neutral-50,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-neutral-50\/50,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-neutral-50\/30,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-neutral-100,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-neutral-100\/50 {
-  background-color: #0f172a !important; /* slate-900 */
-  color: #f1f5f9 !important;
-}
-
-/* Accent status block backgrounds (Manual / Modals) */
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-blue-50,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-blue-50\/50 {
-  background-color: rgba(30, 58, 138, 0.25) !important;
-  color: #93c5fd !important;
-}
-
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-red-50 {
-  background-color: rgba(153, 27, 27, 0.25) !important;
-  color: #fca5a5 !important;
-}
-
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-emerald-50 {
-  background-color: rgba(6, 95, 70, 0.25) !important;
-  color: #6ee7b7 !important;
-}
-
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-indigo-50 {
-  background-color: rgba(55, 48, 163, 0.25) !important;
-  color: #c7d2fe !important;
-}
-
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-\[\#1B357B\]\/5 {
-  background-color: rgba(30, 58, 138, 0.15) !important;
-}
-
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-\[\#C59B4B\]\/5 {
-  background-color: rgba(197, 155, 75, 0.15) !important;
-}
-
-/* Hover effects for item clicks */
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .hover\:bg-slate-50:hover,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .hover\:bg-slate-100/80:hover,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .hover\:bg-gray-50:hover,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .hover\:bg-neutral-50:hover,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .hover\:bg-neutral-50\/50:hover,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .hover\:bg-neutral-100:hover,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .hover\:bg-neutral-200:hover {
-  background-color: #334155 !important; /* slate-700 */
-}
-
-/* User dropdown and list items container */
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-white\/95.backdrop-blur-md,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .bg-white\/95.backdrop-blur-xl {
-  background-color: rgba(30, 41, 59, 0.95) !important;
-  border-color: #334155 !important;
-}
-
-
