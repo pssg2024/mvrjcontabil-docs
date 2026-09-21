@@ -19,7 +19,8 @@ import {
   Building2,
   Bell,
   Menu,
-  X
+  X,
+  BookOpen
 } from 'lucide-react';
 import { UserProfile, UserRole, StorageMetrics, AuthHeaderConfig } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -35,6 +36,7 @@ interface NavbarProps {
   onOpenFirstAccessModal?: () => void;
   onOpenBackgroundModal?: () => void;
   onOpenCompanyModal?: () => void;
+  onOpenManualModal?: () => void;
   onSwitchUser: (profile: UserProfile) => void;
   onLogout: () => void;
   allProfiles: UserProfile[];
@@ -53,6 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenFirstAccessModal,
   onOpenBackgroundModal,
   onOpenCompanyModal,
+  onOpenManualModal,
   onSwitchUser,
   onLogout,
   allProfiles,
@@ -185,6 +188,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
+            {/* Manual do Usuário */}
+            {onOpenManualModal && (
+              <button
+                id="navbar-manual-btn"
+                onClick={onOpenManualModal}
+                className="h-11 flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-[#1B357B] hover:bg-slate-100/80 transition-all duration-200 group cursor-pointer"
+                title="Manual do Usuário e Guia de Operações do GED"
+              >
+                <BookOpen className="w-4 h-4 flex-shrink-0 text-slate-400 group-hover:text-[#1B357B]" />
+                <span className="hidden xl:inline">Manual do Usuário</span>
+                <span className="xl:hidden hidden lg:inline">Manual</span>
+              </button>
+            )}
+
 
           </nav>
         )}
@@ -310,6 +327,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                         >
                           <ScrollText className="w-4 h-4 text-slate-500 group-hover:text-[#1B357B] transition-colors" />
                           <span>Termos & Conformidade LGPD</span>
+                        </button>
+                      )}
+
+                      {onOpenManualModal && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            onOpenManualModal();
+                          }}
+                          className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100/80 transition-all flex items-center space-x-3 group cursor-pointer"
+                        >
+                          <BookOpen className="w-4 h-4 text-slate-500 group-hover:text-[#1B357B] transition-colors" />
+                          <span>Manual do Usuário</span>
                         </button>
                       )}
 
@@ -506,6 +537,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                   >
                     <Building2 className="w-5 h-5 text-[#C59B4B] shrink-0" />
                     <span>Consultar Empresa / CNPJ</span>
+                  </button>
+                )}
+
+                {/* Manual do Usuário */}
+                {onOpenManualModal && (
+                  <button
+                    onClick={() => {
+                      onOpenManualModal();
+                      setShowMobileMenu(false);
+                    }}
+                    className="w-full h-12 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70 flex items-center gap-3 px-4 font-semibold text-sm transition-all cursor-pointer"
+                  >
+                    <BookOpen className="w-5 h-5 text-indigo-600 shrink-0" />
+                    <span>Manual do Usuário</span>
                   </button>
                 )}
 

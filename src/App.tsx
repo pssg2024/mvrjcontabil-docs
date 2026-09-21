@@ -12,6 +12,7 @@ import { LgpdTermsModal } from './components/LgpdTermsModal';
 import { BackgroundModal } from './components/BackgroundModal';
 import { PasswordConfirmModal } from './components/PasswordConfirmModal';
 import { CompanyConsultModal } from './components/CompanyConsultModal';
+import { UserManualModal } from './components/UserManualModal';
 import { ShieldCheck } from 'lucide-react';
 import { 
   UserProfile, 
@@ -170,6 +171,7 @@ export default function App() {
 
   // CNPJ & Company Consultation Modal State
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [driveFilterSearch, setDriveFilterSearch] = useState('');
 
@@ -1059,6 +1061,7 @@ export default function App() {
             setIsBackgroundModalOpen(true);
           }}
           onOpenCompanyModal={() => handleOpenCompanyModal()}
+          onOpenManualModal={() => setIsManualModalOpen(true)}
           onSwitchUser={handleSwitchUser}
           onLogout={handleLogout}
           allProfiles={profiles}
@@ -1299,6 +1302,12 @@ export default function App() {
         existingFiles={files}
         existingFolders={folders}
         initialSearchQuery={companySearchQuery}
+      />
+
+      {/* Manual do Usuário e Guia Operacional Modal */}
+      <UserManualModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
       />
 
 
