@@ -45,16 +45,20 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 4. TABELA DE PASTAS (Estrutura Hierárquica)
+-- 4. TABELA DE PASTAS (Estrutura Hierárquica com Controle de Acesso Granular)
 CREATE TABLE IF NOT EXISTS public.folders (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   parent_id UUID REFERENCES public.folders(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   sector sector_type NOT NULL DEFAULT 'Geral',
   created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  allowed_user_ids TEXT[] DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Garantir coluna de controle de acesso granular para bases existentes
+ALTER TABLE public.folders ADD COLUMN IF NOT EXISTS allowed_user_ids TEXT[] DEFAULT '{}';
 
 -- 5. TABELA DE ARQUIVOS (Metadados Cloudflare R2 e Otimização)
 CREATE TABLE IF NOT EXISTS public.files (
@@ -132,20 +136,20 @@ CREATE INDEX IF NOT EXISTS idx_audit_created_at ON public.audit_logs(created_at 
 -- 8. FUNÇÕES AUXILIARES DE SEGURANÇA (SECURITY DEFINER)
 -- ==============================================================================
 
--- Verifica se o usuário atual é um Administrador ativo
+-- Verifica se o usuário atual é um Administrador ativo ou Diretoria
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.profiles
     WHERE id = auth.uid()
-      AND role = 'admin'
-      AND status = 'active'
+      AND (role = 'admin' OR sector = 'Diretoria')
+      AND (status = 'active' OR status = 'approved')
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Verifica se o usuário tem permissão mínima na pasta
+-- Verifica se o usuário tem permissão mínima na pasta (Regra de Negócios RBAC Granular)
 CREATE OR REPLACE FUNCTION public.has_folder_permission(
   target_folder_id UUID,
   min_level permission_level
@@ -155,7 +159,7 @@ DECLARE
   user_status_val user_status;
   user_role_val user_role;
   user_sector sector_type;
-  folder_sector sector_type;
+  folder_allowed_users TEXT[];
   user_perm permission_level;
 BEGIN
   -- 1. Buscar status, papel e setor do usuário autenticado
@@ -163,37 +167,46 @@ BEGIN
   FROM public.profiles
   WHERE id = auth.uid();
 
-  -- Se não for ativo, nega sumariamente
-  IF user_status_val IS NULL OR user_status_val <> 'active' THEN
+  -- Se não for ativo/aprovado, nega sumariamente
+  IF user_status_val IS NULL OR (user_status_val <> 'active' AND user_status_val <> 'approved') THEN
     RETURN FALSE;
   END IF;
 
-  -- 2. Administradores globais têm acesso total
-  IF user_role_val = 'admin' THEN
+  -- 2. Administradores globais e Diretoria têm acesso TOTAL irrestrito
+  IF user_role_val = 'admin' OR user_sector = 'Diretoria' THEN
     RETURN TRUE;
   END IF;
 
-  -- 3. Buscar permissão explícita atribuída na pasta
+  -- 3. Usuários comuns: verificar se o ID do usuário está na lista allowed_user_ids da pasta
+  SELECT allowed_user_ids INTO folder_allowed_users
+  FROM public.folders
+  WHERE id = target_folder_id;
+
+  IF folder_allowed_users IS NOT NULL AND array_length(folder_allowed_users, 1) > 0 THEN
+    IF auth.uid()::text = ANY(folder_allowed_users) THEN
+      IF min_level = 'viewer' THEN
+        RETURN TRUE;
+      END IF;
+    ELSE
+      -- Se a pasta tem lista restritiva e o usuário NÃO está nela, acesso bloqueado
+      RETURN FALSE;
+    END IF;
+  END IF;
+
+  -- 4. Buscar permissão explícita atribuída na tabela folder_permissions
   SELECT permission_level INTO user_perm
   FROM public.folder_permissions
   WHERE folder_id = target_folder_id AND profile_id = auth.uid();
 
   IF user_perm IS NOT NULL THEN
+    IF user_perm = 'none' THEN
+      RETURN FALSE;
+    END IF;
     IF min_level = 'viewer' THEN
       RETURN TRUE;
     ELSIF min_level = 'editor' AND user_perm IN ('editor', 'admin') THEN
       RETURN TRUE;
     ELSIF min_level = 'admin' AND user_perm = 'admin' THEN
-      RETURN TRUE;
-    END IF;
-  END IF;
-
-  -- 4. Setor padrão de fallback: se a pasta pertencer ao setor do usuário ou for 'Geral'
-  SELECT sector INTO folder_sector FROM public.folders WHERE id = target_folder_id;
-  IF folder_sector IS NOT NULL AND (folder_sector = user_sector OR folder_sector = 'Geral') THEN
-    IF min_level = 'viewer' THEN
-      RETURN TRUE;
-    ELSIF min_level = 'editor' AND user_role_val IN ('editor', 'admin') THEN
       RETURN TRUE;
     END IF;
   END IF;

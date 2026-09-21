@@ -781,9 +781,17 @@ export async function createFolderInApi(
   parentId: string | null,
   sector: Sector,
   createdBy?: string | null,
-  customId?: string
+  customId?: string,
+  allowedUserIds?: string[]
 ): Promise<Folder> {
-  const payload = { name, parent_id: parentId, sector, created_by: createdBy, id: customId };
+  const payload = { 
+    name, 
+    parent_id: parentId, 
+    sector, 
+    created_by: createdBy, 
+    id: customId,
+    allowed_user_ids: allowedUserIds
+  };
   const res = await fetch('/api/folders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -795,6 +803,28 @@ export async function createFolderInApi(
     const errorMsg = err.error || `HTTP ${res.status}: Erro ao criar pasta no Supabase`;
     console.error('[ERRO CRIAR PASTA API]', errorMsg, { status: res.status, payload });
     throw new Error(errorMsg);
+  }
+
+  const data = await res.json();
+  return data.folder;
+}
+
+/**
+ * Update folder permissions or metadata in Supabase / Unified Storage
+ */
+export async function updateFolderInApi(
+  folderId: string,
+  updates: { name?: string; sector?: Sector; allowed_user_ids?: string[] }
+): Promise<Folder> {
+  const res = await fetch(`/api/folders/${folderId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erro ao atualizar pasta no Supabase');
   }
 
   const data = await res.json();

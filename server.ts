@@ -1722,9 +1722,11 @@ app.get('/api/system/status', async (req: Request, res: Response) => {
 const FOLDERS_FILE = path.join(process.cwd(), 'storage', 'folders.json');
 const FILES_FILE = path.join(process.cwd(), 'storage', 'files.json');
 const DELETED_FILES_FILE = path.join(process.cwd(), 'storage', 'deleted_files.json');
+const DELETED_FOLDERS_FILE = path.join(process.cwd(), 'storage', 'deleted_folders.json');
 const R2_FOLDERS_KEY = 'system/folders.json';
 const R2_FILES_KEY = 'system/files.json';
 const R2_DELETED_FILES_KEY = 'system/deleted_files.json';
+const R2_DELETED_FOLDERS_KEY = 'system/deleted_folders.json';
 
 interface StoredFolder {
   id: string;
@@ -1734,6 +1736,7 @@ interface StoredFolder {
   created_by: string;
   created_at: string;
   updated_at: string;
+  allowed_user_ids?: string[];
 }
 
 interface StoredFile {
@@ -1769,6 +1772,72 @@ let persistedFiles: StoredFile[] = [];
 let filesLoaded = false;
 let persistedDeletedFileIds: Set<string> = new Set();
 let deletedFilesLoaded = false;
+let persistedDeletedFolderIds: Set<string> = new Set();
+let deletedFoldersLoaded = false;
+
+function loadDeletedFolders() {
+  if (deletedFoldersLoaded) return;
+  try {
+    if (fs.existsSync(DELETED_FOLDERS_FILE)) {
+      const raw = fs.readFileSync(DELETED_FOLDERS_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) {
+        persistedDeletedFolderIds = new Set(data);
+        deletedFoldersLoaded = true;
+        return;
+      }
+    }
+    deletedFoldersLoaded = true;
+  } catch (e) {
+    console.warn('[DeletedFolders] Aviso ao ler do disco:', e);
+  }
+}
+
+function saveDeletedFolders() {
+  try {
+    const dir = path.dirname(DELETED_FOLDERS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(DELETED_FOLDERS_FILE, JSON.stringify(Array.from(persistedDeletedFolderIds), null, 2), 'utf-8');
+    saveR2DeletedFolders().catch(() => {});
+  } catch (e) {
+    console.error('[DeletedFolders] Erro ao persistir em disco:', e);
+  }
+}
+
+async function fetchR2DeletedFolders(): Promise<string[]> {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return [];
+  try {
+    const res = await client.send(new GetObjectCommand({
+      Bucket: bucketName,
+      Key: R2_DELETED_FOLDERS_KEY,
+    }));
+    if (res.Body) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as any) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {}
+  return [];
+}
+
+async function saveR2DeletedFolders() {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return;
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: R2_DELETED_FOLDERS_KEY,
+      Body: Buffer.from(JSON.stringify(Array.from(persistedDeletedFolderIds)), 'utf-8'),
+      ContentType: 'application/json',
+    }));
+  } catch (err: any) {}
+}
 
 function loadDeletedFiles() {
   if (deletedFilesLoaded) return;
@@ -1984,6 +2053,16 @@ async function saveR2Files(filesList: StoredFile[]) {
 }
 
 async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
+  loadDeletedFolders();
+  if (persistedDeletedFolderIds.size === 0) {
+    try {
+      const r2Deleted = await fetchR2DeletedFolders();
+      for (const dId of r2Deleted) {
+        if (dId) persistedDeletedFolderIds.add(dId);
+      }
+    } catch (e) {}
+  }
+
   const supabase = getSupabaseServerClient();
   if (supabase) {
     try {
@@ -1994,7 +2073,23 @@ async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
 
       if (!error && Array.isArray(dbFolders)) {
         console.log(`[FOLDERS SYNC] Supabase retornou ${dbFolders.length} pastas.`);
-        const mapped: StoredFolder[] = dbFolders.map((df: any) => ({
+        const validDbFolders: any[] = [];
+
+        for (const df of dbFolders) {
+          const isDeleted = persistedDeletedFolderIds.has(df.id) ||
+                            persistedDeletedFolderIds.has(toDeterministicUuid(df.id)) ||
+                            persistedDeletedFolderIds.has(df.name.toLowerCase().trim());
+          if (isDeleted) {
+            // Se a pasta foi excluída definitivamente, garante sua remoção no Supabase
+            try {
+              await supabase.from('folders').delete().or(`id.eq.${df.id},name.eq.${df.name}`);
+            } catch {}
+            continue;
+          }
+          validDbFolders.push(df);
+        }
+
+        const mapped: StoredFolder[] = validDbFolders.map((df: any) => ({
           id: df.id,
           parent_id: df.parent_id || null,
           name: df.name,
@@ -2002,6 +2097,7 @@ async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
           created_by: df.created_by || null,
           created_at: df.created_at,
           updated_at: df.updated_at || df.created_at,
+          allowed_user_ids: Array.isArray(df.allowed_user_ids) ? df.allowed_user_ids : undefined,
         }));
         persistedFolders = mapped;
         savePersistedFolders();
@@ -2016,6 +2112,11 @@ async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
   }
 
   loadPersistedFolders();
+  persistedFolders = persistedFolders.filter(f => 
+    !persistedDeletedFolderIds.has(f.id) && 
+    !persistedDeletedFolderIds.has(toDeterministicUuid(f.id)) &&
+    !persistedDeletedFolderIds.has(f.name.toLowerCase().trim())
+  );
   return persistedFolders;
 }
 
@@ -2223,7 +2324,7 @@ app.get('/api/folders', async (req: Request, res: Response) => {
 app.post('/api/folders', async (req: Request, res: Response) => {
   try {
     console.log('[API FOLDERS] Payload recebido:', req.body);
-    const { name, parent_id, sector, created_by, id: customId } = req.body;
+    const { name, parent_id, sector, created_by, id: customId, allowed_user_ids } = req.body;
     if (!name || !sector) {
       console.error('[API FOLDERS] Erro: Nome e setor são obrigatórios');
       return res.status(400).json({ error: 'Nome e setor são obrigatórios' });
@@ -2243,6 +2344,7 @@ app.post('/api/folders', async (req: Request, res: Response) => {
       created_by: isValidUuid(created_by) ? created_by : null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      allowed_user_ids: Array.isArray(allowed_user_ids) ? allowed_user_ids : undefined,
     };
 
     // 1. Sync to Supabase if connected
@@ -2266,8 +2368,20 @@ app.post('/api/folders', async (req: Request, res: Response) => {
           created_by: createdByUuid,
           updated_at: newFolder.updated_at,
         };
+        if (Array.isArray(allowed_user_ids)) {
+          payload.allowed_user_ids = allowed_user_ids;
+        }
 
-        const { data, error } = await supabase.from('folders').upsert(payload).select();
+        let { data, error } = await supabase.from('folders').upsert(payload).select();
+        // If column allowed_user_ids doesn't exist yet in Supabase schema, retry without it
+        if (error && error.message?.includes('allowed_user_ids')) {
+          console.warn('[API FOLDERS] Coluna allowed_user_ids ausente no Supabase, salvando sem ela:', error.message);
+          delete payload.allowed_user_ids;
+          const retryRes = await supabase.from('folders').upsert(payload).select();
+          data = retryRes.data;
+          error = retryRes.error;
+        }
+
         console.log('[API FOLDERS] Resposta Supabase:', { data, error });
 
         if (error) {
@@ -2290,6 +2404,7 @@ app.post('/api/folders', async (req: Request, res: Response) => {
               name: cleanName,
               parent_id: newFolder.parent_id,
               sector: finalSector,
+              allowed_user_ids: newFolder.allowed_user_ids,
             },
           });
         } catch {}
@@ -2298,6 +2413,12 @@ app.post('/api/folders', async (req: Request, res: Response) => {
         return res.status(500).json({ error: sbErr.message });
       }
     }
+
+    loadDeletedFolders();
+    persistedDeletedFolderIds.delete(folderId);
+    persistedDeletedFolderIds.delete(toDeterministicUuid(folderId));
+    persistedDeletedFolderIds.delete(cleanName.toLowerCase().trim());
+    saveDeletedFolders();
 
     // 2. Immediately save to in-memory store and disk
     const existingIdx = persistedFolders.findIndex(f => f.id === folderId);
@@ -2318,6 +2439,65 @@ app.post('/api/folders', async (req: Request, res: Response) => {
   }
 });
 
+app.put('/api/folders/:id', async (req: Request, res: Response) => {
+  try {
+    const folderId = req.params.id;
+    const { name, sector, allowed_user_ids } = req.body;
+
+    loadPersistedFolders();
+    const existingIdx = persistedFolders.findIndex(f => f.id === folderId || toDeterministicUuid(f.id) === toDeterministicUuid(folderId));
+
+    if (existingIdx === -1) {
+      return res.status(404).json({ error: 'Pasta não encontrada' });
+    }
+
+    const current = persistedFolders[existingIdx];
+    const updatedFolder: StoredFolder = {
+      ...current,
+      name: name ? String(name).trim() : current.name,
+      sector: sector || current.sector,
+      allowed_user_ids: Array.isArray(allowed_user_ids) ? allowed_user_ids : current.allowed_user_ids,
+      updated_at: new Date().toISOString(),
+    };
+
+    persistedFolders[existingIdx] = updatedFolder;
+    savePersistedFolders();
+    saveR2Folders(persistedFolders).catch(() => {});
+
+    // Sync to Supabase if connected
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        const updatePayload: any = {
+          updated_at: updatedFolder.updated_at,
+        };
+        if (name) updatePayload.name = updatedFolder.name;
+        if (sector) updatePayload.sector = updatedFolder.sector;
+        if (Array.isArray(allowed_user_ids)) updatePayload.allowed_user_ids = allowed_user_ids;
+
+        const uuidId = toDeterministicUuid(folderId);
+        let { error } = await supabase
+          .from('folders')
+          .update(updatePayload)
+          .or(`id.eq.${folderId},id.eq.${uuidId}`);
+
+        if (error && error.message?.includes('allowed_user_ids')) {
+          console.warn('[API FOLDERS] Coluna allowed_user_ids ausente no Supabase ao atualizar:', error.message);
+          delete updatePayload.allowed_user_ids;
+          await supabase.from('folders').update(updatePayload).or(`id.eq.${folderId},id.eq.${uuidId}`);
+        }
+      } catch (sbErr: any) {
+        console.warn('[API FOLDERS UPDATE] Aviso Supabase:', sbErr.message);
+      }
+    }
+
+    return res.json({ status: 'success', folder: updatedFolder });
+  } catch (err: any) {
+    console.error('[PASTAS] Ação: UPDATE, ID:', req.params.id, 'Erro:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/folders/:id', async (req: Request, res: Response) => {
   const folderId = req.params.id;
   const supabase = getSupabaseServerClient();
@@ -2325,7 +2505,17 @@ app.delete('/api/folders/:id', async (req: Request, res: Response) => {
 
   try {
     loadDeletedFiles();
+    loadDeletedFolders();
     const uuidId = toDeterministicUuid(folderId);
+
+    // Encontra a pasta atual para guardar nome e ID
+    const targetFolder = persistedFolders.find(f => f.id === folderId || f.id === uuidId);
+    persistedDeletedFolderIds.add(folderId);
+    persistedDeletedFolderIds.add(uuidId);
+    if (targetFolder && targetFolder.name) {
+      persistedDeletedFolderIds.add(targetFolder.name.toLowerCase().trim());
+    }
+    saveDeletedFolders();
 
     // 1. Identifica e marca todos os arquivos desta pasta como excluídos (Tombstone)
     const filesToDelete = persistedFiles.filter(f => f.folder_id === folderId || toDeterministicUuid(f.folder_id) === uuidId);

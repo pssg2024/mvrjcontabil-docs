@@ -44,6 +44,7 @@ import {
   fetchAuditLogsFromApi,
   fetchFolderPermissionsFromApi,
   createFolderInApi,
+  updateFolderInApi,
   deleteFolderInApi,
   deleteFileInApi,
   updateFileInApi,
@@ -557,29 +558,42 @@ export default function App() {
   // Permission Checker (Mirrors PostgreSQL RLS function public.has_folder_permission)
   const checkFolderPermission = (folderId: string, minLevel: PermissionLevel): boolean => {
     if (!currentUser) return false;
-    // Usuários com status 'active' ou 'approved' possuem acesso normal liberado
+    // Usuários com status 'active' ou 'approved' possuem acesso liberado
     if (currentUser.status !== 'active' && currentUser.status !== 'approved') return false;
-    if (currentUser.role === 'admin') return true;
+    
+    // Perfil Administrador / Diretoria: Acesso TOTAL irrestrito a todas as pastas e documentos
+    const isFullAdmin = 
+      currentUser.role === 'admin' || 
+      (currentUser.role as string) === 'ADMIN' || 
+      (currentUser as any).role === 'Diretoria' ||
+      currentUser.sector === 'Diretoria' || 
+      (currentUser as any).setor === 'Diretoria';
 
-    // Visualização (viewer): todos os usuários autenticados/ativos podem ver pastas da empresa
+    if (isFullAdmin) return true;
+
+    const folder = folders.find(f => f.id === folderId);
+    if (!folder) return false;
+
+    // Usuários Comuns (Fiscal, DP, Operacional, etc.):
+    // Só podem visualizar e acessar as pastas para as quais receberam autorização expressa do Administrador.
+    // Pastas não autorizadas ficam completamente ocultas da listagem e da busca para esses usuários.
+    const isAllowed = Boolean(folder.allowed_user_ids?.includes(currentUser.id));
+    if (!isAllowed) {
+      return false;
+    }
+
+    // Se estiver em allowed_user_ids, tem permissão de visualização (viewer) garantida
     if (minLevel === 'viewer') return true;
 
-    // 1. Explicit folder assignment in folder_permissions
+    // Permissão explícita na matriz de permissões para níveis superiores (editor/admin)
     const explicit = folderPermissions.find(p => p.folder_id === folderId && p.profile_id === currentUser.id);
     if (explicit) {
+      if (explicit.permission_level === 'none') return false;
       if (minLevel === 'editor' && (explicit.permission_level === 'editor' || explicit.permission_level === 'admin')) return true;
       if (minLevel === 'admin' && explicit.permission_level === 'admin') return true;
     }
 
-    // 2. Default Sector matching or Creator
-    const folder = folders.find(f => f.id === folderId);
-    if (folder) {
-      // Creator always has full access to their own folder
-      if (folder.created_by === currentUser.id) return true;
-      if (folder.sector === currentUser.sector || folder.sector === 'Geral') {
-        if (minLevel === 'editor' && currentUser.role === 'editor') return true;
-      }
-    }
+    if (minLevel === 'editor' && currentUser.role === 'editor') return true;
 
     return false;
   };
@@ -727,6 +741,33 @@ export default function App() {
       ];
     });
 
+    // Sincronizar allowed_user_ids da pasta: se level for viewer, editor ou admin, usuário é autorizado. Se 'none', é removido.
+    let updatedAllowedUserIds: string[] | undefined = undefined;
+    if (targetFolder) {
+      const currentAllowed = Array.isArray(targetFolder.allowed_user_ids) ? [...targetFolder.allowed_user_ids] : [];
+      if (level === 'none') {
+        updatedAllowedUserIds = currentAllowed.filter(id => id !== profileId);
+      } else {
+        if (!currentAllowed.includes(profileId)) {
+          updatedAllowedUserIds = [...currentAllowed, profileId];
+        } else {
+          updatedAllowedUserIds = currentAllowed;
+        }
+      }
+
+      setFolders(prev => prev.map(f => {
+        if (f.id === folderId) {
+          return { ...f, allowed_user_ids: updatedAllowedUserIds };
+        }
+        return f;
+      }));
+
+      // Atualiza também na API
+      updateFolderInApi(folderId, { allowed_user_ids: updatedAllowedUserIds }).catch(err => {
+        console.warn('Aviso ao sincronizar allowed_user_ids com a API:', err);
+      });
+    }
+
     if (level !== 'none') {
       try {
         await saveFolderPermissionToApi(folderId, profileId, level);
@@ -740,6 +781,48 @@ export default function App() {
       user: targetUser?.full_name,
       level,
     });
+    notifyBroadcastSync();
+  };
+
+  // Gerenciamento direto de usuários autorizados por pasta (allowed_user_ids)
+  const handleUpdateFolderAllowedUsers = async (folderId: string, allowedUserIds: string[]) => {
+    setFolders(prev => prev.map(f => {
+      if (f.id === folderId) {
+        return { ...f, allowed_user_ids: allowedUserIds };
+      }
+      return f;
+    }));
+
+    try {
+      await updateFolderInApi(folderId, { allowed_user_ids: allowedUserIds });
+    } catch (err) {
+      console.warn('Erro ao atualizar allowed_user_ids na API:', err);
+    }
+
+    // Sincronizar permissões correspondentes em folderPermissions
+    setFolderPermissions(prev => {
+      const remaining = prev.filter(p => !(p.folder_id === folderId && !allowedUserIds.includes(p.profile_id)));
+      const existingUserIds = new Set(remaining.filter(p => p.folder_id === folderId).map(p => p.profile_id));
+      const newPerms: FolderPermission[] = allowedUserIds
+        .filter(uid => !existingUserIds.has(uid))
+        .map(uid => ({
+          id: `perm-${Date.now()}-${Math.random()}`,
+          folder_id: folderId,
+          profile_id: uid,
+          permission_level: 'viewer',
+          granted_by: currentUser?.id,
+          created_at: new Date().toISOString(),
+        }));
+      return [...remaining, ...newPerms];
+    });
+
+    const targetFolder = folders.find(f => f.id === folderId);
+    logAudit('PERMISSION_CHANGE', 'FOLDER', folderId, {
+      folder: targetFolder?.name,
+      allowed_user_ids: allowedUserIds,
+      authorized_count: allowedUserIds.length,
+    });
+    notifyBroadcastSync();
   };
 
   // Helper to notify other tabs immediately
@@ -775,12 +858,12 @@ export default function App() {
     });
   };
 
-  const handleCreateFolder = async (name: string, parentId: string | null, sector: Sector) => {
+  const handleCreateFolder = async (name: string, parentId: string | null, sector: Sector, allowedUserIds?: string[]) => {
     lastFolderActionRef.current = Date.now();
     const folderId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `fold-${Date.now()}`;
 
     try {
-      const created = await createFolderInApi(name, parentId, sector, currentUser?.id, folderId);
+      const created = await createFolderInApi(name, parentId, sector, currentUser?.id, folderId, allowedUserIds);
       lastFolderActionRef.current = Date.now();
       
       const newFolderItem: Folder = created && created.id ? created : {
@@ -789,6 +872,7 @@ export default function App() {
         name: name.trim(),
         sector,
         created_by: currentUser?.id || '57e1d483-669b-4791-b09e-7496570e63ea',
+        allowed_user_ids: allowedUserIds,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -802,7 +886,7 @@ export default function App() {
       });
 
       notifyBroadcastSync();
-      logAudit('FOLDER_CREATE', 'FOLDER', newFolderItem.id, { name, sector, parentId });
+      logAudit('FOLDER_CREATE', 'FOLDER', newFolderItem.id, { name, sector, parentId, allowed_user_ids: allowedUserIds });
       return newFolderItem;
     } catch (err: any) {
       console.error('[ERRO CRIAR PASTA]', err);
@@ -1122,6 +1206,7 @@ export default function App() {
                 currentUser={currentUser}
                 folders={folders}
                 files={files}
+                allProfiles={profiles}
                 storageMetrics={storageMetrics}
                 onRefreshStorage={fetchStorageMetrics}
                 onOpenFileViewer={(file) => setViewingFile(file)}
@@ -1133,6 +1218,7 @@ export default function App() {
                 onDeleteFolder={handleDeleteFolder}
                 onDeleteFile={handleDeleteFile}
                 onRenameFile={handleRenameFile}
+                onUpdateFolderAllowedUsers={handleUpdateFolderAllowedUsers}
                 hasFolderPermission={checkFolderPermission}
                 onOpenCompanyModal={handleOpenCompanyModal}
                 externalSearchQuery={driveFilterSearch}

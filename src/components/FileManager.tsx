@@ -44,7 +44,10 @@ import {
   RefreshCw, 
   Files,
   Building2,
-  X
+  X,
+  Users,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -56,14 +59,16 @@ interface FileManagerProps {
   currentUser: UserProfile;
   folders: Folder[];
   files: DocumentFile[];
+  allProfiles?: UserProfile[];
   storageMetrics?: StorageMetrics | null;
   onRefreshStorage?: () => void;
   onOpenFileViewer: (file: DocumentFile) => void;
   onOpenUploadModal: (targetFolderId?: string | null) => void;
-  onCreateFolder: (name: string, parentId: string | null, sector: Sector) => Promise<any> | void;
+  onCreateFolder: (name: string, parentId: string | null, sector: Sector, allowedUserIds?: string[]) => Promise<any> | void;
   onDeleteFolder?: (folderId: string) => void;
   onDeleteFile: (fileId: string) => void;
   onRenameFile?: (fileId: string, newName: string) => void;
+  onUpdateFolderAllowedUsers?: (folderId: string, allowedUserIds: string[]) => Promise<void> | void;
   hasFolderPermission: (folderId: string, minLevel: PermissionLevel) => boolean;
   onOpenCompanyModal?: (initialQuery?: string) => void;
   externalSearchQuery?: string;
@@ -74,6 +79,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   currentUser,
   folders,
   files,
+  allProfiles,
   storageMetrics,
   onRefreshStorage,
   onOpenFileViewer,
@@ -82,6 +88,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   onDeleteFolder,
   onDeleteFile,
   onRenameFile,
+  onUpdateFolderAllowedUsers,
   hasFolderPermission,
   onOpenCompanyModal,
   externalSearchQuery,
@@ -108,6 +115,23 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const [newFolderName, setNewFolderName] = useState('');
   const [sharingFileId, setSharingFileId] = useState<string | null>(null);
 
+  // Granular Folder Permissions Management Modal State (Admin / Diretoria)
+  const [managingPermsFolder, setManagingPermsFolder] = useState<Folder | null>(null);
+  const [selectedAllowedUserIds, setSelectedAllowedUserIds] = useState<string[]>([]);
+  const [isSavingPerms, setIsSavingPerms] = useState(false);
+  const [permsUserSearch, setPermsUserSearch] = useState('');
+  const [permsSectorFilter, setPermsSectorFilter] = useState<Sector | 'ALL'>('ALL');
+  const [permsSuccessMessage, setPermsSuccessMessage] = useState('');
+
+  // 1. REGRAS DE NEGÓCIO E PERMISSÕES:
+  // Administradores e Diretoria têm acesso TOTAL irrestrito a todas as pastas e documentos
+  const isFullAdmin = 
+    currentUser?.role === 'admin' || 
+    (currentUser?.role as string) === 'ADMIN' || 
+    (currentUser as any)?.role === 'Diretoria' ||
+    currentUser?.sector === 'Diretoria' || 
+    (currentUser as any)?.setor === 'Diretoria';
+
   // Breadcrumbs calculation
   const getBreadcrumbs = (): Folder[] => {
     if (!currentFolderId) return [];
@@ -123,25 +147,51 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const breadcrumbs = getBreadcrumbs();
   const currentFolder = currentFolderId ? folders.find(f => f.id === currentFolderId) || null : null;
 
+  // Proteção em tempo real: se o usuário comum estiver dentro de uma pasta para a qual não tem autorização, redireciona para a raiz
+  useEffect(() => {
+    if (currentFolderId && !isFullAdmin) {
+      const folder = folders.find(f => f.id === currentFolderId);
+      if (folder && !folder.allowed_user_ids?.includes(currentUser.id)) {
+        setCurrentFolderId(null);
+      }
+    }
+  }, [currentFolderId, folders, currentUser.id, isFullAdmin]);
+
   // Filter folders: direct children or search results across drive
+  // Administradores veem tudo; Usuários comuns veem apenas pastas expressamente autorizadas
   const visibleFolders = folders.filter(folder => {
+    if (!isFullAdmin) {
+      const isAllowed = Boolean(folder.allowed_user_ids?.includes(currentUser?.id));
+      if (!isAllowed) {
+        return false;
+      }
+    }
+
     if (searchQuery.trim()) {
       const matchesSearch = folder.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
       if (!matchesSearch) return false;
       if (selectedSector !== 'ALL' && folder.sector !== selectedSector) return false;
-      return hasFolderPermission(folder.id, 'viewer');
+      return true;
     }
     const isDirectChild = currentFolderId 
       ? folder.parent_id === currentFolderId 
       : (!folder.parent_id || folder.parent_id === null || folder.parent_id === '');
     if (!isDirectChild) return false;
     if (selectedSector !== 'ALL' && folder.sector !== selectedSector) return false;
-    // RLS Permission check: User must have at least 'viewer' permission on the folder
-    return hasFolderPermission(folder.id, 'viewer');
+    return true;
   });
 
   // Filter files: direct children or search results across drive
+  // Usuários comuns só visualizam documentos contidos em pastas para as quais receberam autorização
   const visibleFiles = files.filter(file => {
+    if (!isFullAdmin && file.folder_id) {
+      const parentFolder = folders.find(f => f.id === file.folder_id);
+      if (parentFolder) {
+        const isAllowed = Boolean(parentFolder.allowed_user_ids?.includes(currentUser?.id));
+        if (!isAllowed) return false;
+      }
+    }
+
     const matchesSearch = searchQuery
       ? file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         file.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -157,9 +207,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
       ? true 
       : (selectedSector === 'ALL' || file.sector === selectedSector);
     if (!matchesSector) return false;
-
-    const hasPerm = file.folder_id ? hasFolderPermission(file.folder_id, 'viewer') : true;
-    if (!hasPerm) return false;
 
     if (searchQuery) {
       // Global search returns matching files the user has permission to see
@@ -236,6 +283,78 @@ export const FileManager: React.FC<FileManagerProps> = ({
       alert('Erro ao salvar pasta: ' + (err.message || 'Falha ao salvar pasta no banco de dados.'));
     } finally {
       setIsSubmittingFolder(false);
+    }
+  };
+
+  // Granular Folder Permissions Handlers (Admin / Diretoria)
+  const handleOpenPermsModal = (folder: Folder) => {
+    setManagingPermsFolder(folder);
+    setSelectedAllowedUserIds(Array.isArray(folder.allowed_user_ids) ? [...folder.allowed_user_ids] : []);
+    setPermsUserSearch('');
+    setPermsSectorFilter('ALL');
+    setPermsSuccessMessage('');
+  };
+
+  const toggleUserAccess = (userId: string) => {
+    setSelectedAllowedUserIds(prev => 
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const commonUsers = useMemo(() => {
+    if (!allProfiles || !Array.isArray(allProfiles)) return [];
+    return allProfiles.filter(p => {
+      // Administradores e Diretoria possuem acesso irrestrito por padrão
+      const isProfileAdmin = 
+        p.role === 'admin' || 
+        (p.role as string) === 'ADMIN' || 
+        (p as any).role === 'Diretoria' ||
+        p.sector === 'Diretoria' || 
+        (p as any).setor === 'Diretoria';
+      if (isProfileAdmin) return false;
+      if (p.status === 'rejected') return false;
+      return true;
+    });
+  }, [allProfiles]);
+
+  const filteredCommonUsers = useMemo(() => {
+    return commonUsers.filter(p => {
+      if (permsSectorFilter !== 'ALL' && p.sector !== permsSectorFilter) return false;
+      if (permsUserSearch.trim()) {
+        const q = permsUserSearch.toLowerCase();
+        return (
+          p.full_name.toLowerCase().includes(q) ||
+          p.email.toLowerCase().includes(q) ||
+          p.sector.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [commonUsers, permsSectorFilter, permsUserSearch]);
+
+  const handleSelectAllFiltered = () => {
+    const idsToAdd = filteredCommonUsers.map(u => u.id);
+    setSelectedAllowedUserIds(prev => Array.from(new Set([...prev, ...idsToAdd])));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedAllowedUserIds([]);
+  };
+
+  const handleSavePermsSubmit = async () => {
+    if (!managingPermsFolder || !onUpdateFolderAllowedUsers) return;
+    setIsSavingPerms(true);
+    try {
+      await onUpdateFolderAllowedUsers(managingPermsFolder.id, selectedAllowedUserIds);
+      setPermsSuccessMessage('Permissões de visualização atualizadas com sucesso!');
+      setTimeout(() => {
+        setManagingPermsFolder(null);
+        setPermsSuccessMessage('');
+      }, 700);
+    } catch (err: any) {
+      alert('Erro ao salvar permissões: ' + (err.message || 'Falha de sincronização.'));
+    } finally {
+      setIsSavingPerms(false);
     }
   };
 
@@ -658,6 +777,18 @@ export const FileManager: React.FC<FileManagerProps> = ({
             Filtro de busca: "{searchQuery}"
           </span>
         )}
+
+        {currentFolder && isFullAdmin && !searchQuery && (
+          <button
+            type="button"
+            onClick={() => handleOpenPermsModal(currentFolder)}
+            className="ml-auto inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors shrink-0 cursor-pointer shadow-2xs"
+            title="Gerenciar quais usuários comuns podem ver esta pasta"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+            <span>Permissões de Acesso</span>
+          </button>
+        )}
       </nav>
 
       {/* FOLDERS SECTION */}
@@ -679,11 +810,40 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     <h4 className="text-sm font-bold text-slate-800 group-hover:text-[#1B357B] transition-colors truncate">
                       {folder.name}
                     </h4>
-                    <p className="text-xs text-slate-400 font-medium mt-0.5 truncate">{folder.sector}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-xs text-slate-400 font-medium truncate">{folder.sector}</span>
+                      {isFullAdmin && (
+                        Array.isArray(folder.allowed_user_ids) && folder.allowed_user_ids.length > 0 ? (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" title={`${folder.allowed_user_ids.length} usuário(s) comum(ns) autorizados`}>
+                            <Users className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>{folder.allowed_user_ids.length}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200" title="Apenas Administradores e Diretoria têm acesso">
+                            <Lock className="w-2.5 h-2.5 text-slate-400" />
+                            <span>Diretoria</span>
+                          </span>
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-1 shrink-0 ml-2">
+                  {isFullAdmin && (
+                    <button
+                      type="button"
+                      id={`btn-manage-perms-${folder.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenPermsModal(folder);
+                      }}
+                      className="text-slate-400 hover:text-blue-700 hover:bg-blue-50 transition-colors p-1.5 rounded-lg cursor-pointer"
+                      title="Gerenciar Permissões de Visualização da Pasta"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-blue-600" />
+                    </button>
+                  )}
                   {currentUser.role === 'admin' && onDeleteFolder && (
                     <button
                       type="button"
@@ -1116,6 +1276,200 @@ export const FileManager: React.FC<FileManagerProps> = ({
               >
                 Confirmar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Granular Folder Permissions Management Modal (Admin / Diretoria) */}
+      {managingPermsFolder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs">
+          <div className="bg-white w-[95%] max-w-2xl mx-auto rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-[#1B357B] flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-5 h-5 text-blue-700" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-slate-900 font-bold text-base flex items-center gap-2 truncate">
+                    <span>Permissões de Visualização da Pasta</span>
+                  </h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs font-semibold text-slate-700 truncate">{managingPermsFolder.name}</span>
+                    <span className="text-[11px] font-medium text-slate-400">Setor: {managingPermsFolder.sector}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setManagingPermsFolder(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Informational Guidance Alert */}
+            <div className="px-6 pt-4 pb-3 bg-gradient-to-r from-blue-50/60 to-indigo-50/40 border-b border-blue-100/60 text-xs text-slate-600 space-y-1">
+              <div className="flex items-start gap-2">
+                <span className="font-bold text-[#1B357B] shrink-0">👑 Acesso Total Irrestrito:</span>
+                <span>Usuários Administrador e Diretoria visualizam e acessam todas as pastas automaticamente.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="font-bold text-slate-800 shrink-0">🔒 Usuários Comuns (Fiscal, DP, Operacional):</span>
+                <span>Só podem visualizar esta pasta se estiverem autorizados abaixo. Pastas não autorizadas ficam 100% ocultas.</span>
+              </div>
+            </div>
+
+            {/* Filters & Actions Bar */}
+            <div className="p-4 border-b border-slate-200 space-y-3 bg-white">
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Filtrar por nome, email ou setor..."
+                    value={permsUserSearch}
+                    onChange={(e) => setPermsUserSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-1 focus:ring-[#1B357B]/20 outline-none transition-all font-medium"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleSelectAllFiltered}
+                    className="px-3 py-1.5 text-xs font-semibold text-[#1B357B] bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Marcar Filtrados
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeselectAll}
+                    className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Desmarcar Todos
+                  </button>
+                </div>
+              </div>
+
+              {/* Sector Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                {(['ALL', 'Fiscal', 'Departamento Pessoal', 'Contábil', 'Financeiro', 'Geral'] as const).map(sec => (
+                  <button
+                    key={sec}
+                    type="button"
+                    onClick={() => setPermsSectorFilter(sec)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shrink-0 ${
+                      permsSectorFilter === sec
+                        ? 'bg-[#1B357B] text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {sec === 'ALL' ? 'Todos os Setores' : sec}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Users List */}
+            <div className="flex-1 overflow-y-auto p-4 divide-y divide-slate-100 max-h-[360px]">
+              {filteredCommonUsers.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 text-xs">
+                  <UserX className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                  <p>Nenhum usuário comum encontrado para os filtros selecionados.</p>
+                </div>
+              ) : (
+                filteredCommonUsers.map(user => {
+                  const isAllowed = selectedAllowedUserIds.includes(user.id);
+                  return (
+                    <div
+                      key={user.id}
+                      onClick={() => toggleUserAccess(user.id)}
+                      className={`py-3 px-3 rounded-xl flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                        isAllowed ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isAllowed}
+                          onChange={() => {}} // Controlled by div click
+                          className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0"
+                        />
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-slate-200 to-slate-300 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200 overflow-hidden">
+                          {user.avatar_url ? (
+                            <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                          ) : (
+                            user.full_name.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800 truncate">{user.full_name}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          {user.sector}
+                        </span>
+                        {isAllowed ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-lg border border-emerald-300">
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span>Autorizado</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                            <Lock className="w-3 h-3 text-slate-400" />
+                            <span>Oculto</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+              <div className="text-xs text-slate-500">
+                <span className="font-bold text-slate-700">{selectedAllowedUserIds.length}</span> de <span className="font-bold text-slate-700">{commonUsers.length}</span> usuários comuns autorizados
+                {permsSuccessMessage && (
+                  <span className="ml-3 font-semibold text-emerald-600 animate-in fade-in">{permsSuccessMessage}</span>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setManagingPermsFolder(null)}
+                  disabled={isSavingPerms}
+                  className="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSavePermsSubmit}
+                  disabled={isSavingPerms}
+                  className="px-5 py-2 bg-[#1B357B] hover:bg-[#112354] disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs flex items-center space-x-1.5"
+                >
+                  {isSavingPerms ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Salvar Permissões</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

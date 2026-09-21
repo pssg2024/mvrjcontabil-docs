@@ -45,6 +45,7 @@ export interface Folder {
   created_at: string;
   updated_at: string;
   item_count?: number;
+  allowed_user_ids?: string[];
 }
 
 export interface DocumentFile {

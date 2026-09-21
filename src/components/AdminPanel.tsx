@@ -87,7 +87,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const getPermissionFor = (folderId: string, profileId: string): PermissionLevel | 'none' => {
     const perm = folderPermissions.find(p => p.folder_id === folderId && p.profile_id === profileId);
-    return perm ? perm.permission_level : 'none';
+    if (perm) return perm.permission_level;
+    
+    // Se a pasta possui allowed_user_ids definidos
+    const folder = folders.find(f => f.id === folderId);
+    if (folder && Array.isArray(folder.allowed_user_ids) && folder.allowed_user_ids.length > 0) {
+      if (folder.allowed_user_ids.includes(profileId)) {
+        return 'viewer';
+      }
+      return 'none';
+    }
+
+    return 'none';
   };
 
   const filteredLogs = auditLogs.filter(log => {
@@ -430,12 +441,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     {activeProfiles.map(profile => {
                       const currentPerm = getPermissionFor(folder.id, profile.id);
-                      const isGlobalAdmin = profile.role === 'admin';
+                      const isGlobalAdmin = 
+                        profile.role === 'admin' || 
+                        (profile.role as string) === 'ADMIN' || 
+                        (profile as any).role === 'Diretoria' ||
+                        profile.sector === 'Diretoria' || 
+                        (profile as any).setor === 'Diretoria';
 
                       return (
                         <td key={profile.id} className="p-2.5 text-center">
                           {isGlobalAdmin ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200" title="Acesso total herdado do papel de Administrador Global">
+                            <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200" title="Acesso total herdado do papel de Administrador Global / Diretoria">
                               Admin Total
                             </span>
                           ) : (
@@ -448,13 +464,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   : currentPerm === 'editor'
                                   ? 'bg-blue-50 text-blue-800 border-blue-300 font-bold'
                                   : currentPerm === 'viewer'
-                                  ? 'bg-slate-50 text-slate-800 border-slate-300'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold'
                                   : 'bg-white text-gray-400 border-gray-200'
                               }`}
                             >
-                              <option value="none">Sem Acesso</option>
-                              <option value="viewer">Leitor (Ver/Baixar)</option>
-                              <option value="editor">Editor (+ Upload)</option>
+                              <option value="none">Sem Acesso (Oculta)</option>
+                              <option value="viewer">Autorizada (Leitor)</option>
+                              <option value="editor">Autorizada (Editor)</option>
                               <option value="admin">Admin da Pasta</option>
                             </select>
                           )}
