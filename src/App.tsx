@@ -798,10 +798,11 @@ export default function App() {
         
         try {
           await deleteFileInApi(fileId);
+          console.log(`[Sync Debug] Arquivo ${fileId} deletado com sucesso na API.`);
           fetchStorageMetrics();
           notifyBroadcastSync();
         } catch (err) {
-          console.warn('Erro ao excluir no Supabase/R2:', err);
+          console.error(`[Sync Debug] ERRO ao excluir arquivo ${fileId} na API:`, err);
           // Refresh to sync state if failed
           const updatedFiles = await fetchFilesFromApi();
           setFiles(updatedFiles);
@@ -863,10 +864,11 @@ export default function App() {
 
         try {
           await deleteFolderInApi(folderId);
+          console.log(`[Sync Debug] Pasta ${folderId} deletada com sucesso na API.`);
           fetchStorageMetrics();
           notifyBroadcastSync();
         } catch (err: any) {
-          console.warn('Aviso ao excluir pasta na API:', err);
+          console.error(`[Sync Debug] ERRO ao excluir pasta ${folderId} na API:`, err);
           // Refresh to sync state if failed
           const updatedFolders = await fetchFoldersFromApi();
           setFolders(updatedFolders);
