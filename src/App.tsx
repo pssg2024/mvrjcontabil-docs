@@ -991,34 +991,42 @@ export default function App() {
           logAudit('FOLDER_DELETE', 'FOLDER', folderId, { name: folder.name });
         }
 
+        // Optimistic update: remove folder and all associated files immediately
+        setFolders(prev => prev.filter(f => f.id !== folderId && f.parent_id !== folderId));
+        setFiles(prev => prev.filter(f => f.folder_id !== folderId));
+
         try {
-          // 1. Excluir documentos da pasta no Supabase (Direto)
+          // 1. Excluir documentos da pasta no Supabase (se direto)
           const supabaseClient = getSupabase();
           if (supabaseClient) {
-            const { error: docsError } = await supabaseClient
-              .from('documents') // Assuming table name is 'documents'
-              .delete()
-              .eq('folder_id', folderId);
-            
-            if (docsError) throw docsError;
+            try {
+              await supabaseClient
+                .from('files')
+                .delete()
+                .eq('folder_id', folderId);
+            } catch {}
           }
 
-          // 2. Excluir a pasta na API
+          // 2. Excluir a pasta na API (que remove arquivos do R2, disco e Supabase em cascata)
           await deleteFolderInApi(folderId);
           
           fetchStorageMetrics();
           notifyBroadcastSync();
-          
-          // Optimistic update:
-          // O Realtime irá lidar com a remoção da UI automaticamente.
+
+          const [updatedFolders, updatedFiles] = await Promise.all([
+            fetchFoldersFromApi().catch(() => []),
+            fetchFilesFromApi().catch(() => [])
+          ]);
+          setFolders(updatedFolders);
+          setFiles(updatedFiles);
         } catch (err: any) {
           console.error('[ERRO EXCLUIR PASTA]', err);
           alert('Erro ao excluir pasta e seus documentos: ' + (err.message || 'Erro desconhecido'));
           
           // Refresh to sync state if failed
-          const updatedFolders = await fetchFoldersFromApi();
+          const updatedFolders = await fetchFoldersFromApi().catch(() => []);
           setFolders(updatedFolders);
-          const updatedFiles = await fetchFilesFromApi();
+          const updatedFiles = await fetchFilesFromApi().catch(() => []);
           setFiles(updatedFiles);
         }
       }

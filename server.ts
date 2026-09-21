@@ -2385,6 +2385,7 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
   
   // 1. Carrega lista de exclusões persistentes (Tombstones)
   loadDeletedFiles();
+  loadDeletedFolders();
   if (persistedDeletedFileIds.size === 0) {
     try {
       const r2Deleted = await fetchR2DeletedFiles();
@@ -2397,8 +2398,20 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
   // 2. Carrega do armazenamento persistente em disco
   loadPersistedFiles();
   for (const f of persistedFiles) {
-    if (f && f.id && !persistedDeletedFileIds.has(f.id) && !persistedDeletedFileIds.has(f.storage_key) && !persistedDeletedFileIds.has(toDeterministicUuid(f.id))) {
+    if (!f || !f.id) continue;
+    const isFileDeleted = persistedDeletedFileIds.has(f.id) || 
+                          (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) || 
+                          persistedDeletedFileIds.has(toDeterministicUuid(f.id));
+    const isFolderDeleted = f.folder_id && (
+      persistedDeletedFolderIds.has(f.folder_id) || 
+      persistedDeletedFolderIds.has(toDeterministicUuid(f.folder_id))
+    );
+    if (!isFileDeleted && !isFolderDeleted) {
       filesMap.set(f.id, f);
+    } else {
+      persistedDeletedFileIds.add(f.id);
+      if (f.storage_key) persistedDeletedFileIds.add(f.storage_key);
+      persistedDeletedFileIds.add(toDeterministicUuid(f.id));
     }
   }
 
@@ -2407,8 +2420,20 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
     try {
       const r2Files = await fetchR2Files();
       for (const rf of r2Files) {
-        if (rf && rf.id && !persistedDeletedFileIds.has(rf.id) && !persistedDeletedFileIds.has(rf.storage_key) && !persistedDeletedFileIds.has(toDeterministicUuid(rf.id))) {
+        if (!rf || !rf.id) continue;
+        const isFileDeleted = persistedDeletedFileIds.has(rf.id) || 
+                              (rf.storage_key && persistedDeletedFileIds.has(rf.storage_key)) || 
+                              persistedDeletedFileIds.has(toDeterministicUuid(rf.id));
+        const isFolderDeleted = rf.folder_id && (
+          persistedDeletedFolderIds.has(rf.folder_id) || 
+          persistedDeletedFolderIds.has(toDeterministicUuid(rf.folder_id))
+        );
+        if (!isFileDeleted && !isFolderDeleted) {
           filesMap.set(rf.id, rf);
+        } else {
+          persistedDeletedFileIds.add(rf.id);
+          if (rf.storage_key) persistedDeletedFileIds.add(rf.storage_key);
+          persistedDeletedFileIds.add(toDeterministicUuid(rf.id));
         }
       }
     } catch (e) {}
@@ -2426,12 +2451,19 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
       if (!error && Array.isArray(dbFiles)) {
         // Atualiza ou insere dados autoritativos vindos do Supabase
         for (const f of dbFiles) {
-          const isDeleted = persistedDeletedFileIds.has(f.id) || 
-                            (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) ||
-                            persistedDeletedFileIds.has(toDeterministicUuid(f.id));
+          const isFileDeleted = persistedDeletedFileIds.has(f.id) || 
+                                (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) ||
+                                persistedDeletedFileIds.has(toDeterministicUuid(f.id));
+          const isFolderDeleted = f.folder_id && (
+            persistedDeletedFolderIds.has(f.folder_id) || 
+            persistedDeletedFolderIds.has(toDeterministicUuid(f.folder_id))
+          );
 
-          if (isDeleted) {
-            // Se foi excluído, remove também do Supabase caso ainda esteja lá
+          if (isFileDeleted || isFolderDeleted) {
+            persistedDeletedFileIds.add(f.id);
+            if (f.storage_key) persistedDeletedFileIds.add(f.storage_key);
+            persistedDeletedFileIds.add(toDeterministicUuid(f.id));
+            // Se foi excluído, remove também do Supabase
             try {
               await supabase.from('files').delete().eq('id', f.id);
             } catch {}
@@ -2475,9 +2507,15 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
         const dbFileIds = new Set(dbFiles.map(df => df.id));
         for (const [id, localFile] of Array.from(filesMap.entries())) {
           if (!dbFileIds.has(id)) {
-            const ageMs = Date.now() - new Date(localFile.created_at).getTime();
             // Tenta sincronizar com Supabase se não foi explicitamente excluído
-            if (!persistedDeletedFileIds.has(localFile.id)) {
+            const isFileDeleted = persistedDeletedFileIds.has(localFile.id) || 
+                                  (localFile.storage_key && persistedDeletedFileIds.has(localFile.storage_key));
+            const isFolderDeleted = localFile.folder_id && (
+              persistedDeletedFolderIds.has(localFile.folder_id) || 
+              persistedDeletedFolderIds.has(toDeterministicUuid(localFile.folder_id))
+            );
+
+            if (!isFileDeleted && !isFolderDeleted) {
               try {
                 let resFolderId = localFile.folder_id;
                 if (!isValidUuid(resFolderId)) {
@@ -2546,6 +2584,8 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
               } catch (outerErr) {
                 console.warn('[Sync Outer Error]', outerErr);
               }
+            } else {
+              filesMap.delete(id);
             }
           }
         }
@@ -2557,11 +2597,17 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
     }
   }
 
-  const result = Array.from(filesMap.values()).filter(f => 
-    !persistedDeletedFileIds.has(f.id) && 
-    !persistedDeletedFileIds.has(f.storage_key) && 
-    !persistedDeletedFileIds.has(toDeterministicUuid(f.id))
-  );
+  const result = Array.from(filesMap.values()).filter(f => {
+    const isFileDeleted = persistedDeletedFileIds.has(f.id) || 
+                          !f.id ||
+                          (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) || 
+                          persistedDeletedFileIds.has(toDeterministicUuid(f.id));
+    const isFolderDeleted = f.folder_id && (
+      persistedDeletedFolderIds.has(f.folder_id) || 
+      persistedDeletedFolderIds.has(toDeterministicUuid(f.folder_id))
+    );
+    return !isFileDeleted && !isFolderDeleted;
+  });
   persistedFiles = result;
   savePersistedFiles();
   saveDeletedFiles();
@@ -3804,31 +3850,18 @@ app.get('/api/storage/metrics', async (req: Request, res: Response) => {
     let dbOriginalBytes = 0;
     let sectorBreakdown: Record<string, { usedBytes: number; filesCount: number }> = {};
 
-    const supabase = getSupabaseServerClient();
-    if (supabase) {
-      const { data: dbDocs, error: docError } = await supabase
-        .from('files')
-        .select('optimized_size, original_size, folders(sector)');
-      
-      if (!docError && dbDocs) {
-        dbFilesCount = dbDocs.length;
-        for (const doc of dbDocs) {
-          const opt = Number(doc.optimized_size) || 0;
-          const orig = Number(doc.original_size) || opt;
-          dbUsedBytes += opt;
-          dbOriginalBytes += orig;
-          const s = (doc.folders as any)?.sector || 'Fiscal';
-          if (!sectorBreakdown[s]) sectorBreakdown[s] = { usedBytes: 0, filesCount: 0 };
-          sectorBreakdown[s].usedBytes += opt;
-          sectorBreakdown[s].filesCount += 1;
-        }
-      }
-    } else {
-      // Fallback to in-memory only if no Supabase
-      dbFilesCount = inMemoryFileStore.size;
-      for (const item of inMemoryFileStore.values()) {
-        dbUsedBytes += item.buffer.length;
-      }
+    const allFiles = await getAllUnifiedFiles();
+    dbFilesCount = allFiles.length;
+
+    for (const doc of allFiles) {
+      const opt = Number(doc.optimized_size) || 0;
+      const orig = Number(doc.original_size) || opt;
+      dbUsedBytes += opt;
+      dbOriginalBytes += orig;
+      const s = doc.sector || 'Fiscal';
+      if (!sectorBreakdown[s]) sectorBreakdown[s] = { usedBytes: 0, filesCount: 0 };
+      sectorBreakdown[s].usedBytes += opt;
+      sectorBreakdown[s].filesCount += 1;
     }
 
     const effectiveUsedBytes = dbUsedBytes;

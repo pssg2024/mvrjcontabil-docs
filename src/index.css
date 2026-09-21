@@ -90,13 +90,16 @@
 /* Typography elements */
 .dark :not(.danfe-sheet):not(.danfe-sheet *) .text-slate-800,
 .dark :not(.danfe-sheet):not(.danfe-sheet *) .text-slate-700,
+.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-slate-600,
 .dark :not(.danfe-sheet):not(.danfe-sheet *) .text-slate-900,
 .dark :not(.danfe-sheet):not(.danfe-sheet *) .text-gray-900,
 .dark :not(.danfe-sheet):not(.danfe-sheet *) .text-gray-800,
 .dark :not(.danfe-sheet):not(.danfe-sheet *) .text-gray-700,
+.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-gray-600,
 .dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-900,
 .dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-800,
-.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-700 {
+.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-700,
+.dark :not(.danfe-sheet):not(.danfe-sheet *) .text-neutral-600 {
   color: #f1f5f9 !important; /* slate-100 */
 }
 
