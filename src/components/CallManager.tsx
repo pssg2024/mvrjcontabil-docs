@@ -70,8 +70,37 @@ export const CallManager: React.FC<CallManagerProps> = ({
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const channelRef = useRef<any>(null);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const queuedCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const currentPartnerIdRef = useRef<string | null>(null);
+
+  // Send message across Supabase Realtime and local BroadcastChannel for total resilience
+  const sendSignal = useCallback((event: string, payload: any) => {
+    // 1. Supabase Realtime broadcast
+    if (channelRef.current) {
+      try {
+        channelRef.current.send({
+          type: 'broadcast',
+          event,
+          payload,
+        });
+      } catch (err) {
+        console.warn('Erro ao enviar sinal via Supabase:', err);
+      }
+    }
+
+    // 2. Browser BroadcastChannel
+    if (broadcastChannelRef.current) {
+      try {
+        broadcastChannelRef.current.postMessage({
+          event,
+          payload,
+        });
+      } catch (err) {
+        console.warn('Erro ao enviar sinal via BroadcastChannel:', err);
+      }
+    }
+  }, []);
 
   // Stop local microphone tracks
   const stopLocalTracks = useCallback(() => {
@@ -126,151 +155,305 @@ export const CallManager: React.FC<CallManagerProps> = ({
     }
   }, []);
 
-  // Supabase Realtime Signaling & Presence Channel
+  // SIGNAL HANDLERS
+  const handleIncomingInvite = useCallback(async (payload: any) => {
+    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+
+    // Se já estiver em chamada, notifica ocupado
+    if (activeCall || incomingCall || outgoingCall) {
+      sendSignal('call-busy', {
+        fromId: currentUser.id,
+        toId: payload.from.id,
+      });
+      return;
+    }
+
+    currentPartnerIdRef.current = payload.from.id;
+    setIncomingCall({
+      from: payload.from,
+      sdpOffer: payload.sdpOffer,
+    });
+  }, [currentUser, activeCall, incomingCall, outgoingCall, sendSignal]);
+
+  const handleIncomingAccept = useCallback(async (payload: any) => {
+    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+
+    stopCallSounds();
+    playConnectedTone();
+
+    const pc = peerConnectionRef.current;
+    if (pc && payload.sdpAnswer) {
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdpAnswer));
+
+        while (queuedCandidatesRef.current.length > 0) {
+          const cand = queuedCandidatesRef.current.shift();
+          if (cand) {
+            await pc.addIceCandidate(new RTCIceCandidate(cand));
+          }
+        }
+
+        setOutgoingCall(null);
+        setActiveCall(prev => ({
+          remoteUser: payload.from,
+          startTime: Date.now(),
+          remoteStream: prev?.remoteStream || null,
+        }));
+      } catch (e) {
+        console.error('Erro ao aplicar SDP answer:', e);
+      }
+    }
+  }, [currentUser]);
+
+  const handleIncomingReject = useCallback((payload: any) => {
+    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+    playEndCallTone();
+    alert(`${payload.from?.full_name || 'O usuário'} recusou a chamada.`);
+    cleanupCall();
+  }, [currentUser, cleanupCall]);
+
+  const handleIncomingBusy = useCallback((payload: any) => {
+    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+    playEndCallTone();
+    alert('O colaborador está em outra chamada no momento.');
+    cleanupCall();
+  }, [currentUser, cleanupCall]);
+
+  const handleIncomingHangup = useCallback((payload: any) => {
+    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+    playEndCallTone();
+    cleanupCall();
+  }, [currentUser, cleanupCall]);
+
+  const handleIncomingIceCandidate = useCallback(async (payload: any) => {
+    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+
+    const pc = peerConnectionRef.current;
+    if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+      } catch (e) {
+        console.warn('Falha ao adicionar candidato ICE:', e);
+      }
+    } else {
+      queuedCandidatesRef.current.push(payload.candidate);
+    }
+  }, [currentUser]);
+
+  // Supabase Realtime & BroadcastChannel Setup
   useEffect(() => {
     if (!currentUser) return;
 
-    const supabase = getSupabase();
-    if (!supabase) return;
+    // Inicializa BroadcastChannel local para suporte instantâneo entre abas/janelas
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('mvrj_internal_calls_channel');
+      broadcastChannelRef.current = bc;
 
-    const channel = supabase.channel('internal-calls', {
-      config: {
-        presence: {
-          key: currentUser.id,
-        },
-      },
-    });
+      bc.onmessage = (e) => {
+        const { event, payload } = e.data || {};
+        if (!event || !payload) return;
 
-    channelRef.current = channel;
-
-    // Presence Handlers
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const onlineIds = new Set<string>();
-        Object.keys(state).forEach(key => {
-          onlineIds.add(key);
-        });
-        setOnlineUserIds(onlineIds);
-      })
-      .on('presence', { event: 'join' }, ({ key }) => {
-        setOnlineUserIds(prev => new Set(prev).add(key));
-      })
-      .on('presence', { event: 'leave' }, ({ key }) => {
-        setOnlineUserIds(prev => {
-          const next = new Set(prev);
-          next.delete(key);
-          return next;
-        });
-      });
-
-    // Broadcast Signaling Events
-    channel
-      .on('broadcast', { event: 'call-invite' }, async ({ payload }) => {
-        if (!payload || payload.toId !== currentUser.id) return;
-
-        // If already in a call, notify caller that user is busy
-        if (activeCall || incomingCall || outgoingCall) {
-          channel.send({
-            type: 'broadcast',
-            event: 'call-busy',
-            payload: {
-              fromId: currentUser.id,
-              toId: payload.from.id,
-            },
-          });
-          return;
-        }
-
-        currentPartnerIdRef.current = payload.from.id;
-        setIncomingCall({
-          from: payload.from,
-          sdpOffer: payload.sdpOffer,
-        });
-      })
-      .on('broadcast', { event: 'call-accept' }, async ({ payload }) => {
-        if (!payload || payload.toId !== currentUser.id) return;
-
-        stopCallSounds();
-        playConnectedTone();
-
-        const pc = peerConnectionRef.current;
-        if (pc && payload.sdpAnswer) {
-          try {
-            await pc.setRemoteDescription(new RTCSessionDescription(payload.sdpAnswer));
-
-            // Process queued candidates
-            while (queuedCandidatesRef.current.length > 0) {
-              const cand = queuedCandidatesRef.current.shift();
-              if (cand) {
-                await pc.addIceCandidate(new RTCIceCandidate(cand));
-              }
-            }
-
-            setOutgoingCall(null);
-            setActiveCall(prev => ({
-              remoteUser: payload.from,
-              startTime: Date.now(),
-              remoteStream: prev?.remoteStream || null,
-            }));
-          } catch (e) {
-            console.error('Erro ao aplicar SDP answer:', e);
+        if (event === 'presence-ping') {
+          // Responder com nosso ping
+          if (bc && currentUser) {
+            bc.postMessage({
+              event: 'presence-pong',
+              payload: {
+                userId: currentUser.id,
+                id: currentUser.id,
+                nome: currentUser.full_name,
+                full_name: currentUser.full_name,
+                email: currentUser.email,
+                setor: currentUser.sector,
+                onlineAt: new Date().toISOString(),
+              },
+            });
           }
-        }
-      })
-      .on('broadcast', { event: 'call-reject' }, ({ payload }) => {
-        if (!payload || payload.toId !== currentUser.id) return;
-        playEndCallTone();
-        alert(`${payload.from?.full_name || 'O usuário'} recusou a chamada.`);
-        cleanupCall();
-      })
-      .on('broadcast', { event: 'call-busy' }, ({ payload }) => {
-        if (!payload || payload.toId !== currentUser.id) return;
-        playEndCallTone();
-        alert('O colaborador está em outra chamada no momento.');
-        cleanupCall();
-      })
-      .on('broadcast', { event: 'call-hangup' }, ({ payload }) => {
-        if (!payload || payload.toId !== currentUser.id) return;
-        playEndCallTone();
-        cleanupCall();
-      })
-      .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
-        if (!payload || payload.toId !== currentUser.id) return;
-
-        const pc = peerConnectionRef.current;
-        if (pc && pc.remoteDescription && pc.remoteDescription.type) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-          } catch (e) {
-            console.warn('Falha ao adicionar candidato ICE:', e);
+          if (payload.userId || payload.id) {
+            setOnlineUserIds(prev => new Set(prev).add(payload.userId || payload.id));
           }
-        } else {
-          queuedCandidatesRef.current.push(payload.candidate);
+        } else if (event === 'presence-pong') {
+          if (payload.userId || payload.id) {
+            setOnlineUserIds(prev => new Set(prev).add(payload.userId || payload.id));
+          }
+        } else if (event === 'call-invite') {
+          handleIncomingInvite(payload);
+        } else if (event === 'call-accept') {
+          handleIncomingAccept(payload);
+        } else if (event === 'call-reject') {
+          handleIncomingReject(payload);
+        } else if (event === 'call-busy') {
+          handleIncomingBusy(payload);
+        } else if (event === 'call-hangup') {
+          handleIncomingHangup(payload);
+        } else if (event === 'ice-candidate') {
+          handleIncomingIceCandidate(payload);
         }
-      });
+      };
 
-    // Subscribe and Track Presence
-    channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await channel.track({
+      // Dispara ping de presença
+      bc.postMessage({
+        event: 'presence-ping',
+        payload: {
+          userId: currentUser.id,
           id: currentUser.id,
-          full_name: currentUser.full_name,
-          email: currentUser.email,
-          sector: currentUser.sector,
-          role: currentUser.role,
-          avatar_url: currentUser.avatar_url,
-          online_at: new Date().toISOString(),
+        },
+      });
+    } catch (err) {
+      console.warn('BroadcastChannel não suportado no navegador:', err);
+    }
+
+    // Inicializa canal Supabase Realtime
+    const supabase = getSupabase();
+    let supabaseChannel: any = null;
+
+    if (supabase) {
+      const channel = supabase.channel('internal-calls', {
+        config: {
+          presence: {
+            key: currentUser.id,
+          },
+        },
+      });
+
+      channelRef.current = channel;
+      supabaseChannel = channel;
+
+      // Sincronização robusta de presença
+      const syncPresenceState = () => {
+        try {
+          const state = channel.presenceState();
+          const onlineIds = new Set<string>();
+
+          // 1. Mapeia chaves de presença
+          Object.keys(state).forEach(key => {
+            if (key && key !== 'undefined' && key !== 'null') {
+              onlineIds.add(key);
+            }
+          });
+
+          // 2. Mapeia todos os userIds ativos nos objetos de presença
+          Object.values(state).forEach((presences: any) => {
+            if (Array.isArray(presences)) {
+              presences.forEach((p: any) => {
+                const uid = p.userId || p.id || p.user_id;
+                if (uid) {
+                  onlineIds.add(uid);
+                }
+              });
+            }
+          });
+
+          // Garante que o próprio usuário autenticado esteja online
+          if (currentUser?.id) {
+            onlineIds.add(currentUser.id);
+          }
+
+          setOnlineUserIds(onlineIds);
+        } catch (err) {
+          console.error('Erro ao sincronizar estado de presença:', err);
+        }
+      };
+
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          syncPresenceState();
+        })
+        .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+          if (key) setOnlineUserIds(prev => new Set(prev).add(key));
+          if (Array.isArray(newPresences)) {
+            newPresences.forEach((p: any) => {
+              const uid = p.userId || p.id || p.user_id;
+              if (uid) setOnlineUserIds(prev => new Set(prev).add(uid));
+            });
+          }
+        })
+        .on('presence', { event: 'leave' }, ({ key }) => {
+          syncPresenceState();
+        })
+        .on('broadcast', { event: 'call-invite' }, ({ payload }) => {
+          handleIncomingInvite(payload);
+        })
+        .on('broadcast', { event: 'call-accept' }, ({ payload }) => {
+          handleIncomingAccept(payload);
+        })
+        .on('broadcast', { event: 'call-reject' }, ({ payload }) => {
+          handleIncomingReject(payload);
+        })
+        .on('broadcast', { event: 'call-busy' }, ({ payload }) => {
+          handleIncomingBusy(payload);
+        })
+        .on('broadcast', { event: 'call-hangup' }, ({ payload }) => {
+          handleIncomingHangup(payload);
+        })
+        .on('broadcast', { event: 'ice-candidate' }, ({ payload }) => {
+          handleIncomingIceCandidate(payload);
         });
+
+      // Subscrição e registo (apenas após confirmação 'SUBSCRIBED')
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          try {
+            await channel.track({
+              userId: currentUser.id,
+              id: currentUser.id,
+              user_id: currentUser.id,
+              nome: currentUser.full_name,
+              full_name: currentUser.full_name,
+              email: currentUser.email,
+              setor: currentUser.sector,
+              sector: currentUser.sector,
+              role: currentUser.role,
+              avatar_url: currentUser.avatar_url,
+              onlineAt: new Date().toISOString(),
+            });
+            syncPresenceState();
+          } catch (trackErr) {
+            console.error('Erro ao registar presença no Supabase:', trackErr);
+          }
+        }
+      });
+    } else {
+      // Se o Supabase não estiver configurado, garante pelo menos o próprio usuário online
+      setOnlineUserIds(prev => new Set(prev).add(currentUser.id));
+    }
+
+    // Intervalo de batimento cardíaco (Heartbeat) para manter presença viva
+    const heartbeatInterval = setInterval(() => {
+      if (currentUser) {
+        setOnlineUserIds(prev => new Set(prev).add(currentUser.id));
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.postMessage({
+            event: 'presence-ping',
+            payload: { userId: currentUser.id, id: currentUser.id },
+          });
+        }
       }
-    });
+    }, 15000);
 
     return () => {
-      channel.unsubscribe();
-      supabase.removeChannel(channel);
+      clearInterval(heartbeatInterval);
+      if (bc) {
+        bc.close();
+        broadcastChannelRef.current = null;
+      }
+      if (supabase && supabaseChannel) {
+        supabaseChannel.unsubscribe();
+        supabase.removeChannel(supabaseChannel);
+      }
       cleanupCall();
     };
-  }, [currentUser, cleanupCall, activeCall, incomingCall, outgoingCall]);
+  }, [
+    currentUser, 
+    cleanupCall, 
+    handleIncomingInvite, 
+    handleIncomingAccept, 
+    handleIncomingReject, 
+    handleIncomingBusy, 
+    handleIncomingHangup, 
+    handleIncomingIceCandidate
+  ]);
 
   // INITIATE CALL (Outbound)
   const startCall = useCallback(async (targetUser: UserProfile) => {
@@ -296,15 +479,11 @@ export const CallManager: React.FC<CallManagerProps> = ({
 
     // Handle ICE Candidates
     pc.onicecandidate = (event) => {
-      if (event.candidate && channelRef.current) {
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'ice-candidate',
-          payload: {
-            fromId: currentUser.id,
-            toId: targetUser.id,
-            candidate: event.candidate.toJSON(),
-          },
+      if (event.candidate) {
+        sendSignal('ice-candidate', {
+          fromId: currentUser.id,
+          toId: targetUser.id,
+          candidate: event.candidate.toJSON(),
         });
       }
     };
@@ -327,22 +506,16 @@ export const CallManager: React.FC<CallManagerProps> = ({
       });
       await pc.setLocalDescription(offer);
 
-      if (channelRef.current) {
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'call-invite',
-          payload: {
-            from: currentUser,
-            toId: targetUser.id,
-            sdpOffer: offer,
-          },
-        });
-      }
+      sendSignal('call-invite', {
+        from: currentUser,
+        toId: targetUser.id,
+        sdpOffer: offer,
+      });
     } catch (e) {
       console.error('Erro ao iniciar oferta WebRTC:', e);
       cleanupCall();
     }
-  }, [currentUser, activeCall, incomingCall, outgoingCall, getLocalAudioStream, cleanupCall]);
+  }, [currentUser, activeCall, incomingCall, outgoingCall, getLocalAudioStream, sendSignal, cleanupCall]);
 
   // ACCEPT CALL (Inbound)
   const handleAcceptCall = useCallback(async () => {
@@ -366,15 +539,11 @@ export const CallManager: React.FC<CallManagerProps> = ({
     });
 
     pc.onicecandidate = (event) => {
-      if (event.candidate && channelRef.current) {
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'ice-candidate',
-          payload: {
-            fromId: currentUser.id,
-            toId: caller.id,
-            candidate: event.candidate.toJSON(),
-          },
+      if (event.candidate) {
+        sendSignal('ice-candidate', {
+          fromId: currentUser.id,
+          toId: caller.id,
+          candidate: event.candidate.toJSON(),
         });
       }
     };
@@ -403,17 +572,11 @@ export const CallManager: React.FC<CallManagerProps> = ({
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
-      if (channelRef.current) {
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'call-accept',
-          payload: {
-            from: currentUser,
-            toId: caller.id,
-            sdpAnswer: answer,
-          },
-        });
-      }
+      sendSignal('call-accept', {
+        from: currentUser,
+        toId: caller.id,
+        sdpAnswer: answer,
+      });
 
       setIncomingCall(null);
       setActiveCall({
@@ -427,54 +590,42 @@ export const CallManager: React.FC<CallManagerProps> = ({
       console.error('Erro ao aceitar chamada:', e);
       cleanupCall();
     }
-  }, [currentUser, incomingCall, getLocalAudioStream, cleanupCall]);
+  }, [currentUser, incomingCall, getLocalAudioStream, sendSignal, cleanupCall]);
 
   // REJECT CALL
   const handleRejectCall = useCallback(() => {
-    if (incomingCall && channelRef.current && currentUser) {
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'call-reject',
-        payload: {
-          from: currentUser,
-          toId: incomingCall.from.id,
-        },
+    if (incomingCall && currentUser) {
+      sendSignal('call-reject', {
+        from: currentUser,
+        toId: incomingCall.from.id,
       });
     }
     cleanupCall();
-  }, [incomingCall, currentUser, cleanupCall]);
+  }, [incomingCall, currentUser, sendSignal, cleanupCall]);
 
   // CANCEL OUTGOING CALL
   const handleCancelOutgoingCall = useCallback(() => {
-    if (outgoingCall && channelRef.current && currentUser) {
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'call-hangup',
-        payload: {
-          fromId: currentUser.id,
-          toId: outgoingCall.targetUser.id,
-        },
+    if (outgoingCall && currentUser) {
+      sendSignal('call-hangup', {
+        fromId: currentUser.id,
+        toId: outgoingCall.targetUser.id,
       });
     }
     cleanupCall();
-  }, [outgoingCall, currentUser, cleanupCall]);
+  }, [outgoingCall, currentUser, sendSignal, cleanupCall]);
 
   // HANGUP ACTIVE CALL
   const handleHangupCall = useCallback(() => {
     const partnerId = activeCall?.remoteUser?.id || currentPartnerIdRef.current;
-    if (partnerId && channelRef.current && currentUser) {
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'call-hangup',
-        payload: {
-          fromId: currentUser.id,
-          toId: partnerId,
-        },
+    if (partnerId && currentUser) {
+      sendSignal('call-hangup', {
+        fromId: currentUser.id,
+        toId: partnerId,
       });
     }
     playEndCallTone();
     cleanupCall();
-  }, [activeCall, currentUser, cleanupCall]);
+  }, [activeCall, currentUser, sendSignal, cleanupCall]);
 
   const toggleIntercom = useCallback(() => {
     setIsIntercomOpen(prev => !prev);
