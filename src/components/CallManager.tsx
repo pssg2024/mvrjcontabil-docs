@@ -9,22 +9,30 @@ import { playEndCallTone, playConnectedTone, stopCallSounds } from '../lib/call-
 
 export interface CallContextType {
   onlineUserIds: Set<string>;
+  onlineEmails: Set<string>;
+  isUserOnline: (user: UserProfile) => boolean;
   startCall: (targetUser: UserProfile) => Promise<void>;
   activeCallUserId: string | null;
   isIntercomOpen: boolean;
   setIsIntercomOpen: (open: boolean) => void;
   toggleIntercom: () => void;
   onlineCount: number;
+  testMode: boolean;
+  setTestMode: (enabled: boolean | ((prev: boolean) => boolean)) => void;
 }
 
 const CallContext = createContext<CallContextType>({
   onlineUserIds: new Set(),
+  onlineEmails: new Set(),
+  isUserOnline: () => false,
   startCall: async () => {},
   activeCallUserId: null,
   isIntercomOpen: false,
   setIsIntercomOpen: () => {},
   toggleIntercom: () => {},
   onlineCount: 0,
+  testMode: false,
+  setTestMode: () => {},
 });
 
 export const useCall = () => useContext(CallContext);
@@ -48,7 +56,41 @@ export const CallManager: React.FC<CallManagerProps> = ({
   children,
 }) => {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const [onlineEmails, setOnlineEmails] = useState<Set<string>>(new Set());
   const [isIntercomOpen, setIsIntercomOpen] = useState(false);
+  const [testMode, setTestMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('mvrj_intercom_test_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleSetTestMode = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
+    setTestMode(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      try {
+        localStorage.setItem('mvrj_intercom_test_mode', String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  // Helper to determine if a given user is online
+  const isUserOnline = useCallback((user: UserProfile): boolean => {
+    if (!user) return false;
+    if (testMode) return true;
+
+    const uid = String(user.id || '').trim().toLowerCase();
+    const uEmail = String(user.email || '').trim().toLowerCase();
+    const authId = String((user as any).auth_id || (user as any).user_id || '').trim().toLowerCase();
+
+    if (uid && onlineUserIds.has(uid)) return true;
+    if (uEmail && onlineEmails.has(uEmail)) return true;
+    if (authId && onlineUserIds.has(authId)) return true;
+
+    return false;
+  }, [onlineUserIds, onlineEmails, testMode]);
 
   // Call states
   const [incomingCall, setIncomingCall] = useState<{
@@ -260,22 +302,31 @@ export const CallManager: React.FC<CallManagerProps> = ({
             bc.postMessage({
               event: 'presence-pong',
               payload: {
-                userId: currentUser.id,
-                id: currentUser.id,
+                userId: String(currentUser.id),
+                id: String(currentUser.id),
+                user_id: String(currentUser.id),
                 nome: currentUser.full_name,
                 full_name: currentUser.full_name,
-                email: currentUser.email,
+                email: String(currentUser.email).toLowerCase(),
                 setor: currentUser.sector,
                 onlineAt: new Date().toISOString(),
               },
             });
           }
-          if (payload.userId || payload.id) {
-            setOnlineUserIds(prev => new Set(prev).add(payload.userId || payload.id));
+          const uid = payload.userId || payload.id || payload.user_id;
+          if (uid) {
+            setOnlineUserIds(prev => new Set(prev).add(String(uid).trim().toLowerCase()));
+          }
+          if (payload.email) {
+            setOnlineEmails(prev => new Set(prev).add(String(payload.email).trim().toLowerCase()));
           }
         } else if (event === 'presence-pong') {
-          if (payload.userId || payload.id) {
-            setOnlineUserIds(prev => new Set(prev).add(payload.userId || payload.id));
+          const uid = payload.userId || payload.id || payload.user_id;
+          if (uid) {
+            setOnlineUserIds(prev => new Set(prev).add(String(uid).trim().toLowerCase()));
+          }
+          if (payload.email) {
+            setOnlineEmails(prev => new Set(prev).add(String(payload.email).trim().toLowerCase()));
           }
         } else if (event === 'call-invite') {
           handleIncomingInvite(payload);
@@ -296,8 +347,9 @@ export const CallManager: React.FC<CallManagerProps> = ({
       bc.postMessage({
         event: 'presence-ping',
         payload: {
-          userId: currentUser.id,
-          id: currentUser.id,
+          userId: String(currentUser.id),
+          id: String(currentUser.id),
+          email: String(currentUser.email).toLowerCase(),
         },
       });
     } catch (err) {
@@ -311,10 +363,9 @@ export const CallManager: React.FC<CallManagerProps> = ({
     if (supabase) {
       const channel = supabase.channel('internal-calls', {
         config: {
-          presence: {
-            key: currentUser.id,
-          },
-        },
+          broadcast: { self: false },
+          presence: { key: currentUser?.id || 'user' }
+        }
       });
 
       channelRef.current = channel;
@@ -324,22 +375,30 @@ export const CallManager: React.FC<CallManagerProps> = ({
       const syncPresenceState = () => {
         try {
           const state = channel.presenceState();
+          console.log('[Presence State]:', state);
+          console.log('[Current User ID]:', currentUser?.id);
+
           const onlineIds = new Set<string>();
+          const onlineEm = new Set<string>();
 
           // 1. Mapeia chaves de presença
           Object.keys(state).forEach(key => {
             if (key && key !== 'undefined' && key !== 'null') {
-              onlineIds.add(key);
+              onlineIds.add(String(key).trim().toLowerCase());
             }
           });
 
-          // 2. Mapeia todos os userIds ativos nos objetos de presença
+          // 2. Mapeia todos os userIds e emails ativos nos objetos de presença
           Object.values(state).forEach((presences: any) => {
             if (Array.isArray(presences)) {
               presences.forEach((p: any) => {
-                const uid = p.userId || p.id || p.user_id;
+                const uid = p.userId || p.id || p.user_id || p.auth_id;
                 if (uid) {
-                  onlineIds.add(uid);
+                  onlineIds.add(String(uid).trim().toLowerCase());
+                }
+                const email = p.email || p.user_email;
+                if (email) {
+                  onlineEm.add(String(email).trim().toLowerCase());
                 }
               });
             }
@@ -347,10 +406,14 @@ export const CallManager: React.FC<CallManagerProps> = ({
 
           // Garante que o próprio usuário autenticado esteja online
           if (currentUser?.id) {
-            onlineIds.add(currentUser.id);
+            onlineIds.add(String(currentUser.id).trim().toLowerCase());
+          }
+          if (currentUser?.email) {
+            onlineEm.add(String(currentUser.email).trim().toLowerCase());
           }
 
           setOnlineUserIds(onlineIds);
+          setOnlineEmails(onlineEm);
         } catch (err) {
           console.error('Erro ao sincronizar estado de presença:', err);
         }
@@ -361,15 +424,16 @@ export const CallManager: React.FC<CallManagerProps> = ({
           syncPresenceState();
         })
         .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-          if (key) setOnlineUserIds(prev => new Set(prev).add(key));
+          if (key) setOnlineUserIds(prev => new Set(prev).add(String(key).trim().toLowerCase()));
           if (Array.isArray(newPresences)) {
             newPresences.forEach((p: any) => {
-              const uid = p.userId || p.id || p.user_id;
-              if (uid) setOnlineUserIds(prev => new Set(prev).add(uid));
+              const uid = p.userId || p.id || p.user_id || p.auth_id;
+              if (uid) setOnlineUserIds(prev => new Set(prev).add(String(uid).trim().toLowerCase()));
+              if (p.email) setOnlineEmails(prev => new Set(prev).add(String(p.email).trim().toLowerCase()));
             });
           }
         })
-        .on('presence', { event: 'leave' }, ({ key }) => {
+        .on('presence', { event: 'leave' }, () => {
           syncPresenceState();
         })
         .on('broadcast', { event: 'call-invite' }, ({ payload }) => {
@@ -391,42 +455,56 @@ export const CallManager: React.FC<CallManagerProps> = ({
           handleIncomingIceCandidate(payload);
         });
 
-      // Subscrição e registo (apenas após confirmação 'SUBSCRIBED')
+      // Subscrição e registo
       channel.subscribe(async (status) => {
+        console.log('[Canal Status]:', status);
         if (status === 'SUBSCRIBED') {
           try {
-            await channel.track({
-              userId: currentUser.id,
-              id: currentUser.id,
-              user_id: currentUser.id,
+            const presencePayload = {
+              userId: String(currentUser.id),
+              id: String(currentUser.id),
+              user_id: String(currentUser.id),
+              auth_id: String(currentUser.id),
               nome: currentUser.full_name,
               full_name: currentUser.full_name,
-              email: currentUser.email,
+              email: String(currentUser.email).trim().toLowerCase(),
               setor: currentUser.sector,
               sector: currentUser.sector,
               role: currentUser.role,
               avatar_url: currentUser.avatar_url,
               onlineAt: new Date().toISOString(),
-            });
+            };
+            await channel.track(presencePayload);
+            console.log('[Presence Track Success]:', presencePayload);
             syncPresenceState();
           } catch (trackErr) {
-            console.error('Erro ao registar presença no Supabase:', trackErr);
+            console.error('[Presence Track Error]:', trackErr);
           }
         }
       });
     } else {
       // Se o Supabase não estiver configurado, garante pelo menos o próprio usuário online
-      setOnlineUserIds(prev => new Set(prev).add(currentUser.id));
+      setOnlineUserIds(prev => new Set(prev).add(String(currentUser.id).trim().toLowerCase()));
+      if (currentUser.email) {
+        setOnlineEmails(prev => new Set(prev).add(String(currentUser.email).trim().toLowerCase()));
+      }
     }
 
     // Intervalo de batimento cardíaco (Heartbeat) para manter presença viva
     const heartbeatInterval = setInterval(() => {
       if (currentUser) {
-        setOnlineUserIds(prev => new Set(prev).add(currentUser.id));
+        setOnlineUserIds(prev => new Set(prev).add(String(currentUser.id).trim().toLowerCase()));
+        if (currentUser.email) {
+          setOnlineEmails(prev => new Set(prev).add(String(currentUser.email).trim().toLowerCase()));
+        }
         if (broadcastChannelRef.current) {
           broadcastChannelRef.current.postMessage({
             event: 'presence-ping',
-            payload: { userId: currentUser.id, id: currentUser.id },
+            payload: { 
+              userId: String(currentUser.id), 
+              id: String(currentUser.id),
+              email: String(currentUser.email).toLowerCase() 
+            },
           });
         }
       }
@@ -633,18 +711,25 @@ export const CallManager: React.FC<CallManagerProps> = ({
 
   const activeCallUserId = activeCall?.remoteUser?.id || outgoingCall?.targetUser?.id || null;
 
-  const otherOnlineCount = profiles.filter(p => p.id !== currentUser?.id && onlineUserIds.has(p.id)).length;
+  const otherOnlineCount = profiles.filter(p => {
+    if (String(p.id).toLowerCase() === String(currentUser?.id || '').toLowerCase()) return false;
+    return isUserOnline(p);
+  }).length;
 
   return (
     <CallContext.Provider
       value={{
         onlineUserIds,
+        onlineEmails,
+        isUserOnline,
         startCall,
         activeCallUserId,
         isIntercomOpen,
         setIsIntercomOpen,
         toggleIntercom,
         onlineCount: otherOnlineCount,
+        testMode,
+        setTestMode: handleSetTestMode,
       }}
     >
       {children}
@@ -685,6 +770,9 @@ export const CallManager: React.FC<CallManagerProps> = ({
           currentUser={currentUser}
           profiles={profiles}
           onlineUserIds={onlineUserIds}
+          isUserOnline={isUserOnline}
+          testMode={testMode}
+          onToggleTestMode={() => handleSetTestMode(prev => !prev)}
           onStartCall={(target) => {
             setIsIntercomOpen(false);
             startCall(target);

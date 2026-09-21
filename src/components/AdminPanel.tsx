@@ -85,7 +85,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [auditFilter, setAuditFilter] = useState<string>('ALL');
 
-  const { startCall, onlineUserIds, activeCallUserId } = useCall();
+  const { startCall, onlineUserIds, activeCallUserId, isUserOnline, testMode } = useCall();
+
+  const checkOnline = (p: UserProfile) => {
+    if (testMode) return true;
+    if (isUserOnline) return isUserOnline(p);
+    const uid = String(p.id || '').trim().toLowerCase();
+    const uEmail = String(p.email || '').trim().toLowerCase();
+    return onlineUserIds.has(uid) || onlineUserIds.has(uEmail);
+  };
 
   const pendingProfiles = profiles.filter(p => p.status === 'pending');
   const activeProfiles = profiles.filter(p => p.status !== 'pending');
@@ -413,7 +421,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <tr className="bg-gray-100/70 border-b border-gray-200 text-gray-700">
                   <th className="p-3 font-bold sticky left-0 bg-gray-100 min-w-[220px] z-10">Pasta / Setor</th>
                   {activeProfiles.map(p => {
-                    const isOnline = onlineUserIds.has(p.id);
+                    const isOnline = checkOnline(p);
                     const isInCall = activeCallUserId === p.id;
 
                     return (
@@ -424,17 +432,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <button
                               type="button"
                               id={`matrix-call-user-${p.id}`}
-                              disabled={!isOnline || isInCall}
+                              disabled={isInCall}
                               onClick={() => startCall(p)}
-                              className={`p-1 rounded-md transition-colors ${
+                              className={`p-1 rounded-md transition-colors cursor-pointer ${
                                 isOnline
-                                  ? 'text-emerald-600 hover:bg-emerald-100 cursor-pointer'
-                                  : 'text-gray-300 cursor-not-allowed opacity-50'
+                                  ? 'text-emerald-600 hover:bg-emerald-100'
+                                  : 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50'
                               }`}
                               title={
                                 isOnline
                                   ? `Iniciar Chamada Interna com ${p.full_name}`
-                                  : 'Usuário ausente'
+                                  : `Iniciar chamada de teste com ${p.full_name}`
                               }
                             >
                               <Phone className="w-3.5 h-3.5" />
@@ -442,7 +450,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           )}
                         </div>
                         <div className="text-[10px] text-gray-500 font-normal flex items-center justify-center gap-1">
-                          <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />
                           <span>{p.sector} • {p.role}</span>
                         </div>
                       </th>
@@ -560,21 +568,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <button
                       type="button"
                       id={`call-user-${profile.id}`}
-                      disabled={!onlineUserIds.has(profile.id) || activeCallUserId === profile.id}
+                      disabled={activeCallUserId === profile.id}
                       onClick={() => startCall(profile)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all border ${
-                        onlineUserIds.has(profile.id)
-                          ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border-emerald-300 hover:border-emerald-600 shadow-2xs cursor-pointer active:scale-95'
-                          : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
-                      }`}
-                      title={
-                        onlineUserIds.has(profile.id)
-                          ? `Iniciar Chamada Interna com ${profile.full_name}`
-                          : 'Usuário ausente / offline no momento'
-                      }
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={`Iniciar Chamada Interna com ${profile.full_name}`}
                     >
                       <Phone className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">{onlineUserIds.has(profile.id) ? 'Ligar' : 'Ausente'}</span>
+                      <span className="hidden sm:inline">Ligar</span>
                     </button>
                   )}
 
