@@ -613,7 +613,7 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                 </div>
 
                 {/* DANFE A4 Simulated Container */}
-                <div className="bg-white border border-neutral-300 shadow-xl rounded-md p-4 space-y-3 text-[7px] text-neutral-800 leading-tight select-none font-mono">
+                <div className="danfe-sheet bg-white border border-neutral-300 shadow-xl rounded-md p-4 space-y-3 text-[7px] text-neutral-800 leading-tight select-none font-mono">
                   {/* Canhoto Recibo */}
                   <div className="grid grid-cols-12 border border-neutral-400 divide-x divide-neutral-400">
                     <div className="col-span-9 p-1 flex flex-col justify-between h-9">

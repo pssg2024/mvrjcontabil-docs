@@ -172,6 +172,24 @@ export default function App() {
   const [backgroundModalTab, setBackgroundModalTab] = useState<'site-background' | 'auth-header'>('site-background');
   const [viewingFile, setViewingFile] = useState<DocumentFile | null>(null);
 
+  // Dark Mode / Light Mode Theme Preference
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('ged-theme-mode');
+    if (saved === 'dark' || saved === 'light') {
+      return saved;
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ged-theme-mode', themeMode);
+    if (themeMode === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [themeMode]);
+
   // CNPJ & Company Consultation Modal State
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [isCompanyManagerOpen, setIsCompanyManagerOpen] = useState(false);
@@ -1141,7 +1159,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-gray-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white relative">
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white relative">
       {/* Dynamic Background Image Layer */}
       {siteBackgroundConfig.enabled && siteBackgroundConfig.imageUrl && (
         <div
@@ -1200,6 +1218,8 @@ export default function App() {
           r2Status={r2Status}
           storageMetrics={storageMetrics}
           authHeaderConfig={authHeaderConfig}
+          themeMode={themeMode}
+          onToggleTheme={() => setThemeMode(prev => prev === 'dark' ? 'light' : 'dark')}
         />
 
 
