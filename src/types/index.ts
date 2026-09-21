@@ -208,3 +208,52 @@ export interface CompanyCnpjData {
     pais?: string | null;
   }>;
 }
+
+export type TaxRegime = 'Simples Nacional' | 'Lucro Presumido' | 'Lucro Real';
+
+export interface Company {
+  id: string;
+  razao_social: string;
+  nome_fantasia?: string;
+  cnpj: string;
+  inscricao_estadual?: string;
+  regime_tributario: TaxRegime;
+  certificate_storage_key?: string;
+  certificate_password?: string;
+  certificate_filename?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceItem {
+  id: string;
+  description: string;
+  ncm: string;
+  quantity: number;
+  unit_value: number;
+  subtotal: number;
+  icms_rate: number;
+  icms_value: number;
+}
+
+export interface Invoice {
+  id: string;
+  company_id: string;
+  type: '0' | '1'; // '0' = Entrada, '1' = Saída
+  natureza_operacao: string;
+  cfop: string;
+  serie: string;
+  numero: string;
+  dest_razao_social: string;
+  dest_cnpj_cpf: string;
+  dest_inscricao_estadual?: string;
+  dest_endereco: string;
+  items: InvoiceItem[];
+  icms_base: number;
+  icms_total: number;
+  total_produtos: number;
+  total_nota: number;
+  pdf_storage_key?: string;
+  document_id?: string;
+  created_at: string;
+}

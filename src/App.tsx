@@ -12,6 +12,8 @@ import { LgpdTermsModal } from './components/LgpdTermsModal';
 import { BackgroundModal } from './components/BackgroundModal';
 import { PasswordConfirmModal } from './components/PasswordConfirmModal';
 import { CompanyConsultModal } from './components/CompanyConsultModal';
+import { CompanyManagerModal } from './components/CompanyManagerModal';
+import { InvoiceEmissionView } from './components/InvoiceEmissionView';
 import { UserManualModal } from './components/UserManualModal';
 import { ShieldCheck } from 'lucide-react';
 import { 
@@ -172,6 +174,8 @@ export default function App() {
 
   // CNPJ & Company Consultation Modal State
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const [isCompanyManagerOpen, setIsCompanyManagerOpen] = useState(false);
+  const [isInvoiceEmissionOpen, setIsInvoiceEmissionOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [driveFilterSearch, setDriveFilterSearch] = useState('');
@@ -1187,6 +1191,8 @@ export default function App() {
             setIsBackgroundModalOpen(true);
           }}
           onOpenCompanyModal={() => handleOpenCompanyModal()}
+          onOpenCompanyManager={() => setIsCompanyManagerOpen(true)}
+          onOpenInvoiceEmission={() => setIsInvoiceEmissionOpen(true)}
           onOpenManualModal={() => setIsManualModalOpen(true)}
           onSwitchUser={handleSwitchUser}
           onLogout={handleLogout}
@@ -1430,6 +1436,26 @@ export default function App() {
         existingFiles={files}
         existingFolders={folders}
         initialSearchQuery={companySearchQuery}
+      />
+
+      {/* Gestão de Empresas Clientes Modal */}
+      <CompanyManagerModal
+        isOpen={isCompanyManagerOpen}
+        onClose={() => setIsCompanyManagerOpen(false)}
+      />
+
+      {/* Emissão de Notas Fiscais View/Modal */}
+      <InvoiceEmissionView
+        isOpen={isInvoiceEmissionOpen}
+        onClose={() => setIsInvoiceEmissionOpen(false)}
+        folders={folders}
+        onInvoiceCreated={() => {
+          fetchFilesFromApi().then(apiFiles => {
+            if (apiFiles && Array.isArray(apiFiles)) {
+              setFiles(apiFiles);
+            }
+          }).catch(() => {});
+        }}
       />
 
       {/* Manual do Usuário e Guia Operacional Modal */}

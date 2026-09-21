@@ -20,7 +20,9 @@ import {
   Bell,
   Menu,
   X,
-  BookOpen
+  BookOpen,
+  Briefcase,
+  FileDigit
 } from 'lucide-react';
 import { UserProfile, UserRole, StorageMetrics, AuthHeaderConfig } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -36,6 +38,8 @@ interface NavbarProps {
   onOpenFirstAccessModal?: () => void;
   onOpenBackgroundModal?: () => void;
   onOpenCompanyModal?: () => void;
+  onOpenCompanyManager?: () => void;
+  onOpenInvoiceEmission?: () => void;
   onOpenManualModal?: () => void;
   onSwitchUser: (profile: UserProfile) => void;
   onLogout: () => void;
@@ -55,6 +59,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenFirstAccessModal,
   onOpenBackgroundModal,
   onOpenCompanyModal,
+  onOpenCompanyManager,
+  onOpenInvoiceEmission,
   onOpenManualModal,
   onSwitchUser,
   onLogout,
@@ -185,6 +191,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Building2 className="w-4 h-4 flex-shrink-0 text-slate-400 group-hover:text-[#1B357B]" />
                 <span className="hidden xl:inline">Consultar Empresa / CNPJ</span>
                 <span className="xl:hidden hidden lg:inline">CNPJ</span>
+              </button>
+            )}
+
+            {/* Gestão de Empresas Clientes */}
+            {onOpenCompanyManager && (
+              <button
+                id="navbar-company-manager-btn"
+                onClick={onOpenCompanyManager}
+                className="h-11 flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-[#1B357B] hover:bg-slate-100/80 transition-all duration-200 group cursor-pointer"
+                title="Cadastrar e Gerenciar Certificados e Empresas Clientes"
+              >
+                <Briefcase className="w-4 h-4 flex-shrink-0 text-slate-400 group-hover:text-[#1B357B]" />
+                <span className="hidden xl:inline">Gestão de Clientes</span>
+                <span className="xl:hidden hidden lg:inline">Clientes</span>
+              </button>
+            )}
+
+            {/* Emissão de Notas Fiscais */}
+            {onOpenInvoiceEmission && (
+              <button
+                id="navbar-invoice-emission-btn"
+                onClick={onOpenInvoiceEmission}
+                className="h-11 flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-[#1B357B] hover:bg-slate-100/80 transition-all duration-200 group cursor-pointer"
+                title="Emitir Nova Nota Fiscal e Gerar DANFE"
+              >
+                <FileDigit className="w-4 h-4 flex-shrink-0 text-slate-400 group-hover:text-[#1B357B]" />
+                <span className="hidden xl:inline">Emissão de Nota</span>
+                <span className="xl:hidden hidden lg:inline">Emissão</span>
               </button>
             )}
 
@@ -537,6 +571,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                   >
                     <Building2 className="w-5 h-5 text-[#C59B4B] shrink-0" />
                     <span>Consultar Empresa / CNPJ</span>
+                  </button>
+                )}
+
+                {/* Gestão de Empresas Clientes */}
+                {onOpenCompanyManager && (
+                  <button
+                    onClick={() => {
+                      onOpenCompanyManager();
+                      setShowMobileMenu(false);
+                    }}
+                    className="w-full h-12 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70 flex items-center gap-3 px-4 font-semibold text-sm transition-all cursor-pointer"
+                  >
+                    <Briefcase className="w-5 h-5 text-[#1B357B] shrink-0" />
+                    <span>Gestão de Clientes</span>
+                  </button>
+                )}
+
+                {/* Emissão de Notas Fiscais */}
+                {onOpenInvoiceEmission && (
+                  <button
+                    onClick={() => {
+                      onOpenInvoiceEmission();
+                      setShowMobileMenu(false);
+                    }}
+                    className="w-full h-12 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70 flex items-center gap-3 px-4 font-semibold text-sm transition-all cursor-pointer"
+                  >
+                    <FileDigit className="w-5 h-5 text-[#1B357B] shrink-0" />
+                    <span>Emissão de Nota</span>
                   </button>
                 )}
 

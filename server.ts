@@ -7,6 +7,7 @@ import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, List
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createClient } from '@supabase/supabase-js';
 import { createServer as createViteServer } from 'vite';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 const app = express();
 const PORT = 3000;
@@ -1775,6 +1776,263 @@ let deletedFilesLoaded = false;
 let persistedDeletedFolderIds: Set<string> = new Set();
 let deletedFoldersLoaded = false;
 
+// ==============================================================================
+// 12.6 COMPANIES & INVOICES PERSISTENCE (Supabase + Local Disk + Cloudflare R2)
+// ==============================================================================
+const COMPANIES_FILE = path.join(process.cwd(), 'storage', 'companies.json');
+const INVOICES_FILE = path.join(process.cwd(), 'storage', 'invoices.json');
+
+let persistedCompanies: any[] = [];
+let companiesLoaded = false;
+let persistedInvoices: any[] = [];
+let invoicesLoaded = false;
+
+function loadPersistedCompanies() {
+  if (companiesLoaded) return;
+  try {
+    if (fs.existsSync(COMPANIES_FILE)) {
+      const raw = fs.readFileSync(COMPANIES_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) {
+        persistedCompanies = data;
+        companiesLoaded = true;
+        console.log(`[Companies] ${persistedCompanies.length} empresas carregadas do disco com sucesso`);
+        return;
+      }
+    }
+    // Seed default company if empty
+    persistedCompanies = [
+      {
+        id: 'comp-1',
+        razao_social: 'MVRJ Serviços de Assessoria Contábil Ltda',
+        nome_fantasia: 'MVRJ Contábil',
+        cnpj: '12.345.678/0001-90',
+        inscricao_estadual: '123.456.789',
+        regime_tributario: 'Simples Nacional',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+    ];
+    companiesLoaded = true;
+    savePersistedCompanies();
+  } catch (e) {
+    console.warn('[Companies] Aviso ao ler empresas do disco:', e);
+  }
+}
+
+function savePersistedCompanies() {
+  try {
+    const dir = path.dirname(COMPANIES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(COMPANIES_FILE, JSON.stringify(persistedCompanies, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[Companies] Erro ao salvar empresas em disco:', e);
+  }
+}
+
+function loadPersistedInvoices() {
+  if (invoicesLoaded) return;
+  try {
+    if (fs.existsSync(INVOICES_FILE)) {
+      const raw = fs.readFileSync(INVOICES_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) {
+        persistedInvoices = data;
+        invoicesLoaded = true;
+        console.log(`[Invoices] ${persistedInvoices.length} notas carregadas do disco com sucesso`);
+        return;
+      }
+    }
+    invoicesLoaded = true;
+  } catch (e) {
+    console.warn('[Invoices] Aviso ao ler notas do disco:', e);
+  }
+}
+
+function savePersistedInvoices() {
+  try {
+    const dir = path.dirname(INVOICES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(INVOICES_FILE, JSON.stringify(persistedInvoices, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[Invoices] Erro ao salvar notas em disco:', e);
+  }
+}
+
+// Helper: Gera espelho fiscal DANFE em PDF com a grade clássica quadriculada da DANFE oficial
+async function generateDanfePdf(invoice: any, company: any): Promise<Buffer> {
+  const pdfDoc = await PDFDocument.create();
+  // A4 size: 595.276 x 841.890
+  const page = pdfDoc.addPage([595.276, 841.890]);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const drawText = (text: string, x: number, y: number, size = 8, isBold = false, color = rgb(0.1, 0.1, 0.1)) => {
+    page.drawText(String(text || ''), {
+      x,
+      y,
+      size,
+      font: isBold ? fontBold : font,
+      color,
+    });
+  };
+
+  const drawRect = (x: number, y: number, width: number, height: number, borderThickness = 1, fill = false, fillColor = rgb(1,1,1)) => {
+    page.drawRectangle({
+      x,
+      y,
+      width,
+      height,
+      borderWidth: borderThickness,
+      borderColor: rgb(0.3, 0.3, 0.3),
+      color: fill ? fillColor : undefined,
+    });
+  };
+
+  // 1. CANHOTO (Bloco Superior Recibo)
+  drawRect(15, 780, 420, 45);
+  drawText('RECEBEMOS DE ' + String(company.razao_social || '').toUpperCase() + ' OS PRODUTOS E/OU SERVIÇOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO.', 20, 812, 6, false);
+  drawRect(15, 780, 120, 24);
+  drawText('DATA DE RECEBIMENTO', 18, 794, 5, true, rgb(0.4, 0.4, 0.4));
+  drawRect(135, 780, 300, 24);
+  drawText('IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR', 138, 794, 5, true, rgb(0.4, 0.4, 0.4));
+
+  drawRect(440, 780, 140, 45);
+  drawText('NF-e', 495, 810, 13, true);
+  drawText(`Nº ${invoice.numero || '000.001'}`, 448, 796, 9, true);
+  drawText(`SÉRIE ${invoice.serie || '1'}`, 448, 786, 9, true);
+
+  // 2. IDENTIFICAÇÃO DO EMITENTE
+  drawRect(15, 680, 220, 90);
+  drawText(String(company.razao_social || '').toUpperCase(), 20, 755, 9, true);
+  if (company.nome_fantasia) {
+    drawText(String(company.nome_fantasia).toUpperCase(), 20, 743, 8, false);
+  }
+  drawText(`CNPJ: ${company.cnpj}`, 20, 726, 7.5, true);
+  drawText(`IE: ${company.inscricao_estadual || 'ISENTO'}`, 20, 715, 7.5, false);
+  drawText(`Regime: ${company.regime_tributario}`, 20, 704, 7.5, false);
+  drawText('Fone: (21) 3999-9999 - Rio de Janeiro - RJ', 20, 693, 7, false);
+
+  // 3. DANFE LABEL BOX
+  drawRect(235, 680, 140, 90);
+  drawText('DANFE', 280, 750, 15, true);
+  drawText('DOCUMENTO AUXILIAR DA', 245, 735, 7, true);
+  drawText('NOTA FISCAL ELETRÔNICA', 245, 725, 7, true);
+  
+  drawRect(295, 702, 18, 18);
+  drawText(String(invoice.type || '1'), 301, 707, 10, true);
+  drawText('0 - ENTRADA', 245, 692, 6.5, false);
+  drawText('1 - SAÍDA', 330, 692, 6.5, false);
+
+  // 4. CHAVE DE ACESSO & BARCODE PLACEHOLDER
+  drawRect(375, 680, 205, 90);
+  drawText('CHAVE DE ACESSO (SIMULADA)', 380, 762, 6, true, rgb(0.4, 0.4, 0.4));
+  const cleanCnpj = String(company.cnpj || '').replace(/[^0-9]/g, '');
+  const simulatedChave = `3526${cleanCnpj.padEnd(14, '0')}55001${String(invoice.numero || '1').padStart(9, '0')}1000000001`;
+  drawText(simulatedChave.slice(0, 22), 380, 750, 6.5, false);
+  drawText(simulatedChave.slice(22), 380, 740, 6.5, false);
+
+  drawText('PROTOCOLO DE AUTORIZAÇÃO DE USO', 380, 727, 6, true, rgb(0.4, 0.4, 0.4));
+  drawText(`1352600${Math.floor(100000 + Math.random() * 900000)} - ${new Date(invoice.created_at || new Date()).toLocaleDateString('pt-BR')}`, 380, 717, 7, false);
+
+  // Simulated Barcode lines
+  for (let i = 0; i < 40; i++) {
+    const barWidth = Math.random() > 0.45 ? 2.5 : 4;
+    page.drawRectangle({
+      x: 395 + i * 4.2,
+      y: 686,
+      width: barWidth,
+      height: 25,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+  }
+
+  // 5. DESTINATÁRIO / FORNECEDOR
+  drawRect(15, 595, 565, 75);
+  drawText('DESTINATÁRIO / REMETENTE', 18, 661, 7, true);
+  
+  drawText('NOME / RAZÃO SOCIAL', 18, 647, 5.5, true, rgb(0.4,0.4,0.4));
+  drawText(String(invoice.dest_razao_social || '').toUpperCase(), 18, 637, 8, true);
+
+  drawText('CNPJ / CPF', 380, 647, 5.5, true, rgb(0.4,0.4,0.4));
+  drawText(String(invoice.dest_cnpj_cpf || ''), 380, 637, 8, false);
+
+  drawText('INSCRIÇÃO ESTADUAL', 490, 647, 5.5, true, rgb(0.4,0.4,0.4));
+  drawText(String(invoice.dest_inscricao_estadual || 'ISENTO').toUpperCase(), 490, 637, 8, false);
+
+  drawText('ENDEREÇO', 18, 621, 5.5, true, rgb(0.4,0.4,0.4));
+  drawText(String(invoice.dest_endereco || '').toUpperCase(), 18, 611, 8, false);
+
+  drawText('DATA DA EMISSÃO', 490, 621, 5.5, true, rgb(0.4,0.4,0.4));
+  drawText(new Date(invoice.created_at || new Date()).toLocaleDateString('pt-BR'), 490, 611, 8, false);
+
+  // 6. CÁLCULO DO IMPOSTO
+  drawRect(15, 520, 565, 65);
+  drawText('CÁLCULO DO IMPOSTO', 18, 576, 7, true);
+
+  const colWidth = 565 / 5;
+  const drawTaxBox = (title: string, val: number, x: number, y: number) => {
+    drawText(title, x + 4, y + 23, 5, true, rgb(0.4,0.4,0.4));
+    drawText('R$ ' + Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }), x + 4, y + 10, 7.5, true);
+  };
+
+  drawTaxBox('BASE DE CÁLCULO ICMS', invoice.icms_base, 15, 525);
+  drawTaxBox('VALOR DO ICMS', invoice.icms_total, 15 + colWidth, 525);
+  drawTaxBox('VALOR DO FRETE', 0.00, 15 + colWidth * 2, 525);
+  drawTaxBox('VALOR TOTAL PRODUTOS', invoice.total_produtos, 15 + colWidth * 3, 525);
+  drawTaxBox('VALOR TOTAL DA NOTA', invoice.total_nota, 15 + colWidth * 4, 525);
+
+  // 7. TABELA DE ITENS (DADOS DO PRODUTO / SERVIÇO)
+  drawRect(15, 205, 565, 305);
+  drawText('DADOS DOS PRODUTOS / SERVIÇOS', 18, 499, 7, true);
+  
+  const yH = 485;
+  drawRect(15, yH - 3, 565, 12, 1, true, rgb(0.92, 0.92, 0.92));
+  drawText('DESCRIÇÃO DO PRODUTO / SERVIÇO', 18, yH, 6.5, true);
+  drawText('NCM', 260, yH, 6.5, true);
+  drawText('CFOP', 310, yH, 6.5, true);
+  drawText('QTD', 350, yH, 6.5, true);
+  drawText('V. UNIT', 390, yH, 6.5, true);
+  drawText('SUBTOTAL', 440, yH, 6.5, true);
+  drawText('ICMS %', 495, yH, 6.5, true);
+  drawText('V. ICMS', 535, yH, 6.5, true);
+
+  let itemY = yH - 15;
+  const items = Array.isArray(invoice.items) ? invoice.items : [];
+  items.forEach((item: any) => {
+    if (itemY < 215) return;
+    drawText(String(item.description || '').toUpperCase(), 18, itemY, 6.5, false);
+    drawText(String(item.ncm || '0000.00.00'), 260, itemY, 6.5, false);
+    drawText(String(invoice.cfop || '5.102'), 310, itemY, 6.5, false);
+    drawText(String(item.quantity || '0'), 350, itemY, 6.5, false);
+    drawText(Number(item.unit_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }), 390, itemY, 6.5, false);
+    drawText(Number(item.subtotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }), 440, itemY, 6.5, false);
+    drawText(String(item.icms_rate || 0) + '%', 495, itemY, 6.5, false);
+    drawText(Number(item.icms_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }), 535, itemY, 6.5, false);
+    
+    page.drawLine({
+      start: { x: 15, y: itemY - 3 },
+      end: { x: 580, y: itemY - 3 },
+      thickness: 0.5,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+    itemY -= 14;
+  });
+
+  // 8. DADOS ADICIONAIS
+  drawRect(15, 115, 565, 80);
+  drawText('DADOS ADICIONAIS / INFORMAÇÕES COMPLEMENTARES', 18, 184, 7, true);
+  drawText(`Emitido eletronicamente via modulo integrado MVRJ Contábil GED.`, 18, 171, 7, false);
+  drawText(`Regime Tributário da Emitente: ${company.regime_tributario || 'Simples Nacional'}`, 18, 160, 7, false);
+  drawText(`Natureza de Operação: ${invoice.natureza_operacao || 'Venda'}`, 18, 149, 7, false);
+  drawText(`Emitido em: ${new Date(invoice.created_at || new Date()).toLocaleString('pt-BR')}`, 18, 138, 7, false);
+  drawText(`Chave de validação fiscal: ${simulatedChave}`, 18, 126, 6.5, false, rgb(0.4, 0.4, 0.4));
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
+}
+
+
 function loadDeletedFolders() {
   if (deletedFoldersLoaded) return;
   try {
@@ -1973,6 +2231,8 @@ function savePersistedFiles() {
 
 loadPersistedFolders();
 loadPersistedFiles();
+loadPersistedCompanies();
+loadPersistedInvoices();
 
 async function fetchR2Folders(): Promise<StoredFolder[]> {
   const { client, bucketName, isConfigured } = getR2Client();
@@ -2742,6 +3002,451 @@ app.post('/api/files', async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ==============================================================================
+// 14c. COMPANIES CLIENTS ENDPOINTS
+// ==============================================================================
+app.get('/api/companies', async (req: Request, res: Response) => {
+  try {
+    loadPersistedCompanies();
+    // Sync with Supabase if available
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('companies').select('*');
+        if (!error && data) {
+          data.forEach(dbComp => {
+            const idx = persistedCompanies.findIndex(c => c.id === dbComp.id);
+            if (idx >= 0) {
+              persistedCompanies[idx] = { ...persistedCompanies[idx], ...dbComp };
+            } else {
+              persistedCompanies.push(dbComp);
+            }
+          });
+          savePersistedCompanies();
+        }
+      } catch (err) {}
+    }
+    res.json({ companies: persistedCompanies });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/companies', upload.single('certificate'), async (req: Request, res: Response) => {
+  try {
+    const { razao_social, nome_fantasia, cnpj, inscricao_estadual, regime_tributario, certificate_password } = req.body;
+    
+    if (!razao_social || !cnpj || !regime_tributario) {
+      return res.status(400).json({ error: 'Razão Social, CNPJ e Regime Tributário são obrigatórios' });
+    }
+
+    loadPersistedCompanies();
+    const id = `comp-${Date.now()}`;
+    
+    let certificate_storage_key = '';
+    let certificate_filename = '';
+
+    if (req.file) {
+      certificate_filename = req.file.originalname;
+      const cleanCertName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      certificate_storage_key = `certificates/${id}/${Date.now()}-${cleanCertName}`;
+      
+      const { client, bucketName, isConfigured } = getR2Client();
+      if (isConfigured && client) {
+        await client.send(new PutObjectCommand({
+          Bucket: bucketName,
+          Key: certificate_storage_key,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
+        }));
+        
+        // Cache certificate locally in memory
+        inMemoryFileStore.set(certificate_storage_key, {
+          buffer: req.file.buffer,
+          mimeType: req.file.mimetype,
+          name: req.file.originalname,
+        });
+      }
+    }
+
+    const newCompany = {
+      id,
+      razao_social: String(razao_social).trim(),
+      nome_fantasia: nome_fantasia ? String(nome_fantasia).trim() : undefined,
+      cnpj: String(cnpj).trim(),
+      inscricao_estadual: inscricao_estadual ? String(inscricao_estadual).trim() : undefined,
+      regime_tributario: String(regime_tributario).trim(),
+      certificate_storage_key: certificate_storage_key || undefined,
+      certificate_password: certificate_password ? String(certificate_password).trim() : undefined,
+      certificate_filename: certificate_filename || undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    persistedCompanies.push(newCompany);
+    savePersistedCompanies();
+
+    // Sync to Supabase
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        await supabase.from('companies').insert(newCompany);
+      } catch (err) {}
+    }
+
+    res.status(201).json({ status: 'success', company: newCompany });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/companies/:id', upload.single('certificate'), async (req: Request, res: Response) => {
+  try {
+    const companyId = req.params.id;
+    const { razao_social, nome_fantasia, cnpj, inscricao_estadual, regime_tributario, certificate_password } = req.body;
+
+    loadPersistedCompanies();
+    const idx = persistedCompanies.findIndex(c => c.id === companyId);
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Empresa não encontrada' });
+    }
+
+    const current = persistedCompanies[idx];
+    let certificate_storage_key = current.certificate_storage_key;
+    let certificate_filename = current.certificate_filename;
+
+    if (req.file) {
+      certificate_filename = req.file.originalname;
+      const cleanCertName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      certificate_storage_key = `certificates/${companyId}/${Date.now()}-${cleanCertName}`;
+      
+      const { client, bucketName, isConfigured } = getR2Client();
+      if (isConfigured && client) {
+        await client.send(new PutObjectCommand({
+          Bucket: bucketName,
+          Key: certificate_storage_key,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
+        }));
+        
+        inMemoryFileStore.set(certificate_storage_key, {
+          buffer: req.file.buffer,
+          mimeType: req.file.mimetype,
+          name: req.file.originalname,
+        });
+      }
+    }
+
+    const updatedCompany = {
+      ...current,
+      razao_social: razao_social ? String(razao_social).trim() : current.razao_social,
+      nome_fantasia: nome_fantasia !== undefined ? String(nome_fantasia).trim() : current.nome_fantasia,
+      cnpj: cnpj ? String(cnpj).trim() : current.cnpj,
+      inscricao_estadual: inscricao_estadual !== undefined ? String(inscricao_estadual).trim() : current.inscricao_estadual,
+      regime_tributario: regime_tributario ? String(regime_tributario).trim() : current.regime_tributario,
+      certificate_storage_key,
+      certificate_filename,
+      certificate_password: certificate_password !== undefined ? String(certificate_password).trim() : current.certificate_password,
+      updated_at: new Date().toISOString(),
+    };
+
+    persistedCompanies[idx] = updatedCompany;
+    savePersistedCompanies();
+
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        await supabase.from('companies').upsert(updatedCompany);
+      } catch (err) {}
+    }
+
+    res.json({ status: 'success', company: updatedCompany });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/companies/:id', async (req: Request, res: Response) => {
+  try {
+    const companyId = req.params.id;
+    loadPersistedCompanies();
+    
+    persistedCompanies = persistedCompanies.filter(c => c.id !== companyId);
+    savePersistedCompanies();
+
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        await supabase.from('companies').delete().eq('id', companyId);
+      } catch (err) {}
+    }
+
+    res.json({ status: 'success', message: 'Empresa excluída com sucesso' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ==============================================================================
+// 14d. INVOICES ENDPOINTS (DANFE Generation, Storage & GED Binding)
+// ==============================================================================
+app.get('/api/invoices', async (req: Request, res: Response) => {
+  try {
+    loadPersistedInvoices();
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('invoices').select('*');
+        if (!error && data) {
+          data.forEach(dbInv => {
+            const idx = persistedInvoices.findIndex(i => i.id === dbInv.id);
+            if (idx >= 0) {
+              persistedInvoices[idx] = { ...persistedInvoices[idx], ...dbInv };
+            } else {
+              persistedInvoices.push(dbInv);
+            }
+          });
+          savePersistedInvoices();
+        }
+      } catch (err) {}
+    }
+    res.json({ invoices: persistedInvoices });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/invoices', async (req: Request, res: Response) => {
+  try {
+    const {
+      company_id,
+      type,
+      natureza_operacao,
+      cfop,
+      serie,
+      numero,
+      dest_razao_social,
+      dest_cnpj_cpf,
+      dest_inscricao_estadual,
+      dest_endereco,
+      items,
+      folder_id,
+    } = req.body;
+
+    if (!company_id || !numero || !dest_razao_social || !dest_cnpj_cpf || !folder_id) {
+      return res.status(400).json({ error: 'Campos obrigatórios ausentes: empresa, número, destinatário e pasta do GED.' });
+    }
+
+    loadPersistedCompanies();
+    const company = persistedCompanies.find(c => c.id === company_id);
+    if (!company) {
+      return res.status(404).json({ error: 'Empresa emitente não cadastrada.' });
+    }
+
+    // Calculate ICMS, Products, and Total Invoice Value
+    let total_produtos = 0;
+    let icms_base = 0;
+    let icms_total = 0;
+
+    const parsedItems = Array.isArray(items) ? items : [];
+    const calculatedItems = parsedItems.map((item: any, index: number) => {
+      const quantity = Number(item.quantity) || 0;
+      const unit_value = Number(item.unit_value) || 0;
+      const subtotal = Number((quantity * unit_value).toFixed(2));
+      total_produtos += subtotal;
+
+      const icms_rate = Number(item.icms_rate) || 0;
+      let icms_value = 0;
+      if (icms_rate > 0) {
+        icms_base += subtotal;
+        icms_value = Number(((subtotal * icms_rate) / 100).toFixed(2));
+        icms_total += icms_value;
+      }
+
+      return {
+        id: item.id || `item-${index}-${Date.now()}`,
+        description: String(item.description || '').trim(),
+        ncm: String(item.ncm || '0000.00.00').trim(),
+        quantity,
+        unit_value,
+        subtotal,
+        icms_rate,
+        icms_value,
+      };
+    });
+
+    const total_nota = Number(total_produtos.toFixed(2));
+
+    const invoiceId = `inv-${Date.now()}`;
+    const invoiceRecord = {
+      id: invoiceId,
+      company_id,
+      type: String(type || '1'),
+      natureza_operacao: String(natureza_operacao || 'Venda de Mercadoria').trim(),
+      cfop: String(cfop || '5.102').trim(),
+      serie: String(serie || '1').trim(),
+      numero: String(numero).trim(),
+      dest_razao_social: String(dest_razao_social).trim(),
+      dest_cnpj_cpf: String(dest_cnpj_cpf).trim(),
+      dest_inscricao_estadual: dest_inscricao_estadual ? String(dest_inscricao_estadual).trim() : undefined,
+      dest_endereco: String(dest_endereco || '').trim(),
+      items: calculatedItems,
+      icms_base: Number(icms_base.toFixed(2)),
+      icms_total: Number(icms_total.toFixed(2)),
+      total_produtos: Number(total_produtos.toFixed(2)),
+      total_nota: Number(total_nota.toFixed(2)),
+      created_at: new Date().toISOString(),
+    };
+
+    // Generate PDF using pdf-lib
+    const pdfBuffer = await generateDanfePdf(invoiceRecord, company);
+    const pdfFileName = `DANFE_NF_${invoiceRecord.numero}_Serie_${invoiceRecord.serie}.pdf`;
+    const storageKey = `sectors/faturamento/invoices/${Date.now()}-${pdfFileName}`;
+
+    // Upload to Cloudflare R2
+    const { client, bucketName, isConfigured } = getR2Client();
+    if (!isConfigured || !client) {
+      return res.status(500).json({ error: 'Cloudflare R2 não está devidamente configurado para salvar Notas Fiscais.' });
+    }
+
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: storageKey,
+      Body: pdfBuffer,
+      ContentType: 'application/pdf',
+    }));
+
+    inMemoryFileStore.set(storageKey, {
+      buffer: pdfBuffer,
+      mimeType: 'application/pdf',
+      name: pdfFileName,
+    });
+
+    // Create Document / File within GED (folders and files table)
+    const fileId = crypto.randomUUID();
+    const newGedFile: StoredFile = {
+      id: fileId,
+      folder_id: folder_id,
+      name: pdfFileName,
+      storage_key: storageKey,
+      mime_type: 'application/pdf',
+      original_size: pdfBuffer.length,
+      optimized_size: pdfBuffer.length,
+      compression_ratio: 0,
+      pages_count: 1,
+      tags: ['NF-e', `Série: ${invoiceRecord.serie}`, `Número: ${invoiceRecord.numero}`, `Emitente: ${company.nome_fantasia || company.razao_social}`],
+      uploaded_by: '57e1d483-669b-4791-b09e-7496570e63ea',
+      uploader_name: 'Evandro (Faturamento)',
+      sector: 'Financeiro',
+      company_name: company.nome_fantasia || company.razao_social,
+      document_type: 'Nota Fiscal',
+      amount: total_nota,
+      is_archived: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      preview_url: `/api/r2/view?key=${encodeURIComponent(storageKey)}&name=${encodeURIComponent(pdfFileName)}`,
+    };
+
+    // Push new file
+    persistedFiles.unshift(newGedFile);
+    savePersistedFiles();
+    saveR2Files(persistedFiles).catch(() => {});
+
+    // Save invoice locally
+    loadPersistedInvoices();
+    const finalInvoice = {
+      ...invoiceRecord,
+      pdf_storage_key: storageKey,
+      document_id: fileId,
+    };
+    persistedInvoices.unshift(finalInvoice);
+    savePersistedInvoices();
+
+    // Sync both invoice & file to Supabase if available
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        const resolvedFolderId = isValidUuid(folder_id) ? folder_id : toDeterministicUuid(folder_id);
+        const { data: fCheck } = await supabase.from('folders').select('id').eq('id', resolvedFolderId).maybeSingle();
+        if (!fCheck) {
+          await supabase.from('folders').upsert({
+            id: resolvedFolderId,
+            name: 'Faturamento & Notas',
+            sector: 'Financeiro',
+            created_at: new Date().toISOString(),
+          });
+        }
+
+        // Insert File / Document metadata
+        await supabase.from('files').upsert({
+          id: fileId,
+          folder_id: resolvedFolderId,
+          name: pdfFileName,
+          storage_key: storageKey,
+          mime_type: 'application/pdf',
+          original_size: pdfBuffer.length,
+          optimized_size: pdfBuffer.length,
+          compression_ratio: 0,
+          pages_count: 1,
+          tags: newGedFile.tags,
+          updated_at: new Date().toISOString(),
+          amount: total_nota,
+          company_name: company.nome_fantasia || company.razao_social,
+          document_type: 'Nota Fiscal',
+        });
+
+        // Insert Invoice
+        await supabase.from('invoices').insert({
+          id: finalInvoice.id,
+          company_id: finalInvoice.company_id,
+          type: finalInvoice.type,
+          natureza_operacao: finalInvoice.natureza_operacao,
+          cfop: finalInvoice.cfop,
+          serie: finalInvoice.serie,
+          numero: finalInvoice.numero,
+          dest_razao_social: finalInvoice.dest_razao_social,
+          dest_cnpj_cpf: finalInvoice.dest_cnpj_cpf,
+          dest_inscricao_estadual: finalInvoice.dest_inscricao_estadual,
+          dest_endereco: finalInvoice.dest_endereco,
+          items: finalInvoice.items,
+          icms_base: finalInvoice.icms_base,
+          icms_total: finalInvoice.icms_total,
+          total_produtos: finalInvoice.total_produtos,
+          total_nota: finalInvoice.total_nota,
+          pdf_storage_key: storageKey,
+          document_id: fileId,
+          created_at: finalInvoice.created_at,
+        });
+
+        try {
+          await supabase.from('audit_logs').insert({
+            action: 'FILE_UPLOAD',
+            target_type: 'FILE',
+            target_id: fileId,
+            user_name: 'Evandro (Faturamento)',
+            sector: 'Financeiro',
+            details: {
+              name: pdfFileName,
+              invoice_id: invoiceId,
+              amount: total_nota,
+            },
+          });
+        } catch {}
+
+      } catch (err: any) {
+        console.warn('[Supabase Invoice Sync Warning]', err.message);
+      }
+    }
+
+    res.status(201).json({ status: 'success', invoice: finalInvoice, file: newGedFile });
+  } catch (err: any) {
+    console.error('[POST /api/invoices] Erro:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // 14b. Update File Metadata (due date, company, client_phone, notification_sent, amount, tags)
 app.patch('/api/files/:id', async (req: Request, res: Response) => {
