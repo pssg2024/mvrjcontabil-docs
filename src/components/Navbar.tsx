@@ -150,17 +150,18 @@ export const Navbar: React.FC<NavbarProps> = ({
     (currentUser as any)?.setor === 'Diretoria';
 
   return (
-    <header className="sticky top-0 z-30 w-full px-3 sm:px-6 lg:px-8 py-2.5 transition-all">
-      {/* 1. CONTAINER PRINCIPAL DA NAVEGAÇÃO - DESIGN SYSTEM VIDRO SUAVE */}
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 p-1.5 rounded-2xl bg-white/80 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 shadow-sm h-16">
+    <header className="sticky top-0 z-30 w-full transition-all">
+      {/* 1. CONTAINER PRINCIPAL DA NAVEGAÇÃO - ALINHADO RIGOROSAMENTE COM O CONTEÚDO (MAX-W-7XL E PX-4 SM:PX-6 LG:PX-8) */}
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-1">
+        <div className="w-full flex items-center justify-between gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm h-16 text-slate-800 dark:text-slate-100">
         
         {/* Logo & Brand (Sempre visível em dispositivos móveis e desktop) */}
         <div 
-          className="flex items-center gap-2.5 flex-shrink-0 cursor-pointer group select-none pl-1.5 h-11" 
+          className="flex items-center gap-2 flex-shrink-0 cursor-pointer group select-none pl-1.5 h-11" 
           onClick={() => onNavigate('drive')}
         >
           {/* Ícone da Logo */}
-          <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 p-1.5 shadow-xs flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-200 overflow-hidden">
+          <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1.5 shadow-xs flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-200 overflow-hidden">
             {authHeaderConfig?.logoImageUrl ? (
               <img
                 src={authHeaderConfig.logoImageUrl}
@@ -186,7 +187,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* 2. BOTÕES DE NAVEGAÇÃO ORGANIZADA (DESKTOP: EXIBIDO EM LG E ACIMA) */}
         {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1 sm:gap-1.5">
             
             {/* Drive Corporativo - Pílula sólida em destaque */}
             <button
@@ -194,8 +195,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => onNavigate('drive')}
               className={
                 activeView === 'drive'
-                  ? 'h-11 bg-gradient-to-r from-[#0F1E42] to-[#1B357B] text-white font-bold shadow-sm px-4 rounded-xl text-xs flex items-center gap-2 border border-white/10 transition-all duration-200 group cursor-pointer'
-                  : 'h-11 flex items-center gap-2 px-3.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 group cursor-pointer'
+                  ? 'h-10.5 bg-gradient-to-r from-[#0F1E42] to-[#1B357B] text-white font-bold shadow-sm px-3.5 rounded-xl text-xs flex items-center gap-1.5 border border-white/10 transition-all duration-200 group cursor-pointer shrink-0'
+                  : 'h-10.5 flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 group cursor-pointer shrink-0'
               }
             >
               <HardDrive className={`w-4 h-4 flex-shrink-0 ${activeView === 'drive' ? 'text-[#E2C37A]' : 'text-slate-400 dark:text-slate-400 group-hover:text-[#1B357B] dark:group-hover:text-[#E2C37A]'}`} />
@@ -211,7 +212,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="navbar-fiscal-menu-trigger"
                 onClick={() => setShowFiscalDropdown(!showFiscalDropdown)}
-                className={`h-11 flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer ${
+                className={`h-10.5 flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer shrink-0 ${
                   showFiscalDropdown ? 'bg-slate-100 dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A]' : ''
                 }`}
               >
@@ -223,7 +224,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {/* Menu Suspenso Fiscal */}
               {showFiscalDropdown && (
                 <div 
-                  className="absolute left-0 mt-1.5 w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                  className="absolute left-0 mt-1.5 w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                   onMouseEnter={handleFiscalEnter}
                   onMouseLeave={handleFiscalLeave}
                 >
@@ -319,14 +320,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   id="navbar-admin-menu-trigger"
                   onClick={() => setShowAdminDropdown(!showAdminDropdown)}
-                  className={`h-11 flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer relative ${
+                  className={`h-10.5 flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer relative shrink-0 ${
                     showAdminDropdown ? 'bg-slate-100 dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A]' : ''
                   }`}
                 >
                   <ShieldCheck className="w-4 h-4 text-slate-400 dark:text-slate-400" />
                   <span>Administração</span>
                   {pendingUsersCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white animate-pulse"></span>
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900 animate-pulse"></span>
                   )}
                   <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${showAdminDropdown ? 'rotate-180 text-[#1B357B]' : ''}`} />
                 </button>
@@ -334,7 +335,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* Menu Suspenso Administração */}
                 {showAdminDropdown && (
                   <div 
-                    className="absolute left-0 mt-1.5 w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                    className="absolute left-0 mt-1.5 w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                     onMouseEnter={handleAdminEnter}
                     onMouseLeave={handleAdminLeave}
                   >
@@ -412,7 +413,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="navbar-manual-btn"
                 onClick={onOpenManualModal}
-                className="h-11 flex items-center gap-1.5 px-3.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer"
+                className="h-10.5 flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer shrink-0"
                 title="Manual de Operações do GED"
               >
                 <BookOpen className="w-4.5 h-4.5 text-slate-400 dark:text-slate-400" />
@@ -424,18 +425,18 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
 
         {/* 3. EXTREMIDADE DIREITA (UTILITÁRIOS & COMPACT PERFIL) */}
-        <div className="flex items-center gap-2 shrink-0 pr-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 pr-1">
           
           {/* Alternador de Tema [Sol / Lua] com visual refinado */}
           {onToggleTheme && (
             <button
               id="theme-mode-toggle-btn"
               onClick={onToggleTheme}
-              className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-[#C59B4B]/60 dark:hover:border-[#E2C37A]/60 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-[#1B357B] dark:hover:text-[#E2C37A] transition-all cursor-pointer shadow-2xs"
+              className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 hover:border-[#C59B4B]/60 dark:hover:border-[#E2C37A]/60 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#1B357B] dark:hover:text-[#E2C37A] transition-all cursor-pointer shadow-2xs shrink-0"
               title={themeMode === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
             >
               {themeMode === 'dark' ? (
-                <Sun className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                <Sun className="w-4 h-4 flex-shrink-0 text-amber-400" />
               ) : (
                 <Moon className="w-4 h-4 flex-shrink-0 text-indigo-600" />
               )}
@@ -460,7 +461,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="user-profile-menu-btn"
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="h-10 flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-[#C59B4B]/60 dark:hover:border-[#E2C37A]/60 transition-all cursor-pointer group shadow-2xs"
+                className="h-10 flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 hover:border-[#C59B4B]/60 dark:hover:border-[#E2C37A]/60 transition-all cursor-pointer group shadow-2xs shrink-0"
               >
                 {/* Avatar com status online */}
                 <div className="relative w-7.5 h-7.5 rounded-lg overflow-hidden flex-shrink-0 ring-1 ring-slate-100 dark:ring-slate-700">
@@ -498,7 +499,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* Menu Dropdown de Perfil Executivo */}
               {showUserDropdown && (
-                <div className="absolute right-0 mt-2 min-w-[260px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 mt-2 min-w-[260px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   
                   {/* Cabeçalho do usuário */}
                   <div className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 p-3 rounded-t-xl flex items-center gap-3 mb-1">
@@ -623,7 +624,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="navbar-mobile-hamburger-btn"
               type="button"
               onClick={() => setShowMobileMenu(true)}
-              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 shadow-2xs transition-all cursor-pointer relative shrink-0"
+              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 shadow-2xs transition-all cursor-pointer relative shrink-0"
               title="Abrir Menu de Navegação"
               aria-label="Abrir Menu Móvel"
             >
@@ -635,6 +636,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
         </div>
+      </div>
       </div>
 
       {/* 5. GAVETA LATERAL SUAVE MOBILE (DRAWER / OFFCANVAS) */}
