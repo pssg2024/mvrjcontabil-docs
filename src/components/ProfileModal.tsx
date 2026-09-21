@@ -405,88 +405,83 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             )}
 
-            {/* Seção do Avatar com Upload Cloudflare R2 */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 pb-6 border-b border-gray-100">
-              {/* Visualizador de Avatar & Fallback de Iniciais */}
-              <div className="relative group shrink-0">
-                <div 
-                  onDragOver={(e) => { e.preventDefault(); if (!isProcessing) setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleDrop}
-                  onClick={() => !isProcessing && fileInputRef.current?.click()}
-                  className={`w-28 h-28 rounded-full overflow-hidden border-2 cursor-pointer shadow-md transition-all flex items-center justify-center relative bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-500 text-white select-none ${
-                    isDragging 
-                      ? 'border-blue-500 ring-4 ring-blue-100 scale-105' 
-                      : 'border-white ring-2 ring-gray-200 hover:ring-blue-400'
-                  } ${isProcessing ? 'cursor-wait opacity-80' : ''}`}
-                  title="Clique ou arraste para alterar foto de perfil"
-                >
-                  {/* Fallback de Visualização */}
-                  {avatarUrl && !imgError ? (
-                    <img 
-                      src={avatarUrl} 
-                      alt={fullName}
-                      referrerPolicy="no-referrer"
-                      onError={() => setImgError(true)}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-3xl font-extrabold tracking-tight text-white drop-shadow-xs">
-                      {userInitial}
-                    </span>
-                  )}
+            {/* Seção do Avatar de Alta Definição (Design Executivo) */}
+            <div className="flex flex-col items-center pb-6 border-b border-slate-100 space-y-4">
+              <div className="text-center">
+                {/* Avatar com aro duplo requintado */}
+                <div className="relative group shrink-0 inline-block">
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); if (!isProcessing) setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => !isProcessing && fileInputRef.current?.click()}
+                    className={`relative w-24 h-24 mx-auto rounded-full ring-4 ring-slate-100 shadow-md overflow-hidden border-2 border-white cursor-pointer transition-all flex items-center justify-center bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-500 text-white select-none ${
+                      isDragging 
+                        ? 'ring-blue-100 scale-105 border-blue-500' 
+                        : 'hover:ring-blue-200'
+                    } ${isProcessing ? 'cursor-wait opacity-80' : ''}`}
+                    title="Clique ou arraste para alterar foto de perfil"
+                  >
+                    {/* Fallback de Visualização */}
+                    {avatarUrl && !imgError ? (
+                      <img 
+                        src={avatarUrl} 
+                        alt={fullName}
+                        referrerPolicy="no-referrer"
+                        onError={() => setImgError(true)}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-2xl font-extrabold tracking-tight text-white drop-shadow-xs">
+                        {userInitial}
+                      </span>
+                    )}
 
-                  {/* Overlay de Hover e Estado de Carregamento */}
-                  {isProcessing ? (
-                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-[11px] font-medium p-2 text-center">
-                      <Loader2 className="w-6 h-6 animate-spin mb-1 text-blue-300" />
-                      <span className="text-[10px] leading-tight">Processando...</span>
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[11px] font-semibold">
-                      <Camera className="w-5 h-5 mb-1" />
-                      <span>Trocar foto</span>
-                    </div>
+                    {/* Overlay de Hover e Estado de Carregamento */}
+                    {isProcessing ? (
+                      <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-[11px] font-medium p-1 text-center">
+                        <Loader2 className="w-5 h-5 animate-spin mb-0.5 text-blue-300" />
+                        <span className="text-[9px] leading-tight">Enviando...</span>
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-semibold">
+                        <Camera className="w-4 h-4 mb-0.5" />
+                        <span>Alterar</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Botão de lixeira flutuante no canto do avatar com tom mais subtil */}
+                  {avatarUrl && !isProcessing && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemovePhoto();
+                      }}
+                      title="Remover foto do perfil"
+                      className="absolute top-0 right-0 p-1 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-full border border-slate-200/60 shadow-2xs transition-colors active:scale-95 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   )}
                 </div>
-
-                {/* Botão de Remoção (Lixeira) */}
-                {avatarUrl && !isProcessing && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemovePhoto();
-                    }}
-                    title="Remover foto do Cloudflare R2 e Supabase"
-                    className="absolute -top-1 -right-1 p-1.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 shadow-md transition-transform active:scale-95"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                
+                {/* Texto auxiliar com formatação específica */}
+                <p className="text-[11px] text-slate-400 text-center mt-1.5">
+                  Formatos suportados: PNG, JPG ou WEBP (redimensionamento automático)
+                </p>
               </div>
 
-              {/* Ações e Informações de Otimização */}
-              <div className="flex-1 space-y-3 text-center sm:text-left">
-                <div>
-                  <div className="flex items-center justify-center sm:justify-start space-x-2">
-                    <h4 className="text-sm font-bold text-gray-900">Foto de Perfil Corporativa</h4>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
-                      <Cloud className="w-3 h-3 mr-1" /> R2: avatars/{currentUser.id}.webp
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    A imagem é automaticamente redimensionada para <strong>400x400 px</strong> e convertida para <strong>.webp</strong>.
-                  </p>
-                </div>
-
+              {/* Progresso e botões de ação estruturados */}
+              <div className="w-full flex flex-col items-center space-y-3.5">
                 {/* Barra de progresso durante envio */}
                 {isProcessing && (
-                  <div className="space-y-1.5 p-2.5 bg-blue-50/80 rounded-xl border border-blue-100 text-left">
+                  <div className="w-full max-w-sm space-y-1.5 p-2.5 bg-blue-50/80 rounded-xl border border-blue-100">
                     <div className="flex items-center justify-between text-[11px] text-blue-900 font-medium">
                       <span className="flex items-center">
                         <Loader2 className="w-3 h-3 animate-spin mr-1.5 text-blue-600" />
-                        {statusText || 'Processando envio para R2...'}
+                        {statusText || 'Processando envio...'}
                       </span>
                       <span>{uploadProgress}%</span>
                     </div>
@@ -499,8 +494,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
                 )}
 
-                {/* Botões de Ação */}
-                <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                {/* Botões de Seleção e Remoção alinhados lado a lado com estilo limpo */}
+                <div className="flex items-center justify-center gap-2">
                   <input 
                     type="file" 
                     ref={fileInputRef}
@@ -518,9 +513,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="button"
                     disabled={isProcessing}
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-3.5 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs disabled:opacity-50"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
                   >
-                    <Upload className="w-3.5 h-3.5 text-gray-500" />
+                    <Upload className="w-3.5 h-3.5 text-slate-500" />
                     <span>Selecionar Foto</span>
                   </button>
 
@@ -529,20 +524,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       type="button"
                       disabled={isProcessing}
                       onClick={handleRemovePhoto}
-                      className="px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg font-medium transition-colors flex items-center space-x-1 disabled:opacity-50"
+                      className="text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      <Trash2 className="w-3.5 h-3.5 inline mr-1" />
                       <span>Remover Foto</span>
                     </button>
                   )}
                 </div>
 
-                {/* Sugestões de Avatares Predefinidos */}
-                <div>
+                {/* Presets de avatares rápidos horizontais discretos com efeito hover */}
+                <div className="text-center">
                   <span className="text-[11px] font-semibold text-gray-400 block mb-1.5">
-                    Ou selecione um avatar rápido (otimizado para R2):
+                    Ou selecione um avatar rápido:
                   </span>
-                  <div className="flex items-center space-x-2 justify-center sm:justify-start">
+                  <div className="flex items-center justify-center gap-2">
                     {DEFAULT_AVATARS.map((url, idx) => (
                       <button
                         key={idx}
@@ -550,10 +545,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         disabled={isProcessing}
                         onClick={() => handleSelectPresetAvatar(url)}
                         title="Aplicar avatar predefinido"
-                        className={`w-8 h-8 rounded-full overflow-hidden border-2 transition-all disabled:opacity-50 ${
+                        className={`w-8 h-8 rounded-full overflow-hidden border-2 transition-all disabled:opacity-50 cursor-pointer ${
                           avatarUrl === url 
-                            ? 'border-blue-600 ring-2 ring-blue-200 scale-110' 
-                            : 'border-transparent hover:border-gray-300 opacity-80 hover:opacity-100'
+                            ? 'border-[#C59B4B] ring-2 ring-[#C59B4B]/30 scale-110' 
+                            : 'border-transparent ring-2 ring-transparent hover:ring-[#C59B4B] opacity-80 hover:opacity-100'
                         }`}
                       >
                         <img 
@@ -569,78 +564,62 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             </div>
 
-            {/* Dados Cadastrais */}
+            {/* Dados Cadastrais / Informações Pessoais */}
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
                   Nome de Exibição
                 </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    required
-                    disabled={isProcessing}
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden disabled:bg-gray-50"
-                    placeholder="Seu nome completo"
-                  />
-                </div>
+                <input
+                  type="text"
+                  required
+                  disabled={isProcessing}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200/90 bg-slate-50/60 focus:bg-white focus:border-[#1B357B] text-xs font-semibold text-slate-800 shadow-sm transition-all outline-hidden disabled:bg-slate-100 disabled:text-slate-400"
+                  placeholder="Seu nome completo"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">
+                  <label className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-slate-400" />
                     E-mail Corporativo
                   </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-                    <input
-                      type="email"
-                      disabled
-                      value={currentUser.email}
-                      className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 text-gray-500 rounded-lg cursor-not-allowed"
-                    />
-                  </div>
+                  <input
+                    type="email"
+                    disabled
+                    value={currentUser.email}
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200/90 bg-slate-100/60 text-slate-500 text-xs font-semibold shadow-sm transition-all cursor-not-allowed"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">
+                  <label className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-slate-400" />
                     Setor & Papel (RBAC)
                   </label>
-                  <div className="relative">
-                    <Building2 className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-                    <div className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-lg font-medium flex items-center justify-between">
+                  <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-3 h-11 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 font-semibold text-slate-700">
                       <span>{currentUser.sector}</span>
-                      <span className="text-xs uppercase font-extrabold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                        {currentUser.role}
-                      </span>
                     </div>
+                    <span className="bg-[#C59B4B]/15 text-[#9A7528] border border-[#C59B4B]/30 font-bold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider">
+                      {currentUser.role}
+                    </span>
                   </div>
                 </div>
               </div>
-
-              {/* Informações de persistência */}
-              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between text-[11px] text-slate-600">
-                <span className="flex items-center">
-                  <Database className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
-                  Tabela Supabase: <strong className="ml-1 text-slate-800">public.profiles</strong>
-                </span>
-                <span className="flex items-center text-slate-500">
-                  <Cloud className="w-3.5 h-3.5 mr-1 text-sky-600" />
-                  Bucket R2: <strong className="ml-1 text-slate-800">mvrjcontabil-docs</strong>
-                </span>
-              </div>
             </div>
 
-            {/* Rodapé com botões de ação */}
-            <div className="pt-4 border-t border-gray-100 flex items-center justify-end space-x-3">
+            {/* Rodapé e Ações Finais com Design Executivo */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isProcessing}
-                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Cancelar
               </button>
@@ -648,7 +627,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <button
                 type="submit"
                 disabled={isProcessing}
-                className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-lg shadow-sm transition-colors flex items-center space-x-1.5 disabled:opacity-50"
+                className="bg-gradient-to-r from-[#C59B4B] to-[#B38739] hover:brightness-105 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isProcessing ? (
                   <>

@@ -26,6 +26,7 @@ import {
   FileSpreadsheet, 
   AlertOctagon, 
   Phone, 
+  Loader2,
   KeyRound, 
   FileCode, 
   FileArchive, 
@@ -47,7 +48,7 @@ import {
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
-import { getPresignedDownloadUrl } from '../lib/storage-service';
+import { getPresignedDownloadUrl, getPermanentViewUrl } from '../lib/storage-service';
 import { StorageStatsWidget } from './StorageStatsCard';
 import { StorageLimitModal } from './StorageLimitModal';
 
@@ -105,6 +106,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [isSubmittingFolder, setIsSubmittingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [sharingFileId, setSharingFileId] = useState<string | null>(null);
 
   // Breadcrumbs calculation
   const getBreadcrumbs = (): Folder[] => {
@@ -249,6 +251,52 @@ export const FileManager: React.FC<FileManagerProps> = ({
       document.body.removeChild(a);
     } catch (e) {
       alert('Falha ao gerar URL de download seguro');
+    }
+  };
+
+  const handleShareDirectDocument = async (file: DocumentFile) => {
+    if (sharingFileId) return;
+    try {
+      setSharingFileId(file.id);
+      const res = await getPresignedDownloadUrl(file.storage_key, file.name, true);
+      const fileUrl = res.downloadUrl;
+
+      // 1. Obter o ficheiro como Blob
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const jsFile = new File([blob], file.name, { type: blob.type || 'application/pdf' });
+
+      const shareData = {
+        files: [jsFile],
+        title: file.name,
+        text: "Olá! Aqui é da *MVRJ Contábil*"
+      };
+
+      // 2. Verificar se o navegador suporta partilha nativa com o objeto unificado (ficheiro + texto)
+      if (navigator.canShare && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback se o navegador não permitir anexo e texto juntos:
+        // Descarrega o ficheiro e abre a conversa do WhatsApp
+        const link = document.createElement('a');
+        link.href = fileUrl;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent("Olá! Aqui é da *MVRJ Contábil*")}`, '_blank');
+      }
+    } catch (error) {
+      console.error('Erro na partilha:', error);
+      // Fallback em caso de erro de rede ou CORS na rota de fetch do blob: abrir URL segura diretamente
+      try {
+        const res = await getPresignedDownloadUrl(file.storage_key, file.name);
+        window.open(res.downloadUrl, '_blank');
+      } catch (err) {
+        window.open(getPermanentViewUrl(file.storage_key, file.name), '_blank');
+      }
+    } finally {
+      setSharingFileId(null);
     }
   };
 
@@ -827,14 +875,20 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => {
-                          const url = `https://wa.me/?text=${encodeURIComponent(`Olá! Segue o documento contábil solicitado referente aos serviços da MVRJ Contábil: ${file.name} - ${window.location.origin}/preview/${file.id}`)}`;
-                          window.open(url, '_blank');
-                        }}
-                        className="p-2 rounded-lg text-slate-500 hover:text-[#1B357B] hover:bg-slate-100 transition-colors cursor-pointer"
-                        title="Enviar via WhatsApp"
+                        disabled={!!sharingFileId}
+                        onClick={() => handleShareDirectDocument(file)}
+                        className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                          sharingFileId === file.id 
+                            ? 'text-[#C59B4B] bg-slate-100' 
+                            : 'text-slate-500 hover:text-[#1B357B] hover:bg-slate-100'
+                        } disabled:opacity-50`}
+                        title="Enviar via WhatsApp ou Partilha Direta"
                       >
-                        <Phone className="w-4 h-4" />
+                        {sharingFileId === file.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Phone className="w-4 h-4" />
+                        )}
                       </button>
 
                       <button

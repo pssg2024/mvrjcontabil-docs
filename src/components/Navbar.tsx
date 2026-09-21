@@ -20,11 +20,14 @@ import {
   Bell,
   Menu,
   X,
-  BookOpen
+  BookOpen,
+  PhoneCall,
+  Radio
 } from 'lucide-react';
 import { UserProfile, UserRole, StorageMetrics, AuthHeaderConfig } from '../types';
 import { formatBytes } from '../lib/optimization';
 import { PortalsDrawer } from './PortalsDrawer';
+import { useCall } from './CallManager';
 
 interface NavbarProps {
   currentUser: UserProfile | null;
@@ -66,6 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showUserDropdown, setShowUserDropdown] = React.useState(false);
   const [showPortalsDrawer, setShowPortalsDrawer] = React.useState(false);
   const [showMobileMenu, setShowMobileMenu] = React.useState(false);
+  const { toggleIntercom, onlineCount } = useCall();
 
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
@@ -202,6 +206,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
+            {/* Ramal & Intercomunicador Interno de Voz */}
+            {currentUser && (
+              <button
+                id="navbar-intercom-btn"
+                onClick={toggleIntercom}
+                className="h-11 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200 transition-all duration-200 group cursor-pointer shadow-2xs"
+                title="Abrir Ramal & Intercomunicador Interno de Voz (WebRTC)"
+              >
+                <div className="relative">
+                  <PhoneCall className="w-4 h-4 flex-shrink-0 text-emerald-600 group-hover:scale-110 transition-transform" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 absolute -top-0.5 -right-0.5 animate-ping" />
+                </div>
+                <span className="hidden xl:inline font-bold">Ramal</span>
+                <span className="px-1.5 py-0.2 bg-emerald-600 text-white text-[10px] font-extrabold rounded-full shadow-2xs">
+                  {onlineCount} online
+                </span>
+              </button>
+            )}
+
 
           </nav>
         )}
@@ -290,6 +313,25 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                     {/* Actions List */}
                     <div className="space-y-0.5">
+                      {/* Ramal & Intercomunicador */}
+                      <button
+                        id="dropdown-open-intercom-btn"
+                        type="button"
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          toggleIntercom();
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium text-emerald-800 bg-emerald-50/60 hover:bg-emerald-100/90 transition-all flex items-center justify-between group cursor-pointer border border-emerald-100/80 mb-1"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <PhoneCall className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
+                          <span className="font-bold">Ramal & Intercomunicador</span>
+                        </div>
+                        <span className="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full">
+                          {onlineCount} online
+                        </span>
+                      </button>
+
                       <button
                         id="open-edit-profile-btn"
                         type="button"
@@ -539,6 +581,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>Consultar Empresa / CNPJ</span>
                   </button>
                 )}
+
+                {/* Ramal & Intercomunicador */}
+                <button
+                  onClick={() => {
+                    toggleIntercom();
+                    setShowMobileMenu(false);
+                  }}
+                  className="w-full h-12 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 flex items-center justify-between px-4 font-bold text-sm transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <PhoneCall className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span>Ramal & Intercomunicador</span>
+                  </div>
+                  <span className="px-2 py-0.5 bg-emerald-600 text-white text-xs font-bold rounded-full">
+                    {onlineCount} online
+                  </span>
+                </button>
 
                 {/* Manual do Usuário */}
                 {onOpenManualModal && (
