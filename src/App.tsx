@@ -440,6 +440,19 @@ export default function App() {
               }
 
               const resolvedAvatar = match.avatar_url || prevUser.avatar_url;
+
+              // Se nenhum atributo relevante mudou, manter a mesma referência para evitar re-renderizações desnecessárias
+              if (
+                match.id === prevUser.id &&
+                match.full_name === prevUser.full_name &&
+                match.role === prevUser.role &&
+                match.status === prevUser.status &&
+                match.sector === prevUser.sector &&
+                resolvedAvatar === prevUser.avatar_url
+              ) {
+                return prevUser;
+              }
+
               const updated: UserProfile = {
                 ...prevUser,
                 id: match.id || prevUser.id,

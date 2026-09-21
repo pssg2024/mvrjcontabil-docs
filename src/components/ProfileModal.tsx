@@ -70,21 +70,23 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   } | null>(null);
   const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevIsOpenRef = useRef(false);
 
-  // Estados para Troca Opcional de Senha
-  const [currentPasswordInput, setCurrentPasswordInput] = useState('');
-  const [newPasswordInput, setNewPasswordInput] = useState('');
-  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
-  const [showCurrentPass, setShowCurrentPass] = useState(false);
-  const [showNewPass, setShowNewPass] = useState(false);
-  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  // Estados para Troca Opcional de Senha (declarados de forma simples e estável no topo)
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState<string | null>(null);
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string | null>(null);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // Sync state when currentUser changes or modal opens
+  // Sync state ONLY when modal transitions from closed to open
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
       setActiveTab(initialTab);
       setFullName(currentUser.full_name);
       setAvatarUrl(currentUser.avatar_url);
@@ -92,26 +94,37 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setSuccessMsg(null);
       setPasswordSuccessMsg(null);
       setPasswordErrorMsg(null);
-      setCurrentPasswordInput('');
-      setNewPasswordInput('');
-      setConfirmPasswordInput('');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
       setOptimizationStats(null);
       setImgError(false);
     }
-  }, [isOpen, currentUser, initialTab]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, initialTab]);
+
+  // Permite alternar aba via initialTab se fornecida externamente
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
 
   // Critérios de força da nova senha (flexível: min 4 caracteres, com qualquer combinação de letras, números e símbolos)
-  const hasMinLength = newPasswordInput.length >= 4;
-  const passwordsMatch = newPasswordInput.length > 0 && newPasswordInput === confirmPasswordInput;
+  const hasMinLength = newPassword.length >= 4;
+  const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
 
-  const strengthScore = newPasswordInput.length >= 8 ? 3 : newPasswordInput.length >= 4 ? 2 : 1;
+  const strengthScore = newPassword.length >= 8 ? 3 : newPassword.length >= 4 ? 2 : 1;
 
   const getStrengthLabel = () => {
-    if (newPasswordInput.length === 0) return { label: 'Não digitada', color: 'bg-gray-200 text-gray-500' };
-    if (newPasswordInput.length < 4) return { label: 'Muito curta', color: 'bg-rose-500 text-white' };
-    if (newPasswordInput.length < 8) return { label: 'Boa', color: 'bg-amber-500 text-white' };
+    if (newPassword.length === 0) return { label: 'Não digitada', color: 'bg-gray-200 text-gray-500' };
+    if (newPassword.length < 4) return { label: 'Muito curta', color: 'bg-rose-500 text-white' };
+    if (newPassword.length < 8) return { label: 'Boa', color: 'bg-amber-500 text-white' };
     return { label: 'Forte', color: 'bg-emerald-600 text-white' };
   };
 
@@ -128,11 +141,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     const isEvandro = userEmailKey === 'evandro230655@gmail.com' || userEmailKey === 'evandro132213@gmail.com';
     const expectedPassword = storedPasswords[userEmailKey] || (isEvandro ? (userEmailKey === 'evandro132213@gmail.com' ? '132213' : '230655') : 'Mvrj@2026');
 
-    const isCurrentPasswordValid = !currentPasswordInput || 
-      currentPasswordInput.trim() === expectedPassword || 
-      (isEvandro && (currentPasswordInput.trim() === '230655' || currentPasswordInput.trim() === '132213' || currentPasswordInput.trim() === 'Mvrj@2026'));
+    const isCurrentPasswordValid = !currentPassword || 
+      currentPassword.trim() === expectedPassword || 
+      (isEvandro && (currentPassword.trim() === '230655' || currentPassword.trim() === '132213' || currentPassword.trim() === 'Mvrj@2026'));
 
-    if (currentPasswordInput && !isCurrentPasswordValid) {
+    if (currentPassword && !isCurrentPasswordValid) {
       setPasswordErrorMsg('A senha atual digitada está incorreta.');
       return;
     }
@@ -141,29 +154,29 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       if (!passwordsMatch) {
         setPasswordErrorMsg('A confirmação de senha não coincide com a nova senha digitada.');
       } else {
-        setPasswordErrorMsg('A nova senha deve ter no mínimo 8 caracteres, com maiúsculas, minúsculas, números e caracteres especiais.');
+        setPasswordErrorMsg('A nova senha deve ter no mínimo 4 caracteres.');
       }
       return;
     }
 
-    setIsChangingPassword(true);
+    setIsUpdatingPassword(true);
 
     try {
       if (onPasswordChange) {
-        onPasswordChange(newPasswordInput.trim());
+        onPasswordChange(newPassword.trim());
       } else {
-        storedPasswords[userEmailKey] = newPasswordInput.trim();
+        storedPasswords[userEmailKey] = newPassword.trim();
         localStorage.setItem('mvrj_passwords', JSON.stringify(storedPasswords));
       }
 
       setPasswordSuccessMsg('Sua senha de acesso foi atualizada com sucesso!');
-      setCurrentPasswordInput('');
-      setNewPasswordInput('');
-      setConfirmPasswordInput('');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (err: any) {
       setPasswordErrorMsg('Erro ao salvar nova senha.');
     } finally {
-      setIsChangingPassword(false);
+      setIsUpdatingPassword(false);
     }
   };
 
@@ -677,86 +690,98 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             {/* Formulário de Alteração de Senha */}
             <form onSubmit={handleUpdatePassword} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="profile-current-password-input" className="block text-xs font-bold text-slate-700 mb-1">
                   Senha Atual (Opcional se for a senha padrão)
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
                   <input
-                    type={showCurrentPass ? 'text' : 'password'}
-                    value={currentPasswordInput}
-                    onChange={(e) => setCurrentPasswordInput(e.target.value)}
+                    id="profile-current-password-input"
+                    name="currentPassword"
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Digite sua senha atual"
-                    className="w-full pl-9 pr-10 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden"
+                    autoComplete="current-password"
+                    className="w-full pl-9 pr-10 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden bg-white text-slate-800"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowCurrentPass(!showCurrentPass)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-hidden"
+                    title={showCurrentPassword ? 'Ocultar senha' : 'Exibir senha'}
                   >
-                    {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="profile-new-password-input" className="block text-xs font-bold text-slate-700 mb-1">
                     Nova Senha Forte
                   </label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
                     <input
-                      type={showNewPass ? 'text' : 'password'}
+                      id="profile-new-password-input"
+                      name="newPassword"
+                      type={showNewPassword ? 'text' : 'password'}
                       required
-                      value={newPasswordInput}
-                      onChange={(e) => setNewPasswordInput(e.target.value)}
-                      placeholder="Mínimo 8 caracteres"
-                      className="w-full pl-9 pr-10 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Mínimo 4 caracteres"
+                      autoComplete="new-password"
+                      className="w-full pl-9 pr-10 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden bg-white text-slate-800"
                     />
                     <button
                       type="button"
-                      onClick={() => setShowNewPass(!showNewPass)}
-                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-hidden"
+                      title={showNewPassword ? 'Ocultar senha' : 'Exibir senha'}
                     >
-                      {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="profile-confirm-password-input" className="block text-xs font-bold text-slate-700 mb-1">
                     Confirmar Nova Senha
                   </label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
                     <input
-                      type={showConfirmPass ? 'text' : 'password'}
+                      id="profile-confirm-password-input"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
                       required
-                      value={confirmPasswordInput}
-                      onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Repita a nova senha"
-                      className={`w-full pl-9 pr-10 py-2 text-sm border rounded-xl focus:ring-2 outline-hidden ${
-                        confirmPasswordInput && !passwordsMatch
+                      autoComplete="new-password"
+                      className={`w-full pl-9 pr-10 py-2 text-sm border rounded-xl focus:ring-2 outline-hidden bg-white text-slate-800 ${
+                        confirmPassword && !passwordsMatch
                           ? 'border-rose-300 focus:ring-rose-400'
-                          : confirmPasswordInput && passwordsMatch
+                          : confirmPassword && passwordsMatch
                             ? 'border-emerald-400 focus:ring-emerald-400'
                             : 'border-slate-300 focus:ring-blue-500'
                       }`}
                     />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPass(!showConfirmPass)}
-                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-hidden"
+                      title={showConfirmPassword ? 'Ocultar senha' : 'Exibir senha'}
                     >
-                      {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
               </div>
 
               {/* Medidor de Força */}
-              {newPasswordInput && (
+              {newPassword && (
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-slate-600">Força da Senha:</span>
@@ -805,12 +830,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
               <div className="flex justify-end pt-1">
                 <button
+                  id="submit-new-password-btn"
                   type="submit"
-                  disabled={!isPasswordValid || isChangingPassword}
-                  className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl shadow-sm transition-all flex items-center space-x-2"
+                  disabled={!isPasswordValid || isUpdatingPassword}
+                  className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl shadow-sm transition-all flex items-center space-x-2 cursor-pointer"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
-                  <span>{isChangingPassword ? 'Salvando...' : 'Salvar Nova Senha'}</span>
+                  <span>{isUpdatingPassword ? 'Salvando...' : 'Salvar Nova Senha'}</span>
                 </button>
               </div>
             </form>
