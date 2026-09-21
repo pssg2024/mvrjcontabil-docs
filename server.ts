@@ -3852,6 +3852,177 @@ app.delete('/api/settings/auth-header', async (req: Request, res: Response) => {
 });
 
 // ==============================================================================
+// 15. SUPABASE PUBLIC CONFIG & INTERNAL CALL SIGNALING RELAY
+// ==============================================================================
+
+// 15.1 Public Supabase configuration for client-side Realtime & Auth
+app.get('/api/supabase-config', (req: Request, res: Response) => {
+  const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
+  const supabaseAnonKey = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  res.json({
+    supabaseUrl,
+    supabaseAnonKey,
+    configured: Boolean(supabaseUrl && supabaseAnonKey),
+  });
+});
+
+// Real-time In-Memory Call Bus for Cross-Device & Cross-Browser WebRTC Signaling
+interface CallSseClient {
+  id: string;
+  userId: string;
+  userEmail: string;
+  res: Response;
+  lastSeen: number;
+}
+
+const callClients = new Map<string, CallSseClient>();
+const activePresenceMap = new Map<string, { id: string; email: string; name: string; sector: string; lastSeen: number }>();
+const recentSignals: Array<{ id: string; event: string; payload: any; senderClientId?: string; timestamp: number }> = [];
+
+// Broadcast signal to SSE clients
+function broadcastCallSignal(event: string, payload: any, senderClientId?: string) {
+  const messageData = `data: ${JSON.stringify({ event, payload, senderClientId, timestamp: Date.now() })}\n\n`;
+  
+  // Guardar no buffer recente (limite 100 itens)
+  recentSignals.push({
+    id: crypto.randomUUID(),
+    event,
+    payload,
+    senderClientId,
+    timestamp: Date.now(),
+  });
+  if (recentSignals.length > 100) {
+    recentSignals.splice(0, recentSignals.length - 100);
+  }
+
+  console.log(`[Signal Relay] Event: ${event}, Clients: ${callClients.size}`);
+
+  // Notificar clientes SSE conectados
+  callClients.forEach((client, clientId) => {
+    if (clientId === senderClientId) return; // Não reenviar para o próprio socket emitente
+    try {
+      client.res.write(messageData);
+      // Forçar flush se possível para evitar buffering em proxies
+      if ((client.res as any).flush) (client.res as any).flush();
+    } catch (err) {
+      callClients.delete(clientId);
+    }
+  });
+}
+
+// 15.2 SSE Stream for Incoming Signals & Instant Calls
+app.get('/api/calls/events', (req: Request, res: Response) => {
+  const userId = String(req.query.userId || '').trim().toLowerCase();
+  const userEmail = String(req.query.userEmail || '').trim().toLowerCase();
+  const clientId = crypto.randomUUID();
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  // Envia comentário inicial e ping de boas-vindas
+  res.write(': sse-internal-calls-relay\n\n');
+  res.write(`data: ${JSON.stringify({ event: 'connected', clientId, timestamp: Date.now() })}\n\n`);
+  if ((res as any).flush) (res as any).flush();
+
+  const client: CallSseClient = {
+    id: clientId,
+    userId,
+    userEmail,
+    res,
+    lastSeen: Date.now(),
+  };
+
+  callClients.set(clientId, client);
+
+  if (userId || userEmail) {
+    const key = userId || userEmail;
+    activePresenceMap.set(key, {
+      id: userId,
+      email: userEmail,
+      name: String(req.query.userName || ''),
+      sector: String(req.query.sector || ''),
+      lastSeen: Date.now(),
+    });
+  }
+
+  // Keep-alive ping a cada 15 segundos
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(': keep-alive\n\n');
+    } catch {
+      clearInterval(keepAlive);
+      callClients.delete(clientId);
+    }
+  }, 15000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    callClients.delete(clientId);
+  });
+});
+
+// 15.3 Post Signal (Call invite, accept, reject, hangup, ICE candidate)
+app.post('/api/calls/signal', (req: Request, res: Response) => {
+  const { event, payload, senderClientId } = req.body || {};
+  if (!event || !payload) {
+    return res.status(400).json({ error: 'event and payload are required' });
+  }
+
+  broadcastCallSignal(event, payload, senderClientId);
+  res.json({ success: true, timestamp: Date.now() });
+});
+
+// 15.4 Presence Heartbeat & Query
+app.post('/api/calls/presence', (req: Request, res: Response) => {
+  const { userId, userEmail, userName, sector } = req.body || {};
+  const uid = String(userId || '').trim().toLowerCase();
+  const uemail = String(userEmail || '').trim().toLowerCase();
+
+  if (uid || uemail) {
+    const key = uid || uemail;
+    activePresenceMap.set(key, {
+      id: uid,
+      email: uemail,
+      name: userName || '',
+      sector: sector || '',
+      lastSeen: Date.now(),
+    });
+  }
+
+  // Limpar presenças inativas (> 30s)
+  const now = Date.now();
+  activePresenceMap.forEach((val, key) => {
+    if (now - val.lastSeen > 35000) {
+      activePresenceMap.delete(key);
+    }
+  });
+
+  const onlineList = Array.from(activePresenceMap.values());
+  res.json({
+    onlineUsers: onlineList,
+    onlineIds: Array.from(new Set(onlineList.flatMap(u => [u.id, u.email]).filter(Boolean))),
+  });
+});
+
+app.get('/api/calls/presence', (req: Request, res: Response) => {
+  const now = Date.now();
+  activePresenceMap.forEach((val, key) => {
+    if (now - val.lastSeen > 35000) {
+      activePresenceMap.delete(key);
+    }
+  });
+
+  const onlineList = Array.from(activePresenceMap.values());
+  res.json({
+    onlineUsers: onlineList,
+    onlineIds: Array.from(new Set(onlineList.flatMap(u => [u.id, u.email]).filter(Boolean))),
+  });
+});
+
+// ==============================================================================
 // VITE DEV / PRODUCTION MIDDLEWARE
 // ==============================================================================
 

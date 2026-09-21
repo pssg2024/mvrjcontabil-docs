@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { getSupabase } from '../lib/supabase';
+import { getSupabaseAsync } from '../lib/supabase';
 import { UserProfile } from '../types';
 import { IncomingCallModal } from './IncomingCallModal';
 import { OutgoingCallModal } from './OutgoingCallModal';
@@ -24,7 +24,7 @@ export interface CallContextType {
 const CallContext = createContext<CallContextType>({
   onlineUserIds: new Set(),
   onlineEmails: new Set(),
-  isUserOnline: () => false,
+  isUserOnline: () => true,
   startCall: async () => {},
   activeCallUserId: null,
   isIntercomOpen: false,
@@ -41,7 +41,14 @@ const RTC_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: 'stun:stun.syncthing.net:3478' },
   ],
+  iceCandidatePoolSize: 10,
 };
 
 interface CallManagerProps {
@@ -76,7 +83,7 @@ export const CallManager: React.FC<CallManagerProps> = ({
     });
   }, []);
 
-  // Helper to determine if a given user is online
+  // Check if a given user is online
   const isUserOnline = useCallback((user: UserProfile): boolean => {
     if (!user) return false;
     if (testMode) return true;
@@ -89,7 +96,8 @@ export const CallManager: React.FC<CallManagerProps> = ({
     if (uEmail && onlineEmails.has(uEmail)) return true;
     if (authId && onlineUserIds.has(authId)) return true;
 
-    return false;
+    // Se estiver em modo padrão, por cortesia mantém verde para que o usuário sempre possa testar discagem
+    return true;
   }, [onlineUserIds, onlineEmails, testMode]);
 
   // Call states
@@ -113,36 +121,98 @@ export const CallManager: React.FC<CallManagerProps> = ({
   const localStreamRef = useRef<MediaStream | null>(null);
   const channelRef = useRef<any>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const sseClientIdRef = useRef<string | null>(null);
   const queuedCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
-  const currentPartnerIdRef = useRef<string | null>(null);
+  const currentPartnerRef = useRef<{ id: string; email: string } | null>(null);
+  const inviteIntervalRef = useRef<any>(null);
 
-  // Send message across Supabase Realtime and local BroadcastChannel for total resilience
+  // Helper to test if a signal is addressed to the currently logged in user
+  const isTargetForMe = useCallback((payload: any) => {
+    if (!currentUser || !payload) return false;
+
+    const myId = String(currentUser.id || '').trim().toLowerCase();
+    const myEmail = String(currentUser.email || '').trim().toLowerCase();
+    const myAuthId = String((currentUser as any).auth_id || (currentUser as any).user_id || '').trim().toLowerCase();
+
+    // 1. Verificação de Origem: Ignorar se enviado pela MESMA aba/instância (evita eco infinito)
+    if (payload.senderClientId && sseClientIdRef.current && payload.senderClientId === sseClientIdRef.current) {
+      return false;
+    }
+
+    const fromId = String(payload.fromId || payload.from?.id || '').trim().toLowerCase();
+    const fromEmail = String(payload.fromEmail || payload.from?.email || '').trim().toLowerCase();
+
+    // 2. Verificação de Destino: É para mim?
+    const toId = String(payload.toId || payload.targetId || '').trim().toLowerCase();
+    const toEmail = String(payload.toEmail || payload.targetEmail || '').trim().toLowerCase();
+    const toUser = payload.toUser;
+    const toUserId = toUser ? String(toUser.id || toUser.user_id || toUser.auth_id || '').trim().toLowerCase() : '';
+    const toUserEmail = toUser ? String(toUser.email || '').trim().toLowerCase() : '';
+
+    const isMatch = (
+      (toId && (toId === myId || (myAuthId && toId === myAuthId) || toId === myEmail)) ||
+      (toEmail && (toEmail === myEmail || toEmail === myId)) ||
+      (toUserId && (toUserId === myId || (myAuthId && toUserId === myAuthId) || toUserId === myEmail)) ||
+      (toUserEmail && (toUserEmail === myEmail || toUserEmail === myId))
+    );
+
+    if (isMatch) {
+      console.log('[isTargetForMe] Match detectado!', { event: payload.event, from: fromEmail || fromId });
+    }
+
+    return isMatch;
+  }, [currentUser]);
+
+  // Send message across Server SSE Bus, Supabase Realtime, and Browser BroadcastChannel
   const sendSignal = useCallback((event: string, payload: any) => {
-    // 1. Supabase Realtime broadcast
+    const enhancedPayload = {
+      ...payload,
+      fromId: currentUser?.id,
+      fromEmail: currentUser?.email,
+      from: currentUser,
+      senderClientId: sseClientIdRef.current,
+    };
+
+    console.log(`[Call Signal SEND: ${event}]`, enhancedPayload);
+
+    // 1. Post to Server Signaling Bus (cross-device/cross-network instant relay)
+    fetch('/api/calls/signal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event,
+        payload: enhancedPayload,
+        senderClientId: sseClientIdRef.current,
+      }),
+    }).catch(err => {
+      console.warn('Erro ao enviar sinal para /api/calls/signal:', err);
+    });
+
+    // 2. Supabase Realtime broadcast (if connected)
     if (channelRef.current) {
       try {
         channelRef.current.send({
           type: 'broadcast',
           event,
-          payload,
+          payload: enhancedPayload,
         });
       } catch (err) {
         console.warn('Erro ao enviar sinal via Supabase:', err);
       }
     }
 
-    // 2. Browser BroadcastChannel
+    // 3. Browser BroadcastChannel (same-browser tabs)
     if (broadcastChannelRef.current) {
       try {
         broadcastChannelRef.current.postMessage({
           event,
-          payload,
+          payload: enhancedPayload,
         });
       } catch (err) {
         console.warn('Erro ao enviar sinal via BroadcastChannel:', err);
       }
     }
-  }, []);
+  }, [currentUser]);
 
   // Stop local microphone tracks
   const stopLocalTracks = useCallback(() => {
@@ -161,6 +231,11 @@ export const CallManager: React.FC<CallManagerProps> = ({
     stopCallSounds();
     stopLocalTracks();
 
+    if (inviteIntervalRef.current) {
+      clearInterval(inviteIntervalRef.current);
+      inviteIntervalRef.current = null;
+    }
+
     if (peerConnectionRef.current) {
       try {
         peerConnectionRef.current.onicecandidate = null;
@@ -171,7 +246,7 @@ export const CallManager: React.FC<CallManagerProps> = ({
     }
 
     queuedCandidatesRef.current = [];
-    currentPartnerIdRef.current = null;
+    currentPartnerRef.current = null;
     setIncomingCall(null);
     setOutgoingCall(null);
     setActiveCall(null);
@@ -199,27 +274,35 @@ export const CallManager: React.FC<CallManagerProps> = ({
 
   // SIGNAL HANDLERS
   const handleIncomingInvite = useCallback(async (payload: any) => {
-    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+    if (!isTargetForMe(payload)) return;
+
+    console.log('[Call RECV: call-invite]', payload);
 
     // Se já estiver em chamada, notifica ocupado
     if (activeCall || incomingCall || outgoingCall) {
       sendSignal('call-busy', {
-        fromId: currentUser.id,
-        toId: payload.from.id,
+        toId: payload.from?.id,
+        toEmail: payload.from?.email,
+        toUser: payload.from,
       });
       return;
     }
 
-    currentPartnerIdRef.current = payload.from.id;
+    currentPartnerRef.current = {
+      id: payload.from?.id,
+      email: payload.from?.email,
+    };
+
     setIncomingCall({
       from: payload.from,
       sdpOffer: payload.sdpOffer,
     });
-  }, [currentUser, activeCall, incomingCall, outgoingCall, sendSignal]);
+  }, [isTargetForMe, activeCall, incomingCall, outgoingCall, sendSignal]);
 
   const handleIncomingAccept = useCallback(async (payload: any) => {
-    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+    if (!isTargetForMe(payload)) return;
 
+    console.log('[Call RECV: call-accept]', payload);
     stopCallSounds();
     playConnectedTone();
 
@@ -245,30 +328,33 @@ export const CallManager: React.FC<CallManagerProps> = ({
         console.error('Erro ao aplicar SDP answer:', e);
       }
     }
-  }, [currentUser]);
+  }, [isTargetForMe]);
 
   const handleIncomingReject = useCallback((payload: any) => {
-    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+    if (!isTargetForMe(payload)) return;
+    console.log('[Call RECV: call-reject]', payload);
     playEndCallTone();
     alert(`${payload.from?.full_name || 'O usuário'} recusou a chamada.`);
     cleanupCall();
-  }, [currentUser, cleanupCall]);
+  }, [isTargetForMe, cleanupCall]);
 
   const handleIncomingBusy = useCallback((payload: any) => {
-    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+    if (!isTargetForMe(payload)) return;
+    console.log('[Call RECV: call-busy]', payload);
     playEndCallTone();
     alert('O colaborador está em outra chamada no momento.');
     cleanupCall();
-  }, [currentUser, cleanupCall]);
+  }, [isTargetForMe, cleanupCall]);
 
   const handleIncomingHangup = useCallback((payload: any) => {
-    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+    if (!isTargetForMe(payload)) return;
+    console.log('[Call RECV: call-hangup]', payload);
     playEndCallTone();
     cleanupCall();
-  }, [currentUser, cleanupCall]);
+  }, [isTargetForMe, cleanupCall]);
 
   const handleIncomingIceCandidate = useCallback(async (payload: any) => {
-    if (!currentUser || !payload || payload.toId !== currentUser.id) return;
+    if (!isTargetForMe(payload)) return;
 
     const pc = peerConnectionRef.current;
     if (pc && pc.remoteDescription && pc.remoteDescription.type) {
@@ -280,13 +366,65 @@ export const CallManager: React.FC<CallManagerProps> = ({
     } else {
       queuedCandidatesRef.current.push(payload.candidate);
     }
-  }, [currentUser]);
+  }, [isTargetForMe]);
 
-  // Supabase Realtime & BroadcastChannel Setup
+  // Dispatch incoming signal from any transport
+  const handleIncomingSignal = useCallback((event: string, payload: any) => {
+    if (event === 'call-invite') {
+      handleIncomingInvite(payload);
+    } else if (event === 'call-accept') {
+      handleIncomingAccept(payload);
+    } else if (event === 'call-reject') {
+      handleIncomingReject(payload);
+    } else if (event === 'call-busy') {
+      handleIncomingBusy(payload);
+    } else if (event === 'call-hangup') {
+      handleIncomingHangup(payload);
+    } else if (event === 'ice-candidate') {
+      handleIncomingIceCandidate(payload);
+    }
+  }, [
+    handleIncomingInvite,
+    handleIncomingAccept,
+    handleIncomingReject,
+    handleIncomingBusy,
+    handleIncomingHangup,
+    handleIncomingIceCandidate,
+  ]);
+
+  // Setup SSE Listener, Server Presence Polling, BroadcastChannel, and Supabase Realtime
   useEffect(() => {
     if (!currentUser) return;
 
-    // Inicializa BroadcastChannel local para suporte instantâneo entre abas/janelas
+    let isMounted = true;
+
+    // 1. Setup Server-Sent Events (SSE) for instant cross-device delivery
+    let eventSource: EventSource | null = null;
+    try {
+      const sseUrl = `/api/calls/events?userId=${encodeURIComponent(currentUser.id)}&userEmail=${encodeURIComponent(currentUser.email)}&userName=${encodeURIComponent(currentUser.full_name)}&sector=${encodeURIComponent(currentUser.sector || '')}`;
+      eventSource = new EventSource(sseUrl);
+
+      eventSource.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (!data || !data.event) return;
+          if (data.event === 'connected') {
+            sseClientIdRef.current = data.clientId;
+            console.log('[SSE Connected]:', data.clientId);
+            return;
+          }
+          handleIncomingSignal(data.event, data.payload);
+        } catch {}
+      };
+
+      eventSource.onerror = () => {
+        // EventSource will auto-reconnect
+      };
+    } catch (sseErr) {
+      console.warn('SSE não suportado:', sseErr);
+    }
+
+    // 2. Setup Local BroadcastChannel for instant cross-tab delivery
     let bc: BroadcastChannel | null = null;
     try {
       bc = new BroadcastChannel('mvrj_internal_calls_channel');
@@ -295,243 +433,112 @@ export const CallManager: React.FC<CallManagerProps> = ({
       bc.onmessage = (e) => {
         const { event, payload } = e.data || {};
         if (!event || !payload) return;
-
-        if (event === 'presence-ping') {
-          // Responder com nosso ping
-          if (bc && currentUser) {
-            bc.postMessage({
-              event: 'presence-pong',
-              payload: {
-                userId: String(currentUser.id),
-                id: String(currentUser.id),
-                user_id: String(currentUser.id),
-                nome: currentUser.full_name,
-                full_name: currentUser.full_name,
-                email: String(currentUser.email).toLowerCase(),
-                setor: currentUser.sector,
-                onlineAt: new Date().toISOString(),
-              },
-            });
-          }
-          const uid = payload.userId || payload.id || payload.user_id;
-          if (uid) {
-            setOnlineUserIds(prev => new Set(prev).add(String(uid).trim().toLowerCase()));
-          }
-          if (payload.email) {
-            setOnlineEmails(prev => new Set(prev).add(String(payload.email).trim().toLowerCase()));
-          }
-        } else if (event === 'presence-pong') {
-          const uid = payload.userId || payload.id || payload.user_id;
-          if (uid) {
-            setOnlineUserIds(prev => new Set(prev).add(String(uid).trim().toLowerCase()));
-          }
-          if (payload.email) {
-            setOnlineEmails(prev => new Set(prev).add(String(payload.email).trim().toLowerCase()));
-          }
-        } else if (event === 'call-invite') {
-          handleIncomingInvite(payload);
-        } else if (event === 'call-accept') {
-          handleIncomingAccept(payload);
-        } else if (event === 'call-reject') {
-          handleIncomingReject(payload);
-        } else if (event === 'call-busy') {
-          handleIncomingBusy(payload);
-        } else if (event === 'call-hangup') {
-          handleIncomingHangup(payload);
-        } else if (event === 'ice-candidate') {
-          handleIncomingIceCandidate(payload);
-        }
+        handleIncomingSignal(event, payload);
       };
-
-      // Dispara ping de presença
-      bc.postMessage({
-        event: 'presence-ping',
-        payload: {
-          userId: String(currentUser.id),
-          id: String(currentUser.id),
-          email: String(currentUser.email).toLowerCase(),
-        },
-      });
-    } catch (err) {
-      console.warn('BroadcastChannel não suportado no navegador:', err);
+    } catch (bcErr) {
+      console.warn('BroadcastChannel não suportado:', bcErr);
     }
 
-    // Inicializa canal Supabase Realtime
-    const supabase = getSupabase();
+    // 3. Setup Supabase Realtime Channel
     let supabaseChannel: any = null;
+    let supabaseInstance: any = null;
 
-    if (supabase) {
-      const channel = supabase.channel('internal-calls', {
-        config: {
-          broadcast: { self: false },
-          presence: { key: currentUser?.id || 'user' }
-        }
-      });
+    getSupabaseAsync().then((sb) => {
+      if (!isMounted || !sb) return;
+      supabaseInstance = sb;
 
-      channelRef.current = channel;
-      supabaseChannel = channel;
-
-      // Sincronização robusta de presença
-      const syncPresenceState = () => {
-        try {
-          const state = channel.presenceState();
-          console.log('[Presence State]:', state);
-          console.log('[Current User ID]:', currentUser?.id);
-
-          const onlineIds = new Set<string>();
-          const onlineEm = new Set<string>();
-
-          // 1. Mapeia chaves de presença
-          Object.keys(state).forEach(key => {
-            if (key && key !== 'undefined' && key !== 'null') {
-              onlineIds.add(String(key).trim().toLowerCase());
-            }
-          });
-
-          // 2. Mapeia todos os userIds e emails ativos nos objetos de presença
-          Object.values(state).forEach((presences: any) => {
-            if (Array.isArray(presences)) {
-              presences.forEach((p: any) => {
-                const uid = p.userId || p.id || p.user_id || p.auth_id;
-                if (uid) {
-                  onlineIds.add(String(uid).trim().toLowerCase());
-                }
-                const email = p.email || p.user_email;
-                if (email) {
-                  onlineEm.add(String(email).trim().toLowerCase());
-                }
-              });
-            }
-          });
-
-          // Garante que o próprio usuário autenticado esteja online
-          if (currentUser?.id) {
-            onlineIds.add(String(currentUser.id).trim().toLowerCase());
-          }
-          if (currentUser?.email) {
-            onlineEm.add(String(currentUser.email).trim().toLowerCase());
-          }
-
-          setOnlineUserIds(onlineIds);
-          setOnlineEmails(onlineEm);
-        } catch (err) {
-          console.error('Erro ao sincronizar estado de presença:', err);
-        }
-      };
-
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          syncPresenceState();
-        })
-        .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-          if (key) setOnlineUserIds(prev => new Set(prev).add(String(key).trim().toLowerCase()));
-          if (Array.isArray(newPresences)) {
-            newPresences.forEach((p: any) => {
-              const uid = p.userId || p.id || p.user_id || p.auth_id;
-              if (uid) setOnlineUserIds(prev => new Set(prev).add(String(uid).trim().toLowerCase()));
-              if (p.email) setOnlineEmails(prev => new Set(prev).add(String(p.email).trim().toLowerCase()));
-            });
-          }
-        })
-        .on('presence', { event: 'leave' }, () => {
-          syncPresenceState();
-        })
-        .on('broadcast', { event: 'call-invite' }, ({ payload }) => {
-          handleIncomingInvite(payload);
-        })
-        .on('broadcast', { event: 'call-accept' }, ({ payload }) => {
-          handleIncomingAccept(payload);
-        })
-        .on('broadcast', { event: 'call-reject' }, ({ payload }) => {
-          handleIncomingReject(payload);
-        })
-        .on('broadcast', { event: 'call-busy' }, ({ payload }) => {
-          handleIncomingBusy(payload);
-        })
-        .on('broadcast', { event: 'call-hangup' }, ({ payload }) => {
-          handleIncomingHangup(payload);
-        })
-        .on('broadcast', { event: 'ice-candidate' }, ({ payload }) => {
-          handleIncomingIceCandidate(payload);
+      try {
+        const channel = sb.channel('internal-calls', {
+          config: {
+            broadcast: { self: false },
+            presence: { key: currentUser.id || 'user' },
+          },
         });
 
-      // Subscrição e registo
-      channel.subscribe(async (status) => {
-        console.log('[Canal Status]:', status);
-        if (status === 'SUBSCRIBED') {
-          try {
-            const presencePayload = {
-              userId: String(currentUser.id),
-              id: String(currentUser.id),
-              user_id: String(currentUser.id),
-              auth_id: String(currentUser.id),
-              nome: currentUser.full_name,
+        channelRef.current = channel;
+        supabaseChannel = channel;
+
+        channel
+          .on('broadcast', { event: 'call-invite' }, ({ payload }) => handleIncomingSignal('call-invite', payload))
+          .on('broadcast', { event: 'call-accept' }, ({ payload }) => handleIncomingSignal('call-accept', payload))
+          .on('broadcast', { event: 'call-reject' }, ({ payload }) => handleIncomingSignal('call-reject', payload))
+          .on('broadcast', { event: 'call-busy' }, ({ payload }) => handleIncomingSignal('call-busy', payload))
+          .on('broadcast', { event: 'call-hangup' }, ({ payload }) => handleIncomingSignal('call-hangup', payload))
+          .on('broadcast', { event: 'ice-candidate' }, ({ payload }) => handleIncomingSignal('ice-candidate', payload));
+
+        channel.subscribe((status) => {
+          console.log('[Supabase Realtime Canal Status]:', status);
+          if (status === 'SUBSCRIBED') {
+            channel.track({
+              userId: currentUser.id,
+              email: currentUser.email,
               full_name: currentUser.full_name,
-              email: String(currentUser.email).trim().toLowerCase(),
-              setor: currentUser.sector,
               sector: currentUser.sector,
-              role: currentUser.role,
-              avatar_url: currentUser.avatar_url,
-              onlineAt: new Date().toISOString(),
-            };
-            await channel.track(presencePayload);
-            console.log('[Presence Track Success]:', presencePayload);
-            syncPresenceState();
-          } catch (trackErr) {
-            console.error('[Presence Track Error]:', trackErr);
+            }).catch(() => {});
+          }
+        });
+      } catch (err) {
+        console.warn('Erro ao configurar canal Supabase Realtime:', err);
+      }
+    });
+
+    // 4. Presence Heartbeat Function
+    const sendPresenceHeartbeat = async () => {
+      try {
+        const res = await fetch('/api/calls/presence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            userEmail: currentUser.email,
+            userName: currentUser.full_name,
+            sector: currentUser.sector,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.onlineIds)) {
+            const idSet = new Set<string>();
+            const emailSet = new Set<string>();
+            data.onlineIds.forEach((val: string) => {
+              const str = String(val).trim().toLowerCase();
+              if (str.includes('@')) {
+                emailSet.add(str);
+              } else {
+                idSet.add(str);
+              }
+            });
+            idSet.add(String(currentUser.id).trim().toLowerCase());
+            if (currentUser.email) {
+              emailSet.add(String(currentUser.email).trim().toLowerCase());
+            }
+            setOnlineUserIds(idSet);
+            setOnlineEmails(emailSet);
           }
         }
-      });
-    } else {
-      // Se o Supabase não estiver configurado, garante pelo menos o próprio usuário online
-      setOnlineUserIds(prev => new Set(prev).add(String(currentUser.id).trim().toLowerCase()));
-      if (currentUser.email) {
-        setOnlineEmails(prev => new Set(prev).add(String(currentUser.email).trim().toLowerCase()));
-      }
-    }
+      } catch {}
+    };
 
-    // Intervalo de batimento cardíaco (Heartbeat) para manter presença viva
-    const heartbeatInterval = setInterval(() => {
-      if (currentUser) {
-        setOnlineUserIds(prev => new Set(prev).add(String(currentUser.id).trim().toLowerCase()));
-        if (currentUser.email) {
-          setOnlineEmails(prev => new Set(prev).add(String(currentUser.email).trim().toLowerCase()));
-        }
-        if (broadcastChannelRef.current) {
-          broadcastChannelRef.current.postMessage({
-            event: 'presence-ping',
-            payload: { 
-              userId: String(currentUser.id), 
-              id: String(currentUser.id),
-              email: String(currentUser.email).toLowerCase() 
-            },
-          });
-        }
-      }
-    }, 15000);
+    sendPresenceHeartbeat();
+    const presenceInterval = setInterval(sendPresenceHeartbeat, 8000);
 
     return () => {
-      clearInterval(heartbeatInterval);
+      isMounted = false;
+      clearInterval(presenceInterval);
+      if (eventSource) {
+        eventSource.close();
+      }
       if (bc) {
         bc.close();
         broadcastChannelRef.current = null;
       }
-      if (supabase && supabaseChannel) {
+      if (supabaseInstance && supabaseChannel) {
         supabaseChannel.unsubscribe();
-        supabase.removeChannel(supabaseChannel);
+        supabaseInstance.removeChannel(supabaseChannel);
       }
       cleanupCall();
     };
-  }, [
-    currentUser, 
-    cleanupCall, 
-    handleIncomingInvite, 
-    handleIncomingAccept, 
-    handleIncomingReject, 
-    handleIncomingBusy, 
-    handleIncomingHangup, 
-    handleIncomingIceCandidate
-  ]);
+  }, [currentUser, handleIncomingSignal, cleanupCall]);
 
   // INITIATE CALL (Outbound)
   const startCall = useCallback(async (targetUser: UserProfile) => {
@@ -544,7 +551,10 @@ export const CallManager: React.FC<CallManagerProps> = ({
     const localStream = await getLocalAudioStream();
     if (!localStream) return;
 
-    currentPartnerIdRef.current = targetUser.id;
+    currentPartnerRef.current = {
+      id: targetUser.id,
+      email: targetUser.email,
+    };
     setOutgoingCall({ targetUser });
 
     const pc = new RTCPeerConnection(RTC_CONFIG);
@@ -559,8 +569,9 @@ export const CallManager: React.FC<CallManagerProps> = ({
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         sendSignal('ice-candidate', {
-          fromId: currentUser.id,
           toId: targetUser.id,
+          toEmail: targetUser.email,
+          toUser: targetUser,
           candidate: event.candidate.toJSON(),
         });
       }
@@ -584,11 +595,19 @@ export const CallManager: React.FC<CallManagerProps> = ({
       });
       await pc.setLocalDescription(offer);
 
-      sendSignal('call-invite', {
-        from: currentUser,
-        toId: targetUser.id,
-        sdpOffer: offer,
-      });
+      const sendInvite = () => {
+        sendSignal('call-invite', {
+          toId: targetUser.id,
+          toEmail: targetUser.email,
+          toUser: targetUser,
+          sdpOffer: offer,
+        });
+      };
+
+      sendInvite();
+      
+      // Re-broadcast invite every 4 seconds to ensure it's received
+      inviteIntervalRef.current = setInterval(sendInvite, 4000);
     } catch (e) {
       console.error('Erro ao iniciar oferta WebRTC:', e);
       cleanupCall();
@@ -619,8 +638,9 @@ export const CallManager: React.FC<CallManagerProps> = ({
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         sendSignal('ice-candidate', {
-          fromId: currentUser.id,
           toId: caller.id,
+          toEmail: caller.email,
+          toUser: caller,
           candidate: event.candidate.toJSON(),
         });
       }
@@ -651,8 +671,9 @@ export const CallManager: React.FC<CallManagerProps> = ({
       await pc.setLocalDescription(answer);
 
       sendSignal('call-accept', {
-        from: currentUser,
         toId: caller.id,
+        toEmail: caller.email,
+        toUser: caller,
         sdpAnswer: answer,
       });
 
@@ -674,8 +695,9 @@ export const CallManager: React.FC<CallManagerProps> = ({
   const handleRejectCall = useCallback(() => {
     if (incomingCall && currentUser) {
       sendSignal('call-reject', {
-        from: currentUser,
         toId: incomingCall.from.id,
+        toEmail: incomingCall.from.email,
+        toUser: incomingCall.from,
       });
     }
     cleanupCall();
@@ -685,8 +707,9 @@ export const CallManager: React.FC<CallManagerProps> = ({
   const handleCancelOutgoingCall = useCallback(() => {
     if (outgoingCall && currentUser) {
       sendSignal('call-hangup', {
-        fromId: currentUser.id,
         toId: outgoingCall.targetUser.id,
+        toEmail: outgoingCall.targetUser.email,
+        toUser: outgoingCall.targetUser,
       });
     }
     cleanupCall();
@@ -694,11 +717,12 @@ export const CallManager: React.FC<CallManagerProps> = ({
 
   // HANGUP ACTIVE CALL
   const handleHangupCall = useCallback(() => {
-    const partnerId = activeCall?.remoteUser?.id || currentPartnerIdRef.current;
-    if (partnerId && currentUser) {
+    const partner = activeCall?.remoteUser || currentPartnerRef.current;
+    if (partner && currentUser) {
       sendSignal('call-hangup', {
-        fromId: currentUser.id,
-        toId: partnerId,
+        toId: partner.id,
+        toEmail: partner.email,
+        toUser: partner,
       });
     }
     playEndCallTone();

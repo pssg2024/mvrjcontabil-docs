@@ -4,15 +4,30 @@ let audioCtx: AudioContext | null = null;
 let ringOscillators: { osc1: OscillatorNode; osc2: OscillatorNode; gain: GainNode } | null = null;
 let ringInterval: any = null;
 
-function getAudioContext(): AudioContext {
+export function getAudioContext(): AudioContext {
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     audioCtx = new AudioContextClass();
   }
   if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
+    audioCtx.resume().catch(() => {});
   }
   return audioCtx;
+}
+
+// Global user interaction listener to unlock audio on mobile / browser autoplay policies
+if (typeof window !== 'undefined') {
+  const unlock = () => {
+    try {
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+    } catch {}
+  };
+  window.addEventListener('click', unlock, { once: false, passive: true });
+  window.addEventListener('touchstart', unlock, { once: false, passive: true });
+  window.addEventListener('keydown', unlock, { once: false, passive: true });
 }
 
 /**
