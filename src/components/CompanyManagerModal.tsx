@@ -267,23 +267,23 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
             {/* Esquerda: Lista de Empresas */}
             <div className={`flex flex-col border-r border-neutral-100 bg-white transition-all duration-300 ${isFormOpen ? 'w-1/2' : 'w-full'}`}>
               {/* Barra de Ações & Busca */}
-              <div className="flex flex-col gap-3 p-4 border-b border-neutral-100 bg-neutral-50/30">
+              <div className="flex flex-col gap-3 p-4 border-b border-slate-300 bg-slate-50">
                 <div className="flex items-center justify-between gap-3">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-neutral-400" />
+                    <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-slate-500" />
                     <input
                       id="company-search-input"
                       type="text"
                       placeholder="Buscar por nome, razão ou CNPJ..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full rounded-xl border border-neutral-200 bg-white py-2 pl-10 pr-4 text-sm outline-none transition focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-4 text-sm font-semibold text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-teal-600 focus:ring-1 focus:ring-teal-600 shadow-2xs"
                     />
                   </div>
                   <button
                     id="company-add-new-btn"
                     onClick={handleOpenCreateForm}
-                    className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 active:bg-teal-800 transition"
+                    className="flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-teal-800 active:bg-teal-900 transition cursor-pointer"
                   >
                     <Plus className="h-4 w-4" />
                     <span>Cadastrar</span>
@@ -294,15 +294,15 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
               {/* Tabela / Lista */}
               <div className="flex-1 overflow-y-auto p-4">
                 {isLoading ? (
-                  <div className="flex h-40 flex-col items-center justify-center text-neutral-400">
+                  <div className="flex h-40 flex-col items-center justify-center text-slate-500">
                     <Loader2 className="h-8 w-8 animate-spin text-teal-600 mb-2" />
-                    <p className="text-sm">Carregando lista de empresas...</p>
+                    <p className="text-sm font-bold">Carregando lista de empresas...</p>
                   </div>
                 ) : filteredCompanies.length === 0 ? (
-                  <div className="flex h-40 flex-col items-center justify-center text-neutral-400">
-                    <Building2 className="h-10 w-10 text-neutral-300 mb-2" />
-                    <p className="text-sm font-medium">Nenhuma empresa encontrada</p>
-                    <p className="text-xs text-neutral-400">Cadastre uma nova empresa cliente.</p>
+                  <div className="flex h-40 flex-col items-center justify-center text-slate-600">
+                    <Building2 className="h-10 w-10 text-slate-400 mb-2" />
+                    <p className="text-sm font-bold text-slate-800">Nenhuma empresa encontrada</p>
+                    <p className="text-xs text-slate-600 font-medium">Cadastre uma nova empresa cliente.</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -312,30 +312,30 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                         key={company.id}
                         className={`flex items-center justify-between rounded-xl border p-4 transition-all ${
                           editingId === company.id
-                            ? 'border-teal-500 bg-teal-50/20'
-                            : 'border-neutral-200 bg-white hover:bg-neutral-50/50'
+                            ? 'border-teal-600 bg-teal-50/40'
+                            : 'border-slate-300 bg-white hover:bg-slate-50'
                         }`}
                       >
                         <div className="flex flex-col gap-1 min-w-0 flex-1 pr-3">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-neutral-900 truncate max-w-[280px]">
+                            <h3 className="font-bold text-slate-950 truncate max-w-[280px]">
                               {company.razao_social}
                             </h3>
-                            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
+                            <span className="rounded-md bg-slate-100 border border-slate-300 px-2 py-0.5 text-[10px] font-bold text-slate-800">
                               {company.regime_tributario}
                             </span>
                           </div>
-                          <p className="text-xs text-neutral-500">
+                          <p className="text-xs text-slate-700 font-bold">
                             {company.nome_fantasia ? `${company.nome_fantasia} • ` : ''}CNPJ: {formatCnpj(company.cnpj)}
                           </p>
                           {company.certificate_filename ? (
-                            <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 bg-emerald-50 w-fit px-2 py-0.5 rounded-md mt-1">
-                              <FileKey className="h-3.5 w-3.5" />
+                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-900 bg-emerald-100 border border-emerald-300 w-fit px-2.5 py-0.5 rounded-md mt-1">
+                              <FileKey className="h-3.5 w-3.5 text-emerald-700" />
                               <span className="truncate max-w-[180px]">Certificado: {company.certificate_filename}</span>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 bg-amber-50 w-fit px-2 py-0.5 rounded-md mt-1">
-                              <AlertCircle className="h-3.5 w-3.5" />
+                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-950 bg-amber-100 border border-amber-300 w-fit px-2.5 py-0.5 rounded-md mt-1">
+                              <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
                               <span>Sem Certificado Digital</span>
                             </div>
                           )}
@@ -345,7 +345,7 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                           <button
                             id={`company-edit-btn-${company.id}`}
                             onClick={() => handleEdit(company)}
-                            className="rounded-lg p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition"
+                            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-950 transition cursor-pointer"
                             title="Editar"
                           >
                             <Edit3 className="h-4 w-4" />
@@ -353,7 +353,7 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                           <button
                             id={`company-delete-btn-${company.id}`}
                             onClick={() => handleDelete(company.id, company.razao_social)}
-                            className="rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 transition"
+                            className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer"
                             title="Excluir"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -375,19 +375,19 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                   animate={{ width: '50%', opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="flex flex-col bg-neutral-50/50 overflow-y-auto"
+                  className="flex flex-col bg-slate-50/70 border-l border-slate-300 overflow-y-auto"
                 >
                   <form id="company-form" onSubmit={handleSubmit} className="flex-1 p-6 space-y-5">
-                    <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
-                      <h3 className="font-bold text-neutral-950 flex items-center gap-2">
-                        <Briefcase className="h-5 w-5 text-teal-600" />
+                    <div className="flex items-center justify-between border-b border-slate-300 pb-3">
+                      <h3 className="font-black text-slate-950 flex items-center gap-2 text-base">
+                        <Briefcase className="h-5 w-5 text-teal-700" />
                         <span>{editingId ? 'Editar Empresa' : 'Cadastrar Empresa'}</span>
                       </h3>
                       <button
                         id="company-form-cancel-btn"
                         type="button"
                         onClick={resetForm}
-                        className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 transition"
+                        className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition cursor-pointer"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -395,7 +395,7 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
 
                     {/* CNPJ com consulta automatica */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-neutral-700">CNPJ *</label>
+                      <label className="text-xs font-bold text-slate-900">CNPJ *</label>
                       <div className="flex gap-2">
                         <input
                           id="company-cnpj-input"
@@ -404,16 +404,16 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                           placeholder="00.000.000/0000-00"
                           value={cnpj}
                           onChange={handleCnpjChange}
-                          className="flex-1 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                          className="flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
                         />
                         <button
                           id="company-consult-cnpj-btn"
                           type="button"
                           disabled={cleanCnpj(cnpj).length !== 14 || isActionLoading}
                           onClick={handleConsultCnpj}
-                          className="rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 transition flex items-center gap-1"
+                          className="rounded-xl border border-slate-300 bg-white px-3.5 text-xs font-bold text-slate-900 hover:bg-slate-100 disabled:opacity-50 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                         >
-                          {isActionLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                          {isActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-700" /> : <Search className="h-3.5 w-3.5 text-teal-700" />}
                           <span>Consultar</span>
                         </button>
                       </div>
@@ -421,7 +421,7 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
 
                     {/* Razão Social */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-neutral-700">Razão Social *</label>
+                      <label className="text-xs font-bold text-slate-900">Razão Social *</label>
                       <input
                         id="company-razao-social-input"
                         type="text"
@@ -429,43 +429,43 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                         placeholder="Ex: Nome Completo da Empresa Ltda"
                         value={razaoSocial}
                         onChange={(e) => setRazaoSocial(e.target.value)}
-                        className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
                       />
                     </div>
 
                     {/* Nome Fantasia */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-neutral-700">Nome Fantasia</label>
+                      <label className="text-xs font-bold text-slate-900">Nome Fantasia</label>
                       <input
                         id="company-nome-fantasia-input"
                         type="text"
                         placeholder="Ex: Nome Comercial"
                         value={nomeFantasia}
                         onChange={(e) => setNomeFantasia(e.target.value)}
-                        className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
                       />
                     </div>
 
                     {/* Inscrição Estadual & Regime Tributário */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-neutral-700">Inscrição Estadual</label>
+                        <label className="text-xs font-bold text-slate-900">Inscrição Estadual</label>
                         <input
                           id="company-ie-input"
                           type="text"
                           placeholder="Ex: 12345678"
                           value={inscricaoEstadual}
                           onChange={(e) => setInscricaoEstadual(e.target.value)}
-                          className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-teal-500"
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-neutral-700">Regime Tributário *</label>
+                        <label className="text-xs font-bold text-slate-900">Regime Tributário *</label>
                         <select
                           id="company-regime-select"
                           value={regimeTributario}
                           onChange={(e) => setRegimeTributario(e.target.value as TaxRegime)}
-                          className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-teal-500"
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-950 outline-none focus:border-teal-600 cursor-pointer"
                         >
                           <option value="Simples Nacional">Simples Nacional</option>
                           <option value="Lucro Presumido">Lucro Presumido</option>
@@ -475,19 +475,19 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                     </div>
 
                     {/* Upload Certificado Digital A1 */}
-                    <div className="border-t border-neutral-200 pt-4 space-y-4">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Certificado Digital A1 (.pfx)</h4>
+                    <div className="border-t border-slate-300 pt-4 space-y-4">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Certificado Digital A1 (.pfx)</h4>
                       
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-neutral-700">Arquivo de Certificado</label>
+                        <label className="text-xs font-bold text-slate-900">Arquivo de Certificado</label>
                         <div className="flex items-center justify-center w-full">
-                          <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-neutral-200 border-dashed rounded-xl cursor-pointer bg-white hover:bg-neutral-50 transition">
+                          <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-white hover:bg-slate-50 transition">
                             <div className="flex flex-col items-center justify-center pt-3 pb-3">
-                              <UploadCloud className="w-8 h-8 mb-1 text-neutral-400" />
-                              <p className="text-xs text-neutral-500">
-                                <span className="font-semibold text-teal-600">Upload do Certificado</span> ou arraste o arquivo
+                              <UploadCloud className="w-8 h-8 mb-1 text-teal-700" />
+                              <p className="text-xs text-slate-700 font-bold">
+                                <span className="font-bold text-teal-700">Upload do Certificado</span> ou arraste o arquivo
                               </p>
-                              <p className="text-[10px] text-neutral-400">PFX (A1) suportado</p>
+                              <p className="text-[10px] text-slate-500 font-bold">PFX (A1) suportado</p>
                             </div>
                             <input
                               id="company-certificate-upload-input"
@@ -502,8 +502,8 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                           </label>
                         </div>
                         {certificateFile && (
-                          <p className="text-xs text-emerald-600 font-medium flex items-center gap-1.5">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          <p className="text-xs text-emerald-700 font-bold flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                             <span>Selecionado: {certificateFile.name}</span>
                           </p>
                         )}
@@ -511,7 +511,7 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
 
                       {/* Senha do Certificado */}
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-neutral-700">Senha do Certificado</label>
+                        <label className="text-xs font-bold text-slate-900">Senha do Certificado</label>
                         <div className="relative">
                           <input
                             id="company-certificate-password-input"
@@ -519,13 +519,13 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                             placeholder="Digite a senha do certificado .pfx"
                             value={certificatePassword}
                             onChange={(e) => setCertificatePassword(e.target.value)}
-                            className="w-full rounded-xl border border-neutral-200 bg-white pl-3.5 pr-10 py-2 text-sm outline-none focus:border-teal-500"
+                            className="w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 py-2 text-sm font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600"
                           />
                           <button
                             id="company-certificate-password-toggle"
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-600"
+                            className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-800"
                           >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
@@ -534,12 +534,12 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                     </div>
 
                     {/* Botões de Ação */}
-                    <div className="border-t border-neutral-200 pt-4 flex justify-end gap-3">
+                    <div className="border-t border-slate-300 pt-4 flex justify-end gap-3">
                       <button
                         id="company-form-reset-btn"
                         type="button"
                         onClick={resetForm}
-                        className="rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 transition"
+                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-100 transition cursor-pointer shadow-2xs"
                       >
                         Cancelar
                       </button>
@@ -547,7 +547,7 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                         id="company-form-submit-btn"
                         type="submit"
                         disabled={isActionLoading}
-                        className="flex items-center gap-1.5 rounded-xl bg-teal-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 transition"
+                        className="flex items-center gap-1.5 rounded-xl bg-teal-700 px-5 py-2 text-sm font-bold text-white shadow-xs hover:bg-teal-800 disabled:opacity-50 transition cursor-pointer"
                       >
                         {isActionLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                         <span>{editingId ? 'Salvar Alterações' : 'Cadastrar Empresa'}</span>

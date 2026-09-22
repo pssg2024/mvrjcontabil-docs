@@ -15,12 +15,14 @@ interface PdfViewerModalProps {
   isOpen: boolean;
   onClose: () => void;
   file: DocumentFile | null;
+  canDownload?: boolean;
 }
 
 export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   isOpen,
   onClose,
   file,
+  canDownload = false,
 }) => {
   const [presignedDownloadUrl, setPresignedDownloadUrl] = useState<string | null>(null);
   const [isLoadingUrl, setIsLoadingUrl] = useState(false);
@@ -131,14 +133,16 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
               <span>Abrir em Ecrã Inteiro</span>
             </button>
 
-            <button
-              onClick={handleDownload}
-              disabled={isLoadingUrl}
-              className="w-full h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <Download className="w-4 h-4" />
-              <span>Descarregar Ficheiro</span>
-            </button>
+            {canDownload && (
+              <button
+                onClick={handleDownload}
+                disabled={isLoadingUrl}
+                className="w-full h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                <span>Descarregar Ficheiro</span>
+              </button>
+            )}
           </div>
 
         </div>
@@ -162,15 +166,17 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={handleDownload}
-              disabled={isLoadingUrl}
-              className="h-9 px-3 bg-[#C59B4B] hover:bg-[#B38A3A] disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-              title="Baixar arquivo"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Baixar</span>
-            </button>
+            {canDownload && (
+              <button
+                onClick={handleDownload}
+                disabled={isLoadingUrl}
+                className="h-9 px-3 bg-[#C59B4B] hover:bg-[#B38A3A] disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                title="Baixar arquivo"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Baixar</span>
+              </button>
+            )}
             <button
               onClick={handleOpenDirectly}
               disabled={isLoadingUrl}

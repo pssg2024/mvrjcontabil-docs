@@ -1193,30 +1193,32 @@ export default function App() {
 
       {/* Foreground Content Wrapper */}
       <div className="relative z-10 flex flex-col min-h-screen">
-        {/* Top Navigation */}
-        <Navbar
-          currentUser={currentUser}
-          activeView={activeView}
-          onNavigate={setActiveView}
-          onOpenSqlModal={() => setIsSqlModalOpen(true)}
-          onOpenProfileModal={handleOpenProfileModal}
-          onOpenLgpdModal={() => setIsLgpdModalOpen(true)}
-          onOpenFirstAccessModal={() => setIsFirstAccessModalOpen(true)}
-          onOpenBackgroundModal={() => {
-            setBackgroundModalTab('site-background');
-            setIsBackgroundModalOpen(true);
-          }}
-          onOpenCompanyModal={() => handleOpenCompanyModal()}
-          onOpenCompanyManager={() => setIsCompanyManagerOpen(true)}
-          onOpenInvoiceEmission={() => setIsInvoiceEmissionOpen(true)}
-          onOpenManualModal={() => setIsManualModalOpen(true)}
-          onSwitchUser={handleSwitchUser}
-          onLogout={handleLogout}
-          allProfiles={profiles}
-          r2Status={r2Status}
-          storageMetrics={storageMetrics}
-          authHeaderConfig={authHeaderConfig}
-        />
+        {/* Top Navigation - Only render when logged in and active */}
+        {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
+          <Navbar
+            currentUser={currentUser}
+            activeView={activeView}
+            onNavigate={setActiveView}
+            onOpenSqlModal={() => setIsSqlModalOpen(true)}
+            onOpenProfileModal={handleOpenProfileModal}
+            onOpenLgpdModal={() => setIsLgpdModalOpen(true)}
+            onOpenFirstAccessModal={() => setIsFirstAccessModalOpen(true)}
+            onOpenBackgroundModal={() => {
+              setBackgroundModalTab('site-background');
+              setIsBackgroundModalOpen(true);
+            }}
+            onOpenCompanyModal={() => handleOpenCompanyModal()}
+            onOpenCompanyManager={() => setIsCompanyManagerOpen(true)}
+            onOpenInvoiceEmission={() => setIsInvoiceEmissionOpen(true)}
+            onOpenManualModal={() => setIsManualModalOpen(true)}
+            onSwitchUser={handleSwitchUser}
+            onLogout={handleLogout}
+            allProfiles={profiles}
+            r2Status={r2Status}
+            storageMetrics={storageMetrics}
+            authHeaderConfig={authHeaderConfig}
+          />
+        )}
 
 
 
@@ -1272,40 +1274,27 @@ export default function App() {
                 onUpdateFolderPermission={handleUpdateFolderPermission}
               />
             )
-          ) : (
-            <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-2xl border border-gray-200 shadow-xl text-center">
-              <h2 className="text-xl font-bold text-gray-900">Autenticação Obrigatória</h2>
-              <p className="text-xs text-gray-500 mt-1 mb-4">
-                {currentUser?.status === 'pending'
-                  ? 'Cadastro realizado com sucesso! Aguarde a aprovação do Administrador para acessar os documentos contábeis.'
-                  : 'Por favor, realize seu login com e-mail e senha para acessar os documentos da MVRJ CONTÁBIL.'}
-              </p>
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors"
-              >
-                {currentUser?.status === 'pending' ? 'Ver Status da Conta' : 'Acessar com Login'}
-              </button>
-            </div>
-          )}
+          ) : null}
         </main>
 
-        {/* Footer */}
-        <footer className="bg-white/85 backdrop-blur-xs border-t border-gray-200 py-4 px-6 text-center text-xs text-gray-500">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span>&copy; 2026 MVRJCONTÁBIL Gestão Eletrônica de Documentos. Todos os direitos reservados.</span>
-            <div className="flex items-center space-x-3 text-[11px] text-gray-500">
-              <button
-                onClick={() => setIsLgpdModalOpen(true)}
-                className="hover:text-blue-600 underline font-medium transition-colors cursor-pointer"
-              >
-                Termos de Acesso & Privacidade (LGPD)
-              </button>
-              <span>•</span>
-              <span>Ambiente Seguro e Monitorado</span>
+        {/* Footer - Only render when logged in */}
+        {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
+          <footer className="bg-white/85 backdrop-blur-xs border-t border-gray-200 py-4 px-6 text-center text-xs text-gray-500">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+              <span>&copy; 2026 MVRJCONTÁBIL Gestão Eletrônica de Documentos. Todos os direitos reservados.</span>
+              <div className="flex items-center space-x-3 text-[11px] text-gray-500">
+                <button
+                  onClick={() => setIsLgpdModalOpen(true)}
+                  className="hover:text-blue-600 underline font-medium transition-colors cursor-pointer"
+                >
+                  Termos de Acesso & Privacidade (LGPD)
+                </button>
+                <span>•</span>
+                <span>Ambiente Seguro e Monitorado</span>
+              </div>
             </div>
-          </div>
-        </footer>
+          </footer>
+        )}
       </div>
 
       {/* Modals */}
@@ -1362,6 +1351,16 @@ export default function App() {
         isOpen={Boolean(viewingFile)}
         onClose={() => setViewingFile(null)}
         file={viewingFile}
+        canDownload={Boolean(
+          currentUser && (
+            currentUser.role === 'admin' ||
+            (currentUser.role as string) === 'ADMIN' ||
+            (currentUser as any).role === 'Diretoria' ||
+            currentUser.sector === 'Diretoria' ||
+            (currentUser as any).setor === 'Diretoria' ||
+            currentUser.role === 'editor'
+          )
+        )}
       />
 
       <SqlSchemaViewerModal

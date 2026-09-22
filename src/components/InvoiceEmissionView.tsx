@@ -83,7 +83,7 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
         setFolderId(matched?.id || folders[0].id);
       }
     }
-  }, [isOpen, folders]);
+  }, [isOpen]);
 
   const fetchCompanies = async () => {
     setIsLoadingCompanies(true);
@@ -258,17 +258,17 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
               <div id="invoice-form-side" className="w-7/12 flex flex-col border-r border-neutral-100 overflow-y-auto bg-neutral-50/30 p-6 space-y-6">
                 <form id="invoice-emission-form" onSubmit={handleSubmit} className="space-y-6">
                   {/* Bloco 1: Emitter & GED Target Folder */}
-                  <div className="bg-white rounded-xl border border-neutral-200 p-4 space-y-4 shadow-sm">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-teal-600 flex items-center gap-1.5 border-b border-neutral-100 pb-2">
-                      <Building className="h-4 w-4" />
+                  <div className="bg-white rounded-xl border border-slate-300 p-4 space-y-4 shadow-xs">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-teal-800 flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                      <Building className="h-4 w-4 text-teal-700" />
                       <span>Dados do Emitente e Arquivamento</span>
                     </h3>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-neutral-700">Empresa Emitente *</label>
+                        <label className="text-xs font-bold text-slate-900">Empresa Emitente *</label>
                         {isLoadingCompanies ? (
-                          <div className="flex h-9 items-center px-3 border border-neutral-200 rounded-lg bg-neutral-50 text-xs text-neutral-400 gap-2">
+                          <div className="flex h-9 items-center px-3 border border-slate-300 rounded-lg bg-slate-50 text-xs text-slate-500 gap-2">
                             <Loader2 className="h-3 w-3 animate-spin" />
                             <span>Carregando emitentes...</span>
                           </div>
@@ -277,7 +277,7 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                             id="invoice-emitter-select"
                             value={companyId}
                             onChange={(e) => setCompanyId(e.target.value)}
-                            className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-teal-500 font-medium"
+                            className="w-full h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs outline-none focus:border-teal-600 font-bold text-slate-950 cursor-pointer"
                           >
                             {companies.map(c => (
                               <option key={c.id} value={c.id}>{c.razao_social} ({formatCnpj(c.cnpj)})</option>
@@ -287,12 +287,12 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-neutral-700">Pasta Destino no GED *</label>
+                        <label className="text-xs font-bold text-slate-900">Pasta Destino no GED *</label>
                         <select
                           id="invoice-folder-select"
                           value={folderId}
                           onChange={(e) => setFolderId(e.target.value)}
-                          className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-teal-500 font-medium"
+                          className="w-full h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs outline-none focus:border-teal-600 font-bold text-slate-950 cursor-pointer"
                         >
                           {folders.map(f => (
                             <option key={f.id} value={f.id}>{f.sector} - {f.name}</option>
@@ -303,20 +303,20 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                   </div>
 
                   {/* Bloco 2: Dados da Operação */}
-                  <div className="bg-white rounded-xl border border-neutral-200 p-4 space-y-4 shadow-sm">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-teal-600 flex items-center gap-1.5 border-b border-neutral-100 pb-2">
-                      <ArrowLeftRight className="h-4 w-4" />
+                  <div className="bg-white rounded-xl border border-slate-300 p-4 space-y-4 shadow-xs">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-teal-800 flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                      <ArrowLeftRight className="h-4 w-4 text-teal-700" />
                       <span>Dados da Operação Fiscal</span>
                     </h3>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="space-y-1.5 col-span-2 md:col-span-1">
-                        <label className="text-xs font-semibold text-neutral-700">Tipo *</label>
+                        <label className="text-xs font-bold text-slate-900">Tipo *</label>
                         <select
                           id="invoice-type-select"
                           value={type}
                           onChange={(e) => setType(e.target.value as '0' | '1')}
-                          className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs outline-none focus:border-teal-500"
+                          className="w-full h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-950 outline-none focus:border-teal-600 cursor-pointer"
                         >
                           <option value="1">1 - Saída (Vendas/Remessas)</option>
                           <option value="0">0 - Entrada (Compras/Devoluções)</option>
@@ -324,31 +324,31 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                       </div>
 
                       <div className="space-y-1.5 col-span-2 md:col-span-1">
-                        <label className="text-xs font-semibold text-neutral-700">Série *</label>
+                        <label className="text-xs font-bold text-slate-900">Série *</label>
                         <input
                           id="invoice-serie-input"
                           type="text"
                           required
                           value={serie}
                           onChange={(e) => setSerie(e.target.value)}
-                          className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-teal-500"
+                          className="w-full h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-950 outline-none focus:border-teal-600"
                         />
                       </div>
 
                       <div className="space-y-1.5 col-span-2 md:col-span-1">
-                        <label className="text-xs font-semibold text-neutral-700">Número *</label>
+                        <label className="text-xs font-bold text-slate-900">Número *</label>
                         <input
                           id="invoice-numero-input"
                           type="text"
                           required
                           value={numero}
                           onChange={(e) => setNumero(e.target.value)}
-                          className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-teal-500"
+                          className="w-full h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-950 outline-none focus:border-teal-600"
                         />
                       </div>
 
                       <div className="space-y-1.5 col-span-2 md:col-span-1">
-                        <label className="text-xs font-semibold text-neutral-700">CFOP *</label>
+                        <label className="text-xs font-bold text-slate-900">CFOP *</label>
                         <input
                           id="invoice-cfop-input"
                           type="text"
@@ -356,13 +356,13 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                           placeholder="5.102"
                           value={cfop}
                           onChange={(e) => setCfop(e.target.value)}
-                          className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-teal-500"
+                          className="w-full h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-neutral-700">Natureza da Operação *</label>
+                      <label className="text-xs font-bold text-slate-900">Natureza da Operação *</label>
                       <input
                         id="invoice-natureza-input"
                         type="text"
@@ -370,21 +370,21 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                         placeholder="Ex: Venda de mercadorias"
                         value={naturezaOperacao}
                         onChange={(e) => setNaturezaOperacao(e.target.value)}
-                        className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-teal-500"
+                        className="w-full h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600"
                       />
                     </div>
                   </div>
 
                   {/* Bloco 3: Destinatário */}
-                  <div className="bg-white rounded-xl border border-neutral-200 p-4 space-y-4 shadow-sm">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-teal-600 flex items-center gap-1.5 border-b border-neutral-100 pb-2">
-                      <Building className="h-4 w-4" />
+                  <div className="bg-white rounded-xl border border-slate-300 p-4 space-y-4 shadow-xs">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-teal-800 flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                      <Building className="h-4 w-4 text-teal-700" />
                       <span>Destinatário / Fornecedor</span>
                     </h3>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-neutral-700">Nome / Razão Social *</label>
+                        <label className="text-xs font-bold text-slate-900">Nome / Razão Social *</label>
                         <input
                           id="invoice-dest-name-input"
                           type="text"
@@ -392,12 +392,12 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                           placeholder="Razão Social ou Nome do cliente"
                           value={destRazaoSocial}
                           onChange={(e) => setDestRazaoSocial(e.target.value)}
-                          className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-teal-500"
+                          className="w-full h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-neutral-700">CNPJ / CPF *</label>
+                        <label className="text-xs font-bold text-slate-900">CNPJ / CPF *</label>
                         <input
                           id="invoice-dest-cnpj-input"
                           type="text"
@@ -405,50 +405,50 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                           placeholder="CNPJ ou CPF do destinatário"
                           value={destCnpjCpf}
                           onChange={(e) => setDestCnpjCpf(e.target.value)}
-                          className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-teal-500"
+                          className="w-full h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-1.5 col-span-1">
-                        <label className="text-xs font-semibold text-neutral-700">Inscrição Estadual</label>
+                        <label className="text-xs font-bold text-slate-900">Inscrição Estadual</label>
                         <input
                           id="invoice-dest-ie-input"
                           type="text"
                           placeholder="Inscrição Estadual"
                           value={destInscricaoEstadual}
                           onChange={(e) => setDestInscricaoEstadual(e.target.value)}
-                          className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-teal-500"
+                          className="w-full h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600"
                         />
                       </div>
 
                       <div className="space-y-1.5 col-span-2">
-                        <label className="text-xs font-semibold text-neutral-700">Endereço Completo</label>
+                        <label className="text-xs font-bold text-slate-900">Endereço Completo</label>
                         <input
                           id="invoice-dest-address-input"
                           type="text"
                           placeholder="Rua, Número, Bairro, Cidade - UF, CEP"
                           value={destEndereco}
                           onChange={(e) => setDestEndereco(e.target.value)}
-                          className="w-full h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-teal-500"
+                          className="w-full h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Bloco 4: Itens da Nota */}
-                  <div className="bg-white rounded-xl border border-neutral-200 p-4 space-y-4 shadow-sm">
-                    <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-teal-600 flex items-center gap-1.5">
-                        <Package className="h-4 w-4" />
+                  <div className="bg-white rounded-xl border border-slate-300 p-4 space-y-4 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-teal-800 flex items-center gap-1.5">
+                        <Package className="h-4 w-4 text-teal-700" />
                         <span>Produtos / Serviços da Nota</span>
                       </h3>
                       <button
                         id="invoice-add-item-btn"
                         type="button"
                         onClick={handleAddItem}
-                        className="flex items-center gap-1 text-[11px] font-bold text-teal-600 hover:bg-teal-50 px-2.5 py-1 rounded-lg transition"
+                        className="flex items-center gap-1 text-xs font-bold text-teal-800 bg-teal-100 hover:bg-teal-200 border border-teal-300 px-3 py-1 rounded-lg transition cursor-pointer shadow-2xs"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         <span>Adicionar Item</span>
@@ -457,13 +457,13 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
 
                     <div className="space-y-3">
                       {items.map((item, idx) => (
-                        <div key={idx} className="p-3 border border-neutral-100 rounded-xl bg-neutral-50/50 space-y-3 relative group">
+                        <div key={idx} className="p-3.5 border border-slate-300 rounded-xl bg-slate-50 space-y-3 relative group">
                           {items.length > 1 && (
                             <button
                               id={`invoice-remove-item-btn-${idx}`}
                               type="button"
                               onClick={() => handleRemoveItem(idx)}
-                              className="absolute top-2 right-2 p-1 text-neutral-400 hover:text-red-500 rounded-md transition"
+                              className="absolute top-2 right-2 p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition cursor-pointer"
                               title="Remover Item"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -472,7 +472,7 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
 
                           <div className="grid grid-cols-6 gap-3">
                             <div className="col-span-3 space-y-1">
-                              <label className="text-[10px] font-semibold text-neutral-500">Descrição do Produto/Serviço *</label>
+                              <label className="text-xs font-bold text-slate-900">Descrição do Produto/Serviço *</label>
                               <input
                                 id={`item-desc-input-${idx}`}
                                 type="text"
@@ -480,24 +480,24 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                                 value={item.description}
                                 onChange={(e) => handleUpdateItem(idx, 'description', e.target.value)}
                                 placeholder="Nome do produto"
-                                className="w-full h-8 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs outline-none"
+                                className="w-full h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-950 placeholder:text-slate-500 outline-none focus:border-teal-600"
                               />
                             </div>
 
                             <div className="col-span-1 space-y-1">
-                              <label className="text-[10px] font-semibold text-neutral-500">NCM *</label>
+                              <label className="text-xs font-bold text-slate-900">NCM *</label>
                               <input
                                 id={`item-ncm-input-${idx}`}
                                 type="text"
                                 required
                                 value={item.ncm}
                                 onChange={(e) => handleUpdateItem(idx, 'ncm', e.target.value)}
-                                className="w-full h-8 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs text-center outline-none"
+                                className="w-full h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-950 text-center outline-none focus:border-teal-600"
                               />
                             </div>
 
                             <div className="col-span-1 space-y-1">
-                              <label className="text-[10px] font-semibold text-neutral-500">Qtd *</label>
+                              <label className="text-xs font-bold text-slate-900">Qtd *</label>
                               <input
                                 id={`item-qty-input-${idx}`}
                                 type="number"
@@ -505,12 +505,12 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                                 required
                                 value={item.quantity}
                                 onChange={(e) => handleUpdateItem(idx, 'quantity', Number(e.target.value))}
-                                className="w-full h-8 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs text-center outline-none"
+                                className="w-full h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-950 text-center outline-none focus:border-teal-600"
                               />
                             </div>
 
                             <div className="col-span-1 space-y-1">
-                              <label className="text-[10px] font-semibold text-neutral-500">V. Unit *</label>
+                              <label className="text-xs font-bold text-slate-900">V. Unit *</label>
                               <input
                                 id={`item-price-input-${idx}`}
                                 type="number"
@@ -519,27 +519,27 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                                 required
                                 value={item.unit_value}
                                 onChange={(e) => handleUpdateItem(idx, 'unit_value', Number(e.target.value))}
-                                className="w-full h-8 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs outline-none text-right"
+                                className="w-full h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-950 outline-none text-right focus:border-teal-600"
                               />
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between border-t border-neutral-100 pt-2 text-xs">
+                          <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-xs">
                             <div className="flex items-center gap-3">
-                              <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-neutral-600 select-none">
+                              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-900 select-none">
                                 <input
                                   id={`item-icms-toggle-${idx}`}
                                   type="checkbox"
                                   checked={item.hasIcms}
                                   onChange={(e) => handleUpdateItem(idx, 'hasIcms', e.target.checked)}
-                                  className="rounded border-neutral-300 text-teal-600 focus:ring-teal-500 h-3.5 w-3.5"
+                                  className="rounded border-slate-300 text-teal-700 focus:ring-teal-600 h-4 w-4 cursor-pointer"
                                 />
                                 <span>Tributação ICMS</span>
                               </label>
 
                               {item.hasIcms && (
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-neutral-400 font-medium">Alíquota (%):</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-slate-800 font-bold">Alíquota (%):</span>
                                   <input
                                     id={`item-icms-rate-${idx}`}
                                     type="number"
@@ -547,20 +547,20 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                                     max="100"
                                     value={item.icms_rate}
                                     onChange={(e) => handleUpdateItem(idx, 'icms_rate', Number(e.target.value))}
-                                    className="w-12 h-6 rounded border border-neutral-200 px-1 text-center text-[10px]"
+                                    className="w-14 h-7 rounded-md border border-slate-300 bg-white px-1.5 text-center text-xs font-bold text-slate-950 outline-none focus:border-teal-600"
                                   />
                                 </div>
                               )}
                             </div>
 
-                            <div className="flex items-center gap-4 text-[11px]">
-                              <span className="text-neutral-500">
-                                ICMS: <strong className="text-neutral-800">
+                            <div className="flex items-center gap-4 text-xs">
+                              <span className="text-slate-700 font-bold">
+                                ICMS: <strong className="text-slate-950 font-black">
                                   R$ {item.hasIcms ? ((item.quantity * item.unit_value * item.icms_rate) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
                                 </strong>
                               </span>
-                              <span className="font-semibold text-neutral-500">
-                                Subtotal: <strong className="text-neutral-900 text-xs">
+                              <span className="font-bold text-slate-700">
+                                Subtotal: <strong className="text-slate-950 font-black text-xs">
                                   R$ {(item.quantity * item.unit_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </strong>
                               </span>

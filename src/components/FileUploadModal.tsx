@@ -71,21 +71,39 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     setErrorMessage(null);
   };
 
+  const isFullAdmin = 
+    currentUser?.role === 'admin' || 
+    (currentUser?.role as string) === 'ADMIN' || 
+    (currentUser as any)?.role === 'Diretoria' ||
+    currentUser?.sector === 'Diretoria' || 
+    (currentUser as any)?.setor === 'Diretoria';
+
+  const isEditor = currentUser?.role === 'editor';
+
+  const accessibleFolders = React.useMemo(() => {
+    return allFolders.filter(folder => {
+      if (isFullAdmin || isEditor) return true;
+      return Boolean(folder.allowed_user_ids?.includes(currentUser?.id));
+    });
+  }, [allFolders, currentUser?.id, isFullAdmin, isEditor]);
+
+  const currentFolderId = currentFolder?.id;
+
   React.useEffect(() => {
     if (isOpen) {
-      if (currentFolder?.id) {
-        setSelectedFolderId(currentFolder.id);
-      } else if (allFolders.length > 0 && !allFolders.some(f => f.id === selectedFolderId)) {
-        setSelectedFolderId(allFolders[0].id);
+      if (currentFolderId) {
+        setSelectedFolderId(currentFolderId);
+      } else if (accessibleFolders.length > 0 && (!selectedFolderId || !accessibleFolders.some(f => f.id === selectedFolderId))) {
+        setSelectedFolderId(accessibleFolders[0].id);
       }
     } else {
       resetForm();
     }
-  }, [isOpen, currentFolder, allFolders]);
+  }, [isOpen, currentFolderId]);
 
   if (!isOpen) return null;
 
-  const targetFolder = allFolders.find(f => f.id === selectedFolderId) || currentFolder || allFolders[0];
+  const targetFolder = accessibleFolders.find(f => f.id === selectedFolderId) || currentFolder || accessibleFolders[0] || allFolders[0];
 
   // Storage Limit Blocking verification
   const totalQuotaBytes = storageMetrics?.totalCapacityBytes || (10 * 1024 * 1024 * 1024);
@@ -287,18 +305,18 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
           {/* Seletor de Pasta de Destino Unificado */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-bold text-slate-900 mb-1.5">
               Pasta de Destino no GED
             </label>
             <div className="relative">
-              <FolderTree className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <FolderTree className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <select
                 disabled={isProcessing}
                 value={selectedFolderId}
                 onChange={(e) => setSelectedFolderId(e.target.value)}
-                className="w-full h-9 sm:h-10 px-3 pl-9 text-xs text-slate-700 bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-1 focus:ring-[#1B357B]/20 outline-none transition-all font-medium truncate cursor-pointer"
+                className="w-full h-9 sm:h-10 px-3 pl-9 text-xs text-slate-950 bg-white border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-1 focus:ring-[#1B357B] outline-none transition-all font-bold truncate cursor-pointer shadow-2xs"
               >
-                {allFolders.map(folder => (
+                {accessibleFolders.map(folder => (
                   <option key={folder.id} value={folder.id}>
                     {folder.sector} » {folder.name}
                   </option>
@@ -309,21 +327,21 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
           {/* Aviso Crítico de Bloqueio se Espaço Total For Excedido */}
           {isQuotaExceeded && (
-            <div className="p-3 bg-rose-50 border-2 border-rose-400/80 rounded-xl space-y-2 text-xs text-rose-950">
+            <div className="p-3 bg-rose-50 border-2 border-rose-400 rounded-xl space-y-2 text-xs text-rose-950">
               <div className="flex items-center space-x-2">
-                <AlertOctagon className="w-4 h-4 text-rose-600 shrink-0" />
-                <strong className="text-xs font-bold text-rose-900">Capacidade Máxima Atingida</strong>
+                <AlertOctagon className="w-4 h-4 text-rose-700 shrink-0" />
+                <strong className="text-xs font-black text-rose-950">Capacidade Máxima Atingida</strong>
               </div>
-              <p className="text-[11px] text-rose-800">
+              <p className="text-xs font-semibold text-rose-900">
                 Novos uploads bloqueados. Entre em contato com o suporte de TI:
               </p>
-              <div className="p-2 bg-white rounded-lg border border-rose-200 flex items-center justify-between gap-2">
-                <span className="text-xs font-mono font-bold text-gray-900">(21) 97396-0077</span>
+              <div className="p-2 bg-white rounded-lg border border-rose-300 flex items-center justify-between gap-2">
+                <span className="text-xs font-mono font-black text-slate-950">(21) 97396-0077</span>
                 <a
                   href="https://wa.me/5521973960077?text=Ol%C3%A1%2C%20o%20limite%20de%20armazenamento%20do%20GED%20MVRJCONT%C3%81BIL%20foi%20atingido.%20Preciso%20de%20suporte."
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px]"
+                  className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs"
                 >
                   WhatsApp TI
                 </a>
@@ -337,7 +355,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-200 hover:border-[#C59B4B] bg-slate-50/50 hover:bg-[#C59B4B]/5 rounded-xl p-4 sm:p-5 transition-all cursor-pointer flex flex-col items-center justify-center text-center group"
+              className="border-2 border-dashed border-slate-300 hover:border-[#1B357B] bg-slate-50 hover:bg-slate-100/80 rounded-xl p-5 sm:p-6 transition-all cursor-pointer flex flex-col items-center justify-center text-center group shadow-2xs"
             >
               <input
                 ref={fileInputRef}
@@ -349,12 +367,12 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   }
                 }}
               />
-              <UploadCloud className="text-[#C59B4B] group-hover:scale-110 transition-transform w-8 h-8 mb-1.5" />
-              <p className="text-xs font-semibold text-slate-800">Clique para selecionar ou arraste o arquivo</p>
-              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">PDFs, Imagens, XMLs, Planilhas e Certificados</p>
+              <UploadCloud className="text-[#1B357B] group-hover:scale-110 transition-transform w-9 h-9 mb-2" />
+              <p className="text-xs font-bold text-slate-950">Clique para selecionar ou arraste o arquivo</p>
+              <p className="text-xs font-semibold text-slate-600 mt-1">PDFs, Imagens, XMLs, Planilhas e Certificados</p>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {/* Card Compacto de Arquivo Selecionado em Linha Única */}
               {(() => {
                 const lowerName = selectedFile.name.toLowerCase();
@@ -366,29 +384,29 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                 const isZip = /\.(zip|rar|7z|tar|gz)$/i.test(lowerName);
 
                 return (
-                  <div className="bg-slate-50/90 border border-slate-200/80 rounded-xl p-2.5 flex items-center justify-between gap-2">
-                    <div className="flex items-center space-x-2.5 min-w-0 overflow-hidden">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-xs ${
-                        isPfx ? 'bg-purple-600' :
-                        isPdf ? 'bg-rose-600' :
-                        isImg ? 'bg-blue-600' :
-                        isSpreadsheet ? 'bg-emerald-600' :
-                        isXml ? 'bg-amber-600' :
-                        isZip ? 'bg-teal-600' : 'bg-[#1B357B]'
+                  <div className="bg-slate-100 border border-slate-300 rounded-xl p-3 flex items-center justify-between gap-2 shadow-2xs">
+                    <div className="flex items-center space-x-3 min-w-0 overflow-hidden">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white shrink-0 shadow-xs ${
+                        isPfx ? 'bg-purple-700' :
+                        isPdf ? 'bg-rose-700' :
+                        isImg ? 'bg-blue-700' :
+                        isSpreadsheet ? 'bg-emerald-700' :
+                        isXml ? 'bg-amber-700' :
+                        isZip ? 'bg-teal-700' : 'bg-[#1B357B]'
                       }`}>
-                        {isPfx ? <KeyRound className="w-4 h-4" /> :
-                         isPdf ? <FileText className="w-4 h-4" /> :
-                         isImg ? <ImageIcon className="w-4 h-4" /> :
-                         isSpreadsheet ? <FileSpreadsheet className="w-4 h-4" /> :
-                         isXml ? <FileCode className="w-4 h-4" /> :
-                         isZip ? <FileArchive className="w-4 h-4" /> :
-                         <FileGenericIcon className="w-4 h-4" />}
+                        {isPfx ? <KeyRound className="w-5 h-5" /> :
+                         isPdf ? <FileText className="w-5 h-5" /> :
+                         isImg ? <ImageIcon className="w-5 h-5" /> :
+                         isSpreadsheet ? <FileSpreadsheet className="w-5 h-5" /> :
+                         isXml ? <FileCode className="w-5 h-5" /> :
+                         isZip ? <FileArchive className="w-5 h-5" /> :
+                         <FileGenericIcon className="w-5 h-5" />}
                       </div>
                       <div className="min-w-0 overflow-hidden">
-                        <h4 className="text-xs font-semibold text-slate-800 truncate" title={selectedFile.name}>
+                        <h4 className="text-xs font-bold text-slate-950 truncate" title={selectedFile.name}>
                           {selectedFile.name}
                         </h4>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-xs font-semibold text-slate-600">
                           {formatBytes(selectedFile.size)}
                         </p>
                       </div>
@@ -398,7 +416,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setSelectedFile(null)}
-                        className="text-xs font-semibold text-[#1B357B] hover:text-[#C59B4B] hover:underline transition-colors shrink-0 px-2 py-1 cursor-pointer"
+                        className="text-xs font-black text-[#1B357B] hover:text-blue-800 underline transition-colors shrink-0 px-2 py-1 cursor-pointer"
                       >
                         Trocar Arquivo
                       </button>
@@ -409,7 +427,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
               {/* Nome do Documento para Renomear */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-900 mb-1.5">
                   Nome do Documento (personalizável se desejar renomear)
                 </label>
                 <input
@@ -418,24 +436,24 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   value={customFileName}
                   onChange={(e) => setCustomFileName(e.target.value)}
                   placeholder="Nome do arquivo..."
-                  className="w-full h-9 sm:h-10 px-3 text-xs text-slate-700 bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:border-[#1B357B] focus:ring-1 focus:ring-[#1B357B]/20 outline-none transition-all font-medium"
+                  className="w-full h-9 sm:h-10 px-3 text-xs text-slate-950 bg-white border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-1 focus:ring-[#1B357B] outline-none transition-all font-bold placeholder:text-slate-500 shadow-2xs"
                 />
               </div>
 
               {/* Tags Compactas */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Tags do Documento</label>
-                <div className="flex flex-wrap gap-1 p-1.5 border border-slate-200 rounded-xl bg-slate-50/40 min-h-[34px] items-center">
+                <label className="block text-xs font-bold text-slate-900 mb-1.5">Tags do Documento</label>
+                <div className="flex flex-wrap gap-1.5 p-2 border border-slate-300 rounded-xl bg-slate-50 min-h-[38px] items-center">
                   {tags.map(tag => (
-                    <span key={tag} className="bg-white text-slate-700 border border-slate-200 text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 font-medium shadow-xs">
+                    <span key={tag} className="bg-white text-slate-950 border border-slate-300 text-xs px-2.5 py-1 rounded-md flex items-center gap-1.5 font-bold shadow-2xs">
                       #{tag}
                       {!isProcessing && (
                         <button 
                           type="button"
                           onClick={() => handleRemoveTag(tag)} 
-                          className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                          className="text-slate-500 hover:text-slate-950 cursor-pointer"
                         >
-                          <X className="w-2.5 h-2.5" />
+                          <X className="w-3 h-3" />
                         </button>
                       )}
                     </span>
@@ -443,11 +461,11 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   {!isProcessing && (
                     <input
                       type="text"
-                      placeholder="Adicionar tag..."
+                      placeholder="Adicionar tag e pressione Enter..."
                       value={tagInput}
                       onChange={(e) => setTagInput(e.target.value)}
                       onKeyDown={handleAddTag}
-                      className="text-xs outline-none flex-1 min-w-[90px] bg-transparent text-slate-700 placeholder:text-slate-400 px-1"
+                      className="text-xs outline-none flex-1 min-w-[130px] bg-transparent text-slate-950 font-bold placeholder:text-slate-500 px-1"
                     />
                   )}
                 </div>

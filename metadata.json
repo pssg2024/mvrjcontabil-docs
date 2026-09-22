@@ -1,5 +1,5 @@
 {
-  "name": "MVRJ CONTABIL",
+  "name": "MVRJ CONTÁBIL",
   "description": "Sistema de Gestão Eletrônica de Documentos corporativo da MVRJCONTÁBIL com autenticação RBAC granular, integração Cloudflare R2, auditoria imutável e personalização da imagem de fundo do site pelo administrador.",
   "requestFramePermissions": [],
   "majorCapabilities": [

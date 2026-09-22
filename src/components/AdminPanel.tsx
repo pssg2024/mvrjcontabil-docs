@@ -335,7 +335,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           }`}
                         >
                           Leitor (User)
-                          <span className="block text-[10px] opacity-75 font-normal">Apenas Leitura</span>
+                          <span className="block text-[10px] opacity-75 font-normal">Visualizar + Upload</span>
                         </button>
 
                         <button
@@ -348,7 +348,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           }`}
                         >
                           Editor
-                          <span className="block text-[10px] opacity-75 font-normal">Leitura + Upload</span>
+                          <span className="block text-[10px] opacity-75 font-normal">Criar, Baixar e Compartilhar</span>
                         </button>
 
                         <button
@@ -581,20 +581,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-2">
               <div className="relative">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                 <input
                   type="text"
                   placeholder="Buscar logs por usuário ou ação..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg w-64 focus:ring-2 focus:ring-blue-500 outline-hidden"
+                  className="pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl w-64 bg-white font-bold text-slate-950 placeholder:text-slate-500 focus:border-blue-600 outline-none shadow-2xs"
                 />
               </div>
 
               <select
                 value={auditFilter}
                 onChange={(e) => setAuditFilter(e.target.value)}
-                className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-gray-700"
+                className="text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white font-bold text-slate-900 focus:border-blue-600 outline-none shadow-2xs cursor-pointer"
               >
                 <option value="ALL">Todas as Ações</option>
                 <option value="LOGIN">LOGIN</option>
@@ -605,13 +605,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </select>
             </div>
 
-            <span className="text-xs text-gray-500 font-medium">Exibindo {filteredLogs.length} eventos de auditoria</span>
+            <span className="text-xs text-slate-700 font-bold">Exibindo {filteredLogs.length} eventos de auditoria</span>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-300 shadow-xs overflow-hidden">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
+                <tr className="bg-slate-100 border-b border-slate-300 text-slate-900 font-black">
                   <th className="p-3">Data / Hora</th>
                   <th className="p-3">Ação</th>
                   <th className="p-3">Usuário</th>
@@ -620,29 +620,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <th className="p-3">Detalhes Técnicos</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 font-mono text-[11px]">
+              <tbody className="divide-y divide-slate-200 font-mono text-[11px]">
                 {filteredLogs.map(log => (
-                  <tr key={log.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="p-3 text-gray-500 whitespace-nowrap">
+                  <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-3 text-slate-700 font-semibold whitespace-nowrap">
                       {new Date(log.created_at).toLocaleString('pt-BR')}
                     </td>
                     <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-black border ${
                         log.action.includes('UPLOAD')
-                          ? 'bg-blue-100 text-blue-800'
+                          ? 'bg-blue-100 text-blue-950 border-blue-300'
                           : log.action.includes('PERMISSION') || log.action.includes('APPROVED')
-                          ? 'bg-purple-100 text-purple-800'
+                          ? 'bg-purple-100 text-purple-950 border-purple-300'
                           : log.action.includes('REQUEST')
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-gray-100 text-gray-700'
+                          ? 'bg-amber-100 text-amber-950 border-amber-300'
+                          : 'bg-slate-100 text-slate-900 border-slate-300'
                       }`}>
                         {log.action}
                       </span>
                     </td>
-                    <td className="p-3 font-sans font-medium text-gray-900">{log.user_name}</td>
-                    <td className="p-3 font-sans text-gray-600">{log.sector}</td>
-                    <td className="p-3 text-gray-500">{log.target_type}</td>
-                    <td className="p-3 text-gray-600 max-w-xs truncate" title={JSON.stringify(log.details)}>
+                    <td className="p-3 font-sans font-bold text-slate-950">{log.user_name}</td>
+                    <td className="p-3 font-sans font-semibold text-slate-800">{log.sector}</td>
+                    <td className="p-3 font-sans font-semibold text-slate-700">{log.target_type}</td>
+                    <td className="p-3 font-mono text-slate-800 font-medium max-w-xs truncate" title={JSON.stringify(log.details)}>
                       {JSON.stringify(log.details)}
                     </td>
                   </tr>
