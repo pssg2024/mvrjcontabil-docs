@@ -730,13 +730,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
       )}
 
       {/* Breadcrumbs Navigation */}
-      <nav className="flex items-center space-x-2 text-xs font-bold text-slate-900 bg-white px-4 py-3 rounded-2xl border border-slate-300 overflow-x-auto shadow-2xs">
+      <nav className="flex items-center space-x-2 text-xs font-semibold text-slate-300 bg-slate-900 px-4 py-3 rounded-2xl border border-slate-800 overflow-x-auto shadow-sm">
         <button
           onClick={() => setCurrentFolderId(null)}
-          className={`flex items-center space-x-1.5 hover:text-blue-700 transition-colors cursor-pointer ${!currentFolderId ? 'font-black text-slate-950' : 'text-slate-800'}`}
+          className={`flex items-center space-x-1.5 hover:text-amber-400 transition-colors cursor-pointer ${!currentFolderId ? 'font-bold text-slate-100' : 'text-slate-300'}`}
         >
-          <Home className="w-4 h-4 text-blue-700" />
-          <span>Drive Raiz</span>
+          <Home className="w-4 h-4 text-amber-400" />
+          <span className="text-slate-300 font-semibold">Drive Raiz</span>
         </button>
 
         {breadcrumbs.map((crumb, idx) => (
@@ -744,7 +744,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
             <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <button
               onClick={() => setCurrentFolderId(crumb.id)}
-              className={`hover:text-blue-700 transition-colors whitespace-nowrap cursor-pointer ${idx === breadcrumbs.length - 1 ? 'font-black text-slate-950' : 'text-slate-800'}`}
+              className={`hover:text-amber-400 transition-colors whitespace-nowrap cursor-pointer ${idx === breadcrumbs.length - 1 ? 'font-bold text-slate-100' : 'text-slate-300 font-semibold'}`}
             >
               {crumb.name}
             </button>
@@ -752,7 +752,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
         ))}
 
         {searchQuery && (
-          <span className="ml-auto text-xs font-bold text-amber-950 bg-amber-100 px-3 py-1 rounded-lg border border-amber-300 shrink-0">
+          <span className="ml-auto text-xs font-bold text-amber-300 bg-amber-950/60 px-3 py-1 rounded-lg border border-amber-800 shrink-0">
             Filtro de busca: "{searchQuery}"
           </span>
         )}
@@ -761,10 +761,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
           <button
             type="button"
             onClick={() => handleOpenPermsModal(currentFolder)}
-            className="ml-auto inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-900 hover:bg-blue-200 border border-blue-300 transition-colors shrink-0 cursor-pointer shadow-2xs"
+            className="ml-auto inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-950/80 text-blue-300 hover:bg-blue-900 border border-blue-800 transition-colors shrink-0 cursor-pointer shadow-xs"
             title="Gerenciar quais usuários comuns podem ver esta pasta"
           >
-            <ShieldCheck className="w-4 h-4 text-blue-700" />
+            <ShieldCheck className="w-4 h-4 text-blue-400" />
             <span>Permissões de Acesso</span>
           </button>
         )}
@@ -773,33 +773,33 @@ export const FileManager: React.FC<FileManagerProps> = ({
       {/* FOLDERS SECTION */}
       {!searchQuery && visibleFolders.length > 0 && (
         <section className="space-y-3 w-full">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">Pastas no Nível Atual</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">Pastas no Nível Atual</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
             {visibleFolders.map(folder => (
               <div
                 key={folder.id}
                 onClick={() => setCurrentFolderId(folder.id)}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-800 p-4 shadow-xs hover:border-[#1B357B] dark:hover:border-[#E2C37A] hover:shadow-md transition-all flex items-center justify-between group cursor-pointer min-w-0 overflow-hidden"
+                className="bg-slate-900 border border-slate-800 text-slate-100 hover:border-amber-500/40 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all flex items-center justify-between group cursor-pointer min-w-0 overflow-hidden"
               >
                 <div className="flex items-center space-x-3.5 min-w-0 flex-1">
-                  <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] border border-blue-200 dark:border-slate-700 group-hover:bg-[#1B357B] group-hover:text-white transition-all flex items-center justify-center font-bold shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-slate-800 text-amber-400 border border-slate-700 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all flex items-center justify-center font-bold shrink-0">
                     <FolderIcon className="w-5 h-5" />
                   </div>
                   <div className="truncate flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-slate-950 dark:text-slate-100 group-hover:text-[#1B357B] dark:group-hover:text-[#E2C37A] transition-colors truncate">
+                    <h4 className="text-sm font-bold text-slate-100 group-hover:text-amber-400 transition-colors truncate">
                       {folder.name}
                     </h4>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs text-slate-700 dark:text-slate-300 font-bold truncate">{folder.sector}</span>
+                      <span className="text-xs text-slate-300 font-bold truncate">{folder.sector}</span>
                       {isFullAdmin && (
                         Array.isArray(folder.allowed_user_ids) && folder.allowed_user_ids.length > 0 ? (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800" title={`${folder.allowed_user_ids.length} usuário(s) comum(ns) autorizados`}>
-                            <Users className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
+                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/60 text-emerald-300 border border-emerald-800" title={`${folder.allowed_user_ids.length} usuário(s) comum(ns) autorizados`}>
+                            <Users className="w-3 h-3 text-emerald-400" />
                             <span>{folder.allowed_user_ids.length}</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700" title="Apenas Administradores e Diretoria têm acesso">
-                            <Lock className="w-3 h-3 text-slate-600 dark:text-slate-400" />
+                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700" title="Apenas Administradores e Diretoria têm acesso">
+                            <Lock className="w-3 h-3 text-slate-400" />
                             <span>Diretoria</span>
                           </span>
                         )
@@ -817,10 +817,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         e.stopPropagation();
                         handleOpenPermsModal(folder);
                       }}
-                      className="text-slate-600 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors p-1.5 rounded-lg cursor-pointer"
+                      className="text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-colors p-1.5 rounded-lg cursor-pointer"
                       title="Gerenciar Permissões de Visualização da Pasta"
                     >
-                      <ShieldCheck className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                      <ShieldCheck className="w-4 h-4 text-slate-400" />
                     </button>
                   )}
                   {currentUser.role === 'admin' && onDeleteFolder && (
@@ -831,13 +831,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         e.stopPropagation();
                         onDeleteFolder(folder.id);
                       }}
-                      className="text-slate-600 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors p-1.5 rounded-lg cursor-pointer"
+                      className="text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors p-1.5 rounded-lg cursor-pointer"
                       title="Excluir Pasta (Admin)"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-[#1B357B] dark:group-hover:text-[#E2C37A] transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
                 </div>
               </div>
             ))}
@@ -849,20 +849,20 @@ export const FileManager: React.FC<FileManagerProps> = ({
       {(currentFolderId !== null || searchQuery.trim() !== '') && (
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
               {searchQuery ? `Documentos Encontrados (${sortedFiles.length})` : `Arquivos na Pasta (${sortedFiles.length})`}
             </h3>
             
-            <div className="flex items-center space-x-2 text-xs text-slate-800 font-bold">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-600" />
+            <div className="flex items-center space-x-2 text-xs text-slate-300 font-bold">
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 font-bold text-slate-950 text-xs shadow-2xs focus:ring-1 focus:ring-blue-600 cursor-pointer outline-none"
+                className="bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 font-bold text-slate-200 text-xs shadow-2xs focus:ring-1 focus:ring-amber-400 cursor-pointer outline-none"
               >
-                <option value="date" className="font-bold text-slate-900">Ordenar por Data</option>
-                <option value="name" className="font-bold text-slate-900">Ordenar por Nome</option>
-                <option value="size" className="font-bold text-slate-900">Ordenar por Tamanho</option>
+                <option value="date" className="font-bold bg-slate-900 text-slate-100">Ordenar por Data</option>
+                <option value="name" className="font-bold bg-slate-900 text-slate-100">Ordenar por Nome</option>
+                <option value="size" className="font-bold bg-slate-900 text-slate-100">Ordenar por Tamanho</option>
               </select>
             </div>
           </div>

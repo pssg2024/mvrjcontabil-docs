@@ -1,1 +1,38 @@
-[]
+[
+  {
+    "id": "e7c33af8-d419-48c5-a538-45a747b25d33",
+    "parent_id": null,
+    "name": "wwww",
+    "sector": "Financeiro",
+    "created_by": null,
+    "created_at": "2026-09-21T23:09:04.443924+00:00",
+    "updated_at": "2026-09-21T23:09:04.079+00:00"
+  },
+  {
+    "id": "2396480f-48f7-4dd0-a699-a9473b6d7ca3",
+    "parent_id": "27f2ebf2-9464-4fdf-9ca3-0ebbe20e12ce",
+    "name": "www",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-09-21T23:08:36.259186+00:00",
+    "updated_at": "2026-09-21T23:10:18.081+00:00"
+  },
+  {
+    "id": "27f2ebf2-9464-4fdf-9ca3-0ebbe20e12ce",
+    "parent_id": null,
+    "name": "Cliente Verônica",
+    "sector": "Diretoria",
+    "created_by": "57e1d483-669b-4791-b09e-7496570e63ea",
+    "created_at": "2026-09-21T22:09:33.480419+00:00",
+    "updated_at": "2026-09-22T00:04:05.725+00:00"
+  },
+  {
+    "id": "123f1e1a-4f5c-4873-a9b8-51c8565f96c1",
+    "parent_id": null,
+    "name": "cliente Bruna/ teste",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-09-21T20:08:48.213006+00:00",
+    "updated_at": "2026-09-21T20:08:47.906+00:00"
+  }
+]

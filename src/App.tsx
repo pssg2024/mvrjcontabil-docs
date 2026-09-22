@@ -15,6 +15,7 @@ import { CompanyConsultModal } from './components/CompanyConsultModal';
 import { CompanyManagerModal } from './components/CompanyManagerModal';
 import { InvoiceEmissionView } from './components/InvoiceEmissionView';
 import { UserManualModal } from './components/UserManualModal';
+import { MvrjAssistantWidget } from './components/MvrjAssistantWidget';
 import { ShieldCheck } from 'lucide-react';
 import { 
   UserProfile, 
@@ -172,11 +173,11 @@ export default function App() {
   const [backgroundModalTab, setBackgroundModalTab] = useState<'site-background' | 'auth-header'>('site-background');
   const [viewingFile, setViewingFile] = useState<DocumentFile | null>(null);
 
-  // Standard Theme Setup
+  // Permanent Native Corporate Dark Mode Setup
   useEffect(() => {
-    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('dark');
     try {
-      localStorage.removeItem('ged-theme-mode');
+      localStorage.setItem('ged-theme-mode', 'dark');
     } catch {}
   }, []);
 
@@ -1157,19 +1158,18 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-900 flex flex-col font-sans relative">
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-950 text-slate-100 flex flex-col font-sans relative">
       {/* Dynamic Background Image Layer */}
       {siteBackgroundConfig.enabled && siteBackgroundConfig.imageUrl && (
         <div
           id="global-site-background"
           aria-hidden="true"
-          className="fixed top-0 left-0 w-screen h-screen pointer-events-none z-0"
+          className="fixed top-0 left-0 w-screen h-screen pointer-events-none z-0 bg-cover bg-center opacity-15"
           style={{
             backgroundImage: `url(${siteBackgroundConfig.imageUrl})`,
             backgroundSize: siteBackgroundConfig.position === 'repeat' ? 'auto' : siteBackgroundConfig.position === 'contain' ? 'contain' : 'cover',
             backgroundRepeat: siteBackgroundConfig.position === 'repeat' ? 'repeat' : 'no-repeat',
             backgroundPosition: 'center center',
-            opacity: siteBackgroundConfig.opacity / 100,
             filter: siteBackgroundConfig.blur > 0 ? `blur(${siteBackgroundConfig.blur}px)` : undefined,
             transform: 'translateZ(0)',
             WebkitTransform: 'translateZ(0)',
@@ -1182,9 +1182,7 @@ export default function App() {
         <div
           id="global-site-background-overlay"
           aria-hidden="true"
-          className={`fixed top-0 left-0 w-screen h-screen pointer-events-none z-0 ${
-            siteBackgroundConfig.overlayType === 'dark' ? 'bg-slate-900/60' : 'bg-white/80'
-          }`}
+          className="fixed top-0 left-0 w-screen h-screen pointer-events-none z-0 bg-slate-950/60"
           style={{
             opacity: (siteBackgroundConfig.overlayOpacity ?? 40) / 100,
             transform: 'translateZ(0)',
@@ -1281,13 +1279,13 @@ export default function App() {
 
         {/* Footer - Only render when logged in */}
         {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
-          <footer className="bg-white/85 backdrop-blur-xs border-t border-gray-200 py-4 px-6 text-center text-xs text-gray-500">
+          <footer className="bg-slate-900/80 backdrop-blur-xs border-t border-slate-800 py-4 px-6 text-center text-xs text-slate-400">
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
               <span>&copy; 2026 MVRJCONTÁBIL Gestão Eletrônica de Documentos. Todos os direitos reservados.</span>
-              <div className="flex items-center space-x-3 text-[11px] text-gray-500">
+              <div className="flex items-center space-x-3 text-[11px] text-slate-400">
                 <button
                   onClick={() => setIsLgpdModalOpen(true)}
-                  className="hover:text-blue-600 underline font-medium transition-colors cursor-pointer"
+                  className="hover:text-amber-400 underline font-medium transition-colors cursor-pointer"
                 >
                   Termos de Acesso & Privacidade (LGPD)
                 </button>
@@ -1481,6 +1479,8 @@ export default function App() {
         onClose={() => setIsManualModalOpen(false)}
       />
 
+      {/* Assistente Virtual Contábil com Inteligência Artificial */}
+      {currentUser && <MvrjAssistantWidget />}
 
     </div>
   );

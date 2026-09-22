@@ -8,6 +8,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createClient } from '@supabase/supabase-js';
 import { createServer as createViteServer } from 'vite';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { GoogleGenAI } from '@google/genai';
 
 const app = express();
 const PORT = 3000;
@@ -4776,6 +4777,65 @@ app.delete('/api/settings/auth-header', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao restaurar cabeçalho', details: err.message });
+  }
+});
+
+// ==============================================================================
+// 15. GEMINI AI ASSISTANT CHAT ROUTE
+// ==============================================================================
+app.post('/api/assistant/chat', async (req: Request, res: Response) => {
+  try {
+    const { messages, fileData } = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY não configurada no servidor.' });
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const systemInstruction = `Você é o assistente MVRJ Contábil, um consultor fiscal e tributário especialista.
+
+Diretrizes de resposta obrigatórias:
+- OBJETIVIDADE MÁXIMA: Responda apenas o que foi perguntado, em no máximo 2 ou 3 frases.
+- SEM ENROLAÇÃO: Não faça apresentações longas nem liste cardápios de serviços.
+- Veredito direto: Ao analisar documentos ou impostos, forneça diretamente o valor, a alíquota, o CFOP/NCM ou o erro encontrado.
+- LIMPEZA VISUAL: Escreva em texto fluido e natural. Evite negritos (**), marcadores (*) e formatações exageradas.`;
+
+    const chatHistory = (messages || []).map((m: any) => ({
+      role: m.role === 'user' ? 'user' : 'model',
+      parts: [
+        ...(m.file ? [{
+          inlineData: {
+            data: m.file.data,
+            mimeType: m.file.mimeType
+          }
+        }] : []),
+        { text: m.text }
+      ]
+    }));
+
+    const modelName = 'gemini-3.5-flash-lite';
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: chatHistory,
+      config: {
+        systemInstruction,
+        temperature: 0.2,
+      }
+    });
+
+    const reply = response.text || 'Desculpe, não consegui processar a resposta.';
+    return res.json({ reply });
+  } catch (err: any) {
+    console.error('[Gemini Assistant Error]', err);
+    const errorMessage = err?.message || String(err);
+    if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('quota') || errorMessage.includes('Exhausted')) {
+      return res.status(429).json({ error: 'RESOURCE_EXHAUSTED', message: 'Limite de consultas temporárias atingido. As suas mensagens gratuitas serão renovadas automaticamente em breve.' });
+    }
+    if (errorMessage.includes('503') || errorMessage.includes('UNAVAILABLE') || errorMessage.includes('high demand')) {
+      return res.status(503).json({ error: 'UNAVAILABLE', message: 'O modelo de IA está temporariamente com alta demanda. Por favor, tente novamente em alguns instantes.' });
+    }
+    return res.status(500).json({ error: errorMessage });
   }
 });
 
