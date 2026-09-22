@@ -73,30 +73,5 @@
     "created_at": "2026-09-21T20:09:06.56+00:00",
     "updated_at": "2026-09-21T20:09:06.56+00:00",
     "preview_url": "/api/r2/view?key=sectors%2Fdiretoria%2F123f1e1a-4f5c-4873-a9b8-51c8565f96c1%2F1790021344928-Nota_Bruna_teste.pdf&name=Nota%20Bruna%20teste.pdf"
-  },
-  {
-    "id": "b7bee89f-4440-4d87-b28f-59a565c83f01",
-    "folder_id": "e7c33af8-d419-48c5-a538-45a747b25d33",
-    "name": "image (6).png",
-    "storage_key": "sectors/financeiro/e7c33af8-d419-48c5-a538-45a747b25d33/1790035229594-image__6_.png",
-    "mime_type": "image/webp",
-    "original_size": 425846,
-    "optimized_size": 43890,
-    "compression_ratio": 90,
-    "pages_count": 1,
-    "tags": [
-      "Contábil",
-      "2026",
-      "Financeiro"
-    ],
-    "uploaded_by": "57e1d483-669b-4791-b09e-7496570e63ea",
-    "uploader_name": "Evandro (Administrador)",
-    "sector": "Financeiro",
-    "checksum_sha256": "c95277976c52a391e13425f2652e6fa914b474bf32f41d7340e05d3a374d8ce6",
-    "notification_sent": false,
-    "is_archived": false,
-    "created_at": "2026-09-22T00:00:31.836154+00:00",
-    "updated_at": "2026-09-22T00:00:31.696+00:00",
-    "preview_url": "/api/r2/view?key=sectors%2Ffinanceiro%2Fe7c33af8-d419-48c5-a538-45a747b25d33%2F1790035229594-image__6_.png&name=image%20(6).png"
   }
 ]

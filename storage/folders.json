@@ -1,14 +1,5 @@
 [
   {
-    "id": "e7c33af8-d419-48c5-a538-45a747b25d33",
-    "parent_id": null,
-    "name": "wwww",
-    "sector": "Financeiro",
-    "created_by": null,
-    "created_at": "2026-09-21T23:09:04.443924+00:00",
-    "updated_at": "2026-09-21T23:09:04.079+00:00"
-  },
-  {
     "id": "2396480f-48f7-4dd0-a699-a9473b6d7ca3",
     "parent_id": "27f2ebf2-9464-4fdf-9ca3-0ebbe20e12ce",
     "name": "www",

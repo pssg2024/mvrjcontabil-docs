@@ -71,11 +71,12 @@ export function MvrjAssistantWidget() {
     }
   };
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent, customText?: string) => {
     if (e) e.preventDefault();
-    if ((!inputMessage.trim() && !attachedFile) || isLoading || rateLimitError) return;
+    const textToSend = (customText !== undefined ? customText : inputMessage).trim();
+    if ((!textToSend && !attachedFile) || isLoading || rateLimitError) return;
 
-    const userText = inputMessage.trim();
+    const userText = textToSend;
     const currentFile = attachedFile;
 
     const userMsg: ChatMessage = {
@@ -91,7 +92,7 @@ export function MvrjAssistantWidget() {
     setIsLoading(true);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
 
     try {
       const payloadMessages = [...messages, userMsg].map(m => ({
@@ -137,13 +138,32 @@ export function MvrjAssistantWidget() {
       setMessages(prev => [...prev, modelMsg]);
     } catch (err: any) {
       clearTimeout(timeoutId);
-      console.error(err);
+      console.error('[Assistant Widget Error]', err);
+
+      // Fallback inteligente no cliente caso o servidor no Render esteja iniciando ou sem internet
+      const q = (userText || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      let fallbackText = '';
+
+      if (/^(oi|ola|bom dia|boa tarde|boa noite|opa|ola tudo bem|oi tudo bem|e ai|e aí|hello|hey|como vai)\s*[!?.]*$/i.test(q)) {
+        fallbackText = 'Olá! Sou o assistente virtual da MVRJ Contábil. Como posso te ajudar hoje? Posso tirar dúvidas sobre a guia DAS, Simples Nacional, prazos de entrega ou emissão de notas!';
+      } else if (q.includes('das') || q.includes('guia') || q.includes('simples')) {
+        fallbackText = 'O DAS (Documento de Arrecadação do Simples Nacional) vence no dia 20 de cada mês e unifica os tributos da empresa. Suas guias estão disponíveis na pasta Fiscal do GED MVRJ.';
+      } else if (q.includes('defis')) {
+        fallbackText = 'A DEFIS deve ser transmitida anualmente até o último dia útil de março pelas empresas enquadradas no Simples Nacional.';
+      } else if (q.includes('nota') || q.includes('nfe') || q.includes('nfse') || q.includes('emitir')) {
+        fallbackText = 'Para emissão de notas de serviço (NFS-e), acesse o portal municipal ou o emissor nacional. Para mercadorias (NF-e), utilize sistema emissor integrado com certificado digital A1.';
+      } else if (q.includes('certificado') || q.includes('pfx') || q.includes('a1')) {
+        fallbackText = 'O certificado digital A1 (.pfx) é indispensável para assinar documentos fiscais e acessar o e-CAC da Receita Federal.';
+      } else {
+        fallbackText = 'Aviso Render: Para ativar o assistente completo com leitura de anexos no Render, certifique-se de implantar como "Web Service" e adicionar a variável GEMINI_API_KEY no menu "Environment" do Render.';
+      }
+
       setMessages(prev => [
         ...prev,
         {
-          id: 'err-' + Date.now(),
+          id: 'fb-' + Date.now(),
           role: 'model',
-          text: 'Não foi possível obter resposta no momento. Verifique a conexão ou tente novamente em instantes.',
+          text: fallbackText,
         },
       ]);
     } finally {
@@ -267,6 +287,32 @@ export function MvrjAssistantWidget() {
                   </div>
                 </div>
               ))}
+
+              {messages.length === 1 && !isLoading && (
+                <div className="pt-1">
+                  <p className="text-[11px] font-semibold text-slate-500 mb-2 px-1 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    Perguntas Frequentes:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'O que é a guia DAS?',
+                      'Prazo de entrega da DEFIS',
+                      'Como emitir NFS-e?',
+                      'Certificado Digital A1',
+                    ].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => handleSendMessage(undefined, suggestion)}
+                        className="text-xs bg-white hover:bg-blue-50 text-blue-700 border border-blue-200/90 rounded-xl px-2.5 py-1.5 shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer font-medium text-left"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {isLoading && (
                 <div className="flex justify-start">

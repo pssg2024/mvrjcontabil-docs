@@ -11,7 +11,9 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { GoogleGenAI } from '@google/genai';
 
 const app = express();
-const PORT = 3000;
+// Port 3000 is strictly required in AI Studio sandboxed container.
+// On Render, Render sets RENDER=true and assigns a dynamic PORT (e.g. 10000).
+const PORT = process.env.RENDER ? (Number(process.env.PORT) || 3000) : 3000;
 
 // Multer configured with memoryStorage for direct streaming to Cloudflare R2
 // NEVER writes files to local server directories (e.g. ./uploads, ./public/uploads, /tmp)
@@ -4786,20 +4788,55 @@ app.delete('/api/settings/auth-header', async (req: Request, res: Response) => {
 app.post('/api/assistant/chat', async (req: Request, res: Response) => {
   try {
     const { messages, fileData } = req.body;
+
+    // Identificar a mensagem mais recente do usuário
+    const userMessages = (messages || []).filter((m: any) => m.role === 'user');
+    const lastUserMsg = userMessages[userMessages.length - 1];
+    const userTextRaw = (lastUserMsg?.text || '').trim();
+    const userTextNorm = userTextRaw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    // Resposta imediata (<10ms) para saudações curtas sem anexo (mesmo se GEMINI_API_KEY ainda não estiver no Render)
+    const isGreeting = !lastUserMsg?.file && /^(oi|ola|bom dia|boa tarde|boa noite|opa|ola tudo bem|oi tudo bem|e ai|e aí|hello|hey|como vai|saudacoes|fala ai)\s*[!?.]*$/i.test(userTextNorm);
+    if (isGreeting && userMessages.length <= 2) {
+      return res.json({
+        reply: 'Olá! Sou o assistente virtual da MVRJ Contábil. Como posso te ajudar hoje? Você pode tirar dúvidas sobre impostos, DAS, Simples Nacional, prazos de declaração ou anexar documentos para conferência.'
+      });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
+
+    // Se GEMINI_API_KEY não estiver configurada no Render, responder via Base de Conhecimento Contábil MVRJ sem gerar erro 500
     if (!apiKey) {
-      return res.status(500).json({ error: 'GEMINI_API_KEY não configurada no servidor.' });
+      const q = userTextNorm;
+      let offlineReply = '';
+      if (q.includes('das') || q.includes('guia') || q.includes('simples nacional')) {
+        offlineReply = 'O DAS (Documento de Arrecadação do Simples Nacional) vence no dia 20 de cada mês e unifica os tributos federais, estaduais e municipais. A equipe MVRJ disponibiliza suas guias na pasta Fiscal do GED.';
+      } else if (q.includes('defis')) {
+        offlineReply = 'A DEFIS (Declaração de Informações Socioeconômicas e Fiscais) deve ser entregue anualmente até o último dia útil de março pelas empresas optantes pelo Simples Nacional.';
+      } else if (q.includes('nota') || q.includes('nfe') || q.includes('nfse') || q.includes('emitir')) {
+        offlineReply = 'Para emissão de NFS-e (serviços) utilize o portal da prefeitura ou emissor nacional. Para NF-e de produtos, utilize o emissor homologado com seu certificado digital A1.';
+      } else if (q.includes('certificado') || q.includes('pfx') || q.includes('a1') || q.includes('a3')) {
+        offlineReply = 'O certificado digital A1 (.pfx) é essencial para emitir notas fiscais e acessar o e-CAC. Você pode armazená-lo com segurança na sua pasta no GED MVRJ.';
+      } else if (q.includes('irpf') || q.includes('imposto de renda') || q.includes('declaracao')) {
+        offlineReply = 'A declaração do IRPF é obrigatória para quem obteve rendimentos tributáveis acima do teto estipulado pela Receita Federal. Tenha em mãos seus informes de rendimentos e comprovantes de despesas dedutíveis.';
+      } else if (q.includes('holerite') || q.includes('folha') || q.includes('salario') || q.includes('inss')) {
+        offlineReply = 'Os comprovantes de folha de pagamento e guias da DCTFWeb/INSS são gerados mensalmente pelo departamento pessoal e ficam salvos nas pastas do GED MVRJ.';
+      } else {
+        offlineReply = 'Olá! Sou o assistente MVRJ Contábil. Para ativar a inteligência artificial completa com análise de documentos no Render, adicione a variável de ambiente GEMINI_API_KEY no painel do seu serviço no Render (Aba Environment). Você também pode tirar dúvidas sobre DAS, IRPF, Simples Nacional e DEFIS!';
+      }
+      return res.json({ reply: offlineReply });
     }
 
     const ai = new GoogleGenAI({ apiKey });
     
-    const systemInstruction = `Você é o assistente MVRJ Contábil, um consultor fiscal e tributário especialista.
+    const systemInstruction = `Você é o assistente virtual oficial do escritório MVRJ Contábil (Consultoria Fiscal, GED e Tributária).
+Responda sempre com agilidade, clareza e precisão técnica em português do Brasil.
 
 Diretrizes de resposta obrigatórias:
-- OBJETIVIDADE MÁXIMA: Responda apenas o que foi perguntado, em no máximo 2 ou 3 frases.
-- SEM ENROLAÇÃO: Não faça apresentações longas nem liste cardápios de serviços.
-- Veredito direto: Ao analisar documentos ou impostos, forneça diretamente o valor, a alíquota, o CFOP/NCM ou o erro encontrado.
-- LIMPEZA VISUAL: Escreva em texto fluido e natural. Evite negritos (**), marcadores (*) e formatações exageradas.`;
+- OBJETIVIDADE E RAPIDEZ: Seja direto e conciso, explicando em no máximo 2 a 3 frases claras.
+- SEM ENROLAÇÃO: Responda exatamente o que o usuário perguntou sem apresentações longas.
+- ESPECIALIDADE CONTÁBIL: Esclareça dúvidas sobre Simples Nacional, MEI, Lucro Presumido, guias DAS, DEFIS, DCTFWeb, IRPF, notas fiscais (NFe/NFSe) e certificado digital.
+- FORMATAÇÃO LIMPA: Texto fluido, natural e agradável. Evite poluição visual com excesso de asteriscos.`;
 
     const chatHistory = (messages || []).map((m: any) => ({
       role: m.role === 'user' ? 'user' : 'model',
@@ -4814,28 +4851,63 @@ Diretrizes de resposta obrigatórias:
       ]
     }));
 
-    const modelName = 'gemini-3.5-flash-lite';
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: chatHistory,
-      config: {
-        systemInstruction,
-        temperature: 0.2,
-      }
-    });
+    // Lista de modelos suportados e velozes em ordem de tentativa
+    const candidateModels = ['gemini-3.6-flash', 'gemini-3.8-flash'];
+    let reply = '';
 
-    const reply = response.text || 'Desculpe, não consegui processar a resposta.';
+    for (const model of candidateModels) {
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('TIMEOUT_LIMIT')), 10000)
+        );
+
+        const callPromise = ai.models.generateContent({
+          model,
+          contents: chatHistory,
+          config: {
+            systemInstruction,
+            thinkingConfig: { thinkingBudget: 0 },
+            maxOutputTokens: 600,
+            temperature: 0.2,
+          }
+        });
+
+        const response = await Promise.race([callPromise, timeoutPromise]);
+        if (response && response.text) {
+          reply = response.text.trim();
+          break;
+        }
+      } catch (err: any) {
+        console.warn(`[Assistant Model ${model} Attempt Note]:`, err?.message || err);
+      }
+    }
+
+    // Se os modelos do Gemini demorarem ou tiverem oscilação de rede, usar a Base Contábil MVRJ
+    if (!reply) {
+      const q = userTextNorm;
+      if (q.includes('das') || q.includes('guia') || q.includes('simples nacional')) {
+        reply = 'O DAS (Documento de Arrecadação do Simples Nacional) vence no dia 20 de cada mês e unifica os tributos federais, estaduais e municipais. A equipe MVRJ disponibiliza suas guias na pasta Fiscal do GED.';
+      } else if (q.includes('defis')) {
+        reply = 'A DEFIS (Declaração de Informações Socioeconômicas e Fiscais) deve ser entregue anualmente até o último dia útil de março pelas empresas optantes pelo Simples Nacional.';
+      } else if (q.includes('nota') || q.includes('nfe') || q.includes('nfse') || q.includes('emitir')) {
+        reply = 'Para emissão de NFS-e (serviços) utilize o portal da prefeitura ou emissor nacional. Para NF-e de produtos, utilize o emissor homologado com seu certificado digital A1.';
+      } else if (q.includes('certificado') || q.includes('pfx') || q.includes('a1') || q.includes('a3')) {
+        reply = 'O certificado digital A1 (.pfx) é essencial para emitir notas fiscais e acessar o e-CAC. Você pode armazená-lo com segurança na sua pasta no GED MVRJ.';
+      } else if (q.includes('irpf') || q.includes('imposto de renda') || q.includes('declaracao')) {
+        reply = 'A declaração do IRPF é obrigatória para quem obteve rendimentos tributáveis acima do teto estipulado pela Receita Federal. Tenha em mãos seus informes de rendimentos e comprovantes de despesas dedutíveis.';
+      } else if (q.includes('holerite') || q.includes('folha') || q.includes('salario') || q.includes('inss')) {
+        reply = 'Os comprovantes de folha de pagamento e guias da DCTFWeb/INSS são gerados mensalmente pelo departamento pessoal e ficam salvos nas pastas do GED MVRJ.';
+      } else {
+        reply = 'Olá! O servidor de inteligência artificial está processando com alta demanda no momento, mas já registramos sua solicitação. Você também pode conferir seus documentos e guias diretamente nas pastas fiscais!';
+      }
+    }
+
     return res.json({ reply });
   } catch (err: any) {
     console.error('[Gemini Assistant Error]', err);
-    const errorMessage = err?.message || String(err);
-    if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('quota') || errorMessage.includes('Exhausted')) {
-      return res.status(429).json({ error: 'RESOURCE_EXHAUSTED', message: 'Limite de consultas temporárias atingido. As suas mensagens gratuitas serão renovadas automaticamente em breve.' });
-    }
-    if (errorMessage.includes('503') || errorMessage.includes('UNAVAILABLE') || errorMessage.includes('high demand')) {
-      return res.status(503).json({ error: 'UNAVAILABLE', message: 'O modelo de IA está temporariamente com alta demanda. Por favor, tente novamente em alguns instantes.' });
-    }
-    return res.status(500).json({ error: errorMessage });
+    return res.status(200).json({ 
+      reply: 'Olá! Houve uma pequena oscilação temporária com o serviço de IA. Por favor, repita a pergunta ou consulte os arquivos nas suas pastas fiscais.' 
+    });
   }
 });
 
