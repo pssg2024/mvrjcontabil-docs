@@ -1163,7 +1163,7 @@ export default function App() {
         <div
           id="global-site-background"
           aria-hidden="true"
-          className="fixed inset-0 pointer-events-none z-0"
+          className="fixed top-0 left-0 w-screen h-screen pointer-events-none z-0"
           style={{
             backgroundImage: `url(${siteBackgroundConfig.imageUrl})`,
             backgroundSize: siteBackgroundConfig.position === 'repeat' ? 'auto' : siteBackgroundConfig.position === 'contain' ? 'contain' : 'cover',
@@ -1171,7 +1171,8 @@ export default function App() {
             backgroundPosition: 'center center',
             opacity: siteBackgroundConfig.opacity / 100,
             filter: siteBackgroundConfig.blur > 0 ? `blur(${siteBackgroundConfig.blur}px)` : undefined,
-            willChange: 'opacity',
+            transform: 'translateZ(0)',
+            WebkitTransform: 'translateZ(0)',
           }}
         />
       )}
@@ -1181,12 +1182,13 @@ export default function App() {
         <div
           id="global-site-background-overlay"
           aria-hidden="true"
-          className={`fixed inset-0 pointer-events-none z-0 ${
+          className={`fixed top-0 left-0 w-screen h-screen pointer-events-none z-0 ${
             siteBackgroundConfig.overlayType === 'dark' ? 'bg-slate-900/60' : 'bg-white/80'
           }`}
           style={{
             opacity: (siteBackgroundConfig.overlayOpacity ?? 40) / 100,
-            willChange: 'opacity',
+            transform: 'translateZ(0)',
+            WebkitTransform: 'translateZ(0)',
           }}
         />
       )}
