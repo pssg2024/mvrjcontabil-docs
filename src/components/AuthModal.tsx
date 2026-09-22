@@ -355,7 +355,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="usuario@mvrjcontabil.com.br"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
+                      className="w-full pl-9 pr-3 py-2.5 text-sm text-slate-900 bg-white font-medium border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -371,7 +371,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      className="w-full pl-10 pr-10 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
+                      className="w-full pl-10 pr-10 py-2.5 text-sm text-slate-900 bg-white font-medium border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                     />
                     <button
                       type="button"
@@ -434,7 +434,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         placeholder="Ex: João Ferreira da Silva"
                         value={regFullName}
                         onChange={(e) => setRegFullName(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
+                        className="w-full pl-9 pr-3 py-2.5 text-sm text-slate-900 bg-white font-medium border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -450,7 +450,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         placeholder="joao@mvrjcontabil.com.br"
                         value={regEmail}
                         onChange={(e) => setRegEmail(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
+                        className="w-full pl-9 pr-3 py-2.5 text-sm text-slate-900 bg-white font-medium border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -463,7 +463,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         id="reg-sector-select"
                         value={regSector}
                         onChange={(e) => setRegSector(e.target.value as Sector)}
-                        className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all bg-white"
+                        className="w-full pl-9 pr-3 py-2.5 text-sm text-slate-900 bg-white font-medium border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                       >
                         <option value="Fiscal">Fiscal</option>
                         <option value="Departamento Pessoal">Departamento Pessoal</option>
@@ -486,7 +486,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         minLength={6}
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
-                        className="w-full pl-9 pr-10 py-2.5 text-sm border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
+                        className="w-full pl-9 pr-10 py-2.5 text-sm text-slate-900 bg-white font-medium border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all"
                       />
                       <button
                         type="button"
