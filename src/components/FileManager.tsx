@@ -788,22 +788,22 @@ export const FileManager: React.FC<FileManagerProps> = ({
               <div
                 key={folder.id}
                 onClick={() => setCurrentFolderId(folder.id)}
-                className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-[#1B357B]/50 dark:hover:border-amber-500/50 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all flex items-center justify-between group cursor-pointer min-w-0"
+                className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-[#1B357B]/50 dark:hover:border-amber-500/50 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all flex items-start justify-between group cursor-pointer min-w-0"
               >
-                <div className="flex items-center space-x-3.5 min-w-0 flex-1">
-                  <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] border border-blue-100 dark:border-slate-700 group-hover:bg-[#1B357B] group-hover:text-white dark:group-hover:bg-[#C59B4B] dark:group-hover:text-slate-950 transition-all flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                <div className="flex items-start space-x-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] border border-blue-100 dark:border-slate-700 group-hover:bg-[#1B357B] group-hover:text-white dark:group-hover:bg-[#C59B4B] dark:group-hover:text-slate-950 transition-all flex items-center justify-center font-bold shrink-0 shadow-2xs mt-0.5">
                     <FolderIcon className="w-5 h-5 transition-transform group-hover:scale-105" />
                   </div>
                   
                   <div className="min-w-0 flex-1 pr-1">
                     <h4 
-                      className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#1B357B] dark:group-hover:text-amber-400 transition-colors truncate"
+                      className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#1B357B] dark:group-hover:text-amber-400 transition-colors break-words whitespace-normal leading-snug"
                       title={folder.name}
                     >
                       {folder.name}
                     </h4>
                     
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                       <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
                         {folder.sector}
                       </span>
@@ -831,7 +831,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-1 shrink-0 ml-2">
+                <div className="flex items-center space-x-1 shrink-0 ml-1.5 self-start mt-0.5">
                   {isFullAdmin && (
                     <button
                       type="button"
@@ -983,7 +983,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     <div className="min-w-0">
                       <h4 
                         onClick={() => onOpenFileViewer(file)}
-                        className="text-sm font-bold text-slate-950 dark:text-slate-100 break-words line-clamp-2 group-hover:text-[#1B357B] dark:group-hover:text-[#E2C37A] transition-colors mt-3 cursor-pointer" 
+                        className="text-sm font-bold text-slate-950 dark:text-slate-100 break-words group-hover:text-[#1B357B] dark:group-hover:text-[#E2C37A] transition-colors mt-3 cursor-pointer leading-snug" 
                         title={file.name}
                       >
                         {file.name}
@@ -1143,7 +1143,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                           </div>
                           <span 
                             onClick={() => onOpenFileViewer(file)}
-                            className="font-bold hover:text-[#1B357B] dark:hover:text-[#E2C37A] cursor-pointer truncate max-w-xs text-slate-950 dark:text-white"
+                            className="font-bold hover:text-[#1B357B] dark:hover:text-[#E2C37A] cursor-pointer break-words text-slate-950 dark:text-white"
                           >
                             {file.name}
                           </span>
