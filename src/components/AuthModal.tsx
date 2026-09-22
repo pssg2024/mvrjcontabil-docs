@@ -219,7 +219,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     GRADIENT_PRESET_CLASSES['slate-indigo-blue'];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Visual */}

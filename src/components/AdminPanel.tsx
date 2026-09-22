@@ -608,7 +608,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <span className="text-xs text-slate-700 font-bold">Exibindo {filteredLogs.length} eventos de auditoria</span>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-300 shadow-xs overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-300 shadow-xs overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100 border-b border-slate-300 text-slate-900 font-black">

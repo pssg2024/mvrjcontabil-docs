@@ -12,11 +12,33 @@
   transition: none !important;
 }
 
-/* Main application background wrapper - Permanent Corporate Dark Mode */
+/* Main application background wrapper - Dynamic Corporate Theme */
 html, body {
+  min-height: 100%;
+  min-height: 100dvh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+#root {
+  min-height: 100%;
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+html.dark, html.dark body {
   background-color: #020617; /* bg-slate-950 */
   color: #f8fafc; /* text-slate-100 */
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+html:not(.dark), html:not(.dark) body {
+  background-color: #f1f5f9; /* bg-slate-100 */
+  color: #0f172a; /* text-slate-900 */
 }
 
 /* Base custom scrollbar */

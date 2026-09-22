@@ -444,61 +444,65 @@ export const FileManager: React.FC<FileManagerProps> = ({
   return (
     <div className="w-full space-y-4 sm:space-y-6 overflow-x-hidden">
       
-      {/* Top Storage & Bandwidth Optimization Banner (Original Theme) */}
-      <div className="bg-gradient-to-r from-[#0F1E42] via-[#1B357B] to-[#25469B] rounded-2xl p-4 sm:p-5 shadow-md relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 lg:gap-6 text-white w-full max-w-full">
+      {/* Top Storage & Bandwidth Optimization Banner (Corporate Deep Blue Theme) */}
+      <div className="bg-gradient-to-r from-[#0B1736] via-[#142654] to-[#1B357B] rounded-2xl p-5 sm:p-6 lg:p-7 shadow-lg relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 text-white w-full border border-blue-900/40">
+        {/* Subtle decorative ambient glow */}
+        <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+
         {/* Lado Esquerdo (Títulos e Descrição) */}
-        <div className="relative z-10 space-y-1 w-full lg:max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-blue-100 text-xs font-semibold uppercase tracking-wider mb-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#E2C37A]" />
-            <span>Drive Corporativo MVRJ Contábil</span>
+        <div className="relative z-10 space-y-2 flex-1 min-w-0 pr-0 lg:pr-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs border border-white/15 text-blue-100 text-xs font-semibold tracking-wide">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#DFB76C]" />
+            <span>Drive Corporativo • MVRJ Contábil</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
             Gestão Eletrônica de Documentos Contábeis
           </h2>
-          <p className="text-blue-100/90 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-            Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais.
+          <p className="text-blue-100/85 text-xs sm:text-sm font-normal leading-relaxed max-w-3xl">
+            Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais com controle de permissões.
           </p>
         </div>
 
         {/* Lado Direito (Card de Métricas / Armazenamento) */}
-        <div className="relative z-10 w-full lg:w-72 shrink-0">
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 sm:p-5 w-full shadow-sm flex flex-col gap-3.5 sm:gap-4">
+        <div className="relative z-10 w-full lg:w-80 shrink-0">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 sm:p-5 w-full shadow-inner flex flex-col gap-3.5">
             {/* Topo do Card */}
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-white/90 font-medium">
+              <div className="flex items-center gap-2 text-white/90">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                 </span>
-                <span className="text-[11px] font-semibold text-blue-100 uppercase tracking-wider">Documentos Ativos</span>
+                <span className="text-[11px] font-bold text-blue-100 uppercase tracking-wider">Documentos Ativos</span>
               </div>
-              <span className="bg-[#C59B4B] text-white px-2 py-0.5 rounded-md font-bold text-[11px] shadow-2xs">
+              <span className="bg-[#C59B4B] text-white px-2.5 py-0.5 rounded-md font-bold text-xs shadow-2xs">
                 {documentsPercent}%
               </span>
             </div>
 
             {/* Números Principais */}
-            <div className="flex items-baseline">
+            <div className="flex items-baseline gap-1.5">
               <strong className="text-3xl font-black text-white tracking-tight">
                 {currentFilesCount.toLocaleString('pt-BR')}
               </strong>
-              <span className="text-sm font-medium text-blue-100/80 ml-1">
+              <span className="text-sm font-medium text-blue-200">
                 / {maxFilesCapacity.toLocaleString('pt-BR')}
               </span>
             </div>
 
             {/* Barra de Progresso */}
-            <div className="w-full bg-black/20 h-2 rounded-full overflow-hidden relative">
+            <div className="w-full bg-black/30 h-2.5 rounded-full overflow-hidden p-0.5">
               <div 
-                className="h-full bg-gradient-to-r from-[#DFC17B] to-[#C59B4B] rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-[#E5C378] to-[#C59B4B] rounded-full transition-all duration-500 shadow-xs"
                 style={{ width: `${Math.max(currentFilesCount > 0 ? 3 : 0, Math.min(100, documentsPercent))}%` }}
               />
             </div>
 
             {/* Rodapé do Card */}
-            <div className="flex items-center justify-between text-[11px] font-semibold text-blue-100/90 uppercase tracking-wider pt-1">
-              <span>Disponíveis: <strong className="text-white font-semibold normal-case text-xs">{remainingFilesCount.toLocaleString('pt-BR')}</strong></span>
-              <span>Capacidade: <strong className="text-white font-semibold normal-case text-xs">{maxFilesCapacity >= 1000 ? `${(maxFilesCapacity / 1000).toFixed(0)}k` : maxFilesCapacity}</strong></span>
+            <div className="flex items-center justify-between text-[11px] font-semibold text-blue-100/90 pt-0.5">
+              <span>Disponíveis: <strong className="text-white font-bold ml-1">{remainingFilesCount.toLocaleString('pt-BR')}</strong></span>
+              <span>Capacidade: <strong className="text-white font-bold ml-1">{maxFilesCapacity >= 1000 ? `${(maxFilesCapacity / 1000).toFixed(0)}k` : maxFilesCapacity}</strong></span>
             </div>
           </div>
         </div>
@@ -559,20 +563,20 @@ export const FileManager: React.FC<FileManagerProps> = ({
       )}
 
       {/* Control Toolbar (Search, Sector Pills, View toggle, Actions) */}
-      <div className="w-full max-w-full overflow-hidden p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 shadow-xs flex flex-col gap-3">
+      <div className="w-full max-w-full overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-3">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           
           {/* Instant Search Bar & CNPJ Company Lookup */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 min-w-0">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-500 dark:text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 id="search-docs-input"
                 type="text"
                 placeholder="Buscar por documento, CNPJ ou empresa..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 pl-10 pr-9 text-sm font-semibold focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-hidden transition-all shadow-2xs placeholder:text-slate-500 dark:placeholder:text-slate-400 text-slate-950 dark:text-slate-100"
+                className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-950 pl-10 pr-9 text-sm font-semibold focus:bg-white dark:focus:bg-slate-900 focus:border-[#1B357B] dark:focus:border-[#DFB76C] focus:ring-2 focus:ring-[#1B357B]/15 outline-hidden transition-all shadow-2xs placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
               />
               {searchQuery && (
                 <button
@@ -581,7 +585,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     setSearchQuery('');
                     if (onClearExternalSearch) onClearExternalSearch();
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-md cursor-pointer transition-colors"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-md cursor-pointer transition-colors"
                   title="Limpar busca"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -595,7 +599,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 id="lookup-company-btn"
                 type="button"
                 onClick={() => onOpenCompanyModal(searchQuery)}
-                className="w-full sm:w-auto h-11 px-4 rounded-xl border border-slate-300 dark:border-slate-700 font-bold text-xs flex items-center justify-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-900 dark:text-slate-100 transition-all shadow-2xs shrink-0 cursor-pointer group"
+                className="w-full sm:w-auto h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-xs flex items-center justify-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-100 transition-all shadow-2xs shrink-0 cursor-pointer group"
                 title="Consultar Situação Cadastral de Empresa na Receita Federal (BrasilAPI)"
               >
                 <Building2 className="w-4 h-4 text-[#1B357B] dark:text-[#E2C37A] group-hover:scale-110 transition-transform flex-shrink-0" />
@@ -605,12 +609,12 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
 
           {/* Action Buttons: New Folder, Upload & View Mode Toggle */}
-          <div className="flex flex-row items-center gap-2 w-full lg:w-auto justify-between lg:justify-end shrink-0">
+          <div className="flex flex-row items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end shrink-0">
             {canCreateSubfolder && (
               <button
                 id="create-folder-btn"
                 onClick={() => setIsCreatingFolder(true)}
-                className="flex-1 lg:flex-initial h-11 px-3 sm:px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-750 transition-all cursor-pointer group"
+                className="flex-1 lg:flex-initial h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-750 transition-all cursor-pointer group"
               >
                 <FolderPlus className="w-4 h-4 text-[#1B357B] dark:text-[#E2C37A] group-hover:scale-110 transition-transform flex-shrink-0" />
                 <span className="whitespace-nowrap">Nova Pasta</span>
@@ -638,7 +642,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 <span className="whitespace-nowrap hidden sm:inline">Upload de Documento</span>
               </button>
             ) : (
-              <div className="flex-1 lg:flex-initial h-11 px-3 sm:px-4 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl flex items-center justify-center gap-1.5" title="Apenas usuários com papel Editor ou Admin nesta pasta podem fazer upload.">
+              <div className="flex-1 lg:flex-initial h-11 px-3 sm:px-4 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center gap-1.5" title="Apenas usuários com papel Editor ou Admin nesta pasta podem fazer upload.">
                 <Lock className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="whitespace-nowrap sm:hidden">Bloqueado</span>
                 <span className="whitespace-nowrap hidden sm:inline">Upload Bloqueado</span>
@@ -646,17 +650,17 @@ export const FileManager: React.FC<FileManagerProps> = ({
             )}
 
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl h-11 gap-1 flex-shrink-0 border border-slate-300 dark:border-slate-800 shadow-2xs">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl h-11 gap-1 flex-shrink-0 border border-slate-200 dark:border-slate-800 shadow-2xs">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] font-bold shadow-xs border border-slate-200' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] font-bold shadow-xs border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
                 title="Visualização em Grade"
               >
                 <Grid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] font-bold shadow-xs border border-slate-200' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] font-bold shadow-xs border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
                 title="Visualização em Lista"
               >
                 <List className="w-4 h-4" />
@@ -730,7 +734,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
       )}
 
       {/* Breadcrumbs Navigation */}
-      <nav className="flex items-center space-x-2 text-xs font-semibold text-slate-300 bg-slate-900 px-4 py-3 rounded-2xl border border-slate-800 overflow-x-auto shadow-sm">
+      <nav className="flex items-center space-x-2 text-xs font-semibold text-slate-300 bg-slate-900 px-4 py-3 rounded-2xl border border-slate-800 overflow-x-auto shadow-sm w-full">
         <button
           onClick={() => setCurrentFolderId(null)}
           className={`flex items-center space-x-1.5 hover:text-amber-400 transition-colors cursor-pointer ${!currentFolderId ? 'font-bold text-slate-100' : 'text-slate-300'}`}
@@ -772,34 +776,53 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
       {/* FOLDERS SECTION */}
       {!searchQuery && visibleFolders.length > 0 && (
-        <section className="space-y-3 w-full">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">Pastas no Nível Atual</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+        <section className="space-y-3.5 w-full">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Pastas no Nível Atual ({visibleFolders.length})
+            </h3>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 w-full">
             {visibleFolders.map(folder => (
               <div
                 key={folder.id}
                 onClick={() => setCurrentFolderId(folder.id)}
-                className="bg-slate-900 border border-slate-800 text-slate-100 hover:border-amber-500/40 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all flex items-center justify-between group cursor-pointer min-w-0 overflow-hidden"
+                className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-[#1B357B]/50 dark:hover:border-amber-500/50 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all flex items-center justify-between group cursor-pointer min-w-0"
               >
                 <div className="flex items-center space-x-3.5 min-w-0 flex-1">
-                  <div className="w-11 h-11 rounded-xl bg-slate-800 text-amber-400 border border-slate-700 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all flex items-center justify-center font-bold shrink-0">
-                    <FolderIcon className="w-5 h-5" />
+                  <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] border border-blue-100 dark:border-slate-700 group-hover:bg-[#1B357B] group-hover:text-white dark:group-hover:bg-[#C59B4B] dark:group-hover:text-slate-950 transition-all flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                    <FolderIcon className="w-5 h-5 transition-transform group-hover:scale-105" />
                   </div>
-                  <div className="truncate flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-slate-100 group-hover:text-amber-400 transition-colors truncate">
+                  
+                  <div className="min-w-0 flex-1 pr-1">
+                    <h4 
+                      className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#1B357B] dark:group-hover:text-amber-400 transition-colors truncate"
+                      title={folder.name}
+                    >
                       {folder.name}
                     </h4>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs text-slate-300 font-bold truncate">{folder.sector}</span>
+                    
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                        {folder.sector}
+                      </span>
+                      <span className="text-slate-300 dark:text-slate-600 text-[10px]">•</span>
                       {isFullAdmin && (
                         Array.isArray(folder.allowed_user_ids) && folder.allowed_user_ids.length > 0 ? (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/60 text-emerald-300 border border-emerald-800" title={`${folder.allowed_user_ids.length} usuário(s) comum(ns) autorizados`}>
-                            <Users className="w-3 h-3 text-emerald-400" />
-                            <span>{folder.allowed_user_ids.length}</span>
+                          <span 
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shrink-0" 
+                            title={`${folder.allowed_user_ids.length} colaborador(es) com acesso autorizado`}
+                          >
+                            <Users className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span>{folder.allowed_user_ids.length} acessos</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700" title="Apenas Administradores e Diretoria têm acesso">
-                            <Lock className="w-3 h-3 text-slate-400" />
+                          <span 
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap shrink-0" 
+                            title="Acesso exclusivo para Administradores e Diretoria"
+                          >
+                            <Lock className="w-3 h-3 text-slate-500 dark:text-slate-400 shrink-0" />
                             <span>Diretoria</span>
                           </span>
                         )
@@ -817,10 +840,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         e.stopPropagation();
                         handleOpenPermsModal(folder);
                       }}
-                      className="text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-colors p-1.5 rounded-lg cursor-pointer"
-                      title="Gerenciar Permissões de Visualização da Pasta"
+                      className="text-slate-400 hover:text-[#1B357B] dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors p-1.5 rounded-lg cursor-pointer"
+                      title="Gerenciar Permissões da Pasta"
                     >
-                      <ShieldCheck className="w-4 h-4 text-slate-400" />
+                      <ShieldCheck className="w-4 h-4" />
                     </button>
                   )}
                   {currentUser.role === 'admin' && onDeleteFolder && (
@@ -831,13 +854,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         e.stopPropagation();
                         onDeleteFolder(folder.id);
                       }}
-                      className="text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors p-1.5 rounded-lg cursor-pointer"
+                      className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors p-1.5 rounded-lg cursor-pointer"
                       title="Excluir Pasta (Admin)"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#1B357B] dark:group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" />
                 </div>
               </div>
             ))}
@@ -903,7 +926,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               </div>
             ) : viewMode === 'grid' ? (
               /* GRID VIEW */
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 w-full">
             {sortedFiles.map(file => {
               const lowerName = file.name.toLowerCase();
               const isPfx = file.mime_type.includes('pkcs12') || /\.(pfx|p12|cer|crt|key)$/i.test(lowerName);
@@ -1075,7 +1098,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
         ) : (
           /* LIST VIEW */
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-xs overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100 dark:bg-slate-950 border-b border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-300 font-bold">

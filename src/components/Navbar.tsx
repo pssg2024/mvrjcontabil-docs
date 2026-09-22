@@ -145,19 +145,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-30 w-full transition-all pt-3 pb-1">
-      {/* 1. CONTAINER PRINCIPAL DA NAVEGAÇÃO */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-7xl mx-auto bg-slate-900/90 backdrop-blur-md border border-white/80 rounded-2xl px-4 py-2 flex items-center justify-between shadow-lg h-16 text-slate-100">
+      {/* 1. CONTAINER PRINCIPAL DA NAVEGAÇÃO FLUIDA */}
+      <div className="w-full px-3 sm:px-6 lg:px-8">
+        <div className="w-full bg-[#0c1527]/95 dark:bg-[#080d1a]/95 backdrop-blur-xl border border-slate-700/60 shadow-xl shadow-slate-950/25 rounded-2xl px-3.5 sm:px-5 py-2 flex items-center justify-between h-16 text-slate-100 ring-1 ring-white/10">
         
         {/* Logo & Brand */}
         <div 
-          className="flex items-center gap-3 flex-shrink-0 cursor-pointer group select-none pl-1 h-11" 
+          className="flex items-center gap-3 flex-shrink-0 cursor-pointer group select-none pl-0.5 h-11" 
           onClick={() => onNavigate('drive')}
         >
-          {/* Ícone / Logo com Acabamento 100% Branco e Unificado */}
+          {/* Ícone / Logo com Acabamento Nobre e Unificado */}
           <div className="flex items-center justify-center shrink-0">
             {authHeaderConfig?.logoImageUrl ? (
-              <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm border border-slate-200 overflow-hidden">
+              <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shadow-md border border-slate-200/80 overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
                 <img
                   src={authHeaderConfig.logoImageUrl}
                   alt="Logo MVRJ"
@@ -165,7 +165,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm border border-slate-200 overflow-hidden">
+              <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shadow-md border border-slate-200/80 overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
                 <FolderLock className="w-5.5 h-5.5 text-slate-800 drop-shadow-xs" />
               </div>
             )}
@@ -173,30 +173,30 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Textos da Empresa */}
           <div className="flex flex-col justify-center">
-            <span className="text-amber-400 font-bold text-lg leading-tight">
+            <span className="text-[#E5C378] font-black text-[15px] sm:text-base tracking-wide leading-tight group-hover:text-[#F3D798] transition-colors">
               MVRJ CONTÁBIL
             </span>
-            <span className="text-xs text-slate-400 uppercase tracking-wider mt-0.5 leading-none">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 leading-none">
               GESTÃO ELETRÔNICA
             </span>
           </div>
         </div>
 
-        {/* 2. BOTÕES DE NAVEGAÇÃO ORGANIZADA (DESKTOP: EXIBIDO EM MD E ACIMA) */}
+        {/* 2. DOCK DE NAVEGAÇÃO ORGANIZADA E HARMONIOSA (DESKTOP) */}
         {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
-          <nav className="hidden md:flex items-center gap-1 sm:gap-2">
+          <nav className="hidden md:flex items-center bg-slate-950/50 p-1 rounded-xl border border-white/5 shadow-inner gap-1">
             
-            {/* Drive Corporativo - Pílula sólida em destaque */}
+            {/* Drive Corporativo */}
             <button
               id="nav-drive-btn"
               onClick={() => onNavigate('drive')}
-              className={
+              className={`h-9 px-3.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
                 activeView === 'drive'
-                  ? 'h-10.5 bg-slate-800 text-white border border-white font-bold shadow-md px-3.5 rounded-xl text-xs flex items-center gap-1.5 transition-all duration-200 group cursor-pointer shrink-0'
-                  : 'h-10.5 flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 border border-transparent transition-all duration-200 group cursor-pointer shrink-0'
-              }
+                  ? 'bg-slate-800 text-white shadow-xs border border-white/10'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
+              }`}
             >
-              <HardDrive className={`w-4 h-4 flex-shrink-0 ${activeView === 'drive' ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
+              <HardDrive className={`w-4 h-4 flex-shrink-0 ${activeView === 'drive' ? 'text-[#E5C378]' : 'text-slate-400 group-hover:text-white'}`} />
               <span>Drive Corporativo</span>
             </button>
 
@@ -209,8 +209,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="navbar-fiscal-menu-trigger"
                 onClick={() => setShowFiscalDropdown(!showFiscalDropdown)}
-                className={`h-10.5 flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all duration-200 cursor-pointer shrink-0 ${
-                  showFiscalDropdown ? 'bg-slate-800 text-white' : ''
+                className={`h-9 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                  showFiscalDropdown ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
               >
                 <Briefcase className="w-4 h-4 text-slate-400" />
@@ -221,7 +221,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {/* Menu Suspenso Fiscal */}
               {showFiscalDropdown && (
                 <div 
-                  className="absolute left-0 mt-1.5 w-72 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                  className="absolute left-0 mt-2 w-72 bg-[#0c1527]/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/60 ring-1 ring-white/10 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                   onMouseEnter={handleFiscalEnter}
                   onMouseLeave={handleFiscalLeave}
                 >
@@ -233,7 +233,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowFiscalDropdown(false);
                         onOpenInvoiceEmission();
                       }}
-                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800 transition-all flex items-start gap-3 cursor-pointer group"
+                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800/80 transition-all flex items-start gap-3 cursor-pointer group"
                     >
                       <div className="p-2 rounded-lg bg-blue-950/60 text-blue-400 border border-blue-800/60 shrink-0 mt-0.5">
                         <FileDigit className="w-4 h-4" />
@@ -253,7 +253,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowFiscalDropdown(false);
                         onOpenCompanyManager();
                       }}
-                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800 transition-all flex items-start gap-3 cursor-pointer group"
+                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800/80 transition-all flex items-start gap-3 cursor-pointer group"
                     >
                       <div className="p-2 rounded-lg bg-amber-950/60 text-amber-400 border border-amber-800/60 shrink-0 mt-0.5">
                         <Building2 className="w-4 h-4" />
@@ -273,7 +273,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowFiscalDropdown(false);
                         onOpenCompanyModal();
                       }}
-                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800 transition-all flex items-start gap-3 cursor-pointer group"
+                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800/80 transition-all flex items-start gap-3 cursor-pointer group"
                     >
                       <div className="p-2 rounded-lg bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 shrink-0 mt-0.5">
                         <FileText className="w-4 h-4" />
@@ -292,7 +292,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       setShowFiscalDropdown(false);
                       setShowPortalsDrawer(true);
                     }}
-                    className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800 transition-all flex items-start gap-3 cursor-pointer group"
+                    className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800/80 transition-all flex items-start gap-3 cursor-pointer group"
                   >
                     <div className="p-2 rounded-lg bg-indigo-950/60 text-indigo-400 border border-indigo-800/60 shrink-0 mt-0.5">
                       <Globe className="w-4 h-4" />
@@ -317,14 +317,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   id="navbar-admin-menu-trigger"
                   onClick={() => setShowAdminDropdown(!showAdminDropdown)}
-                  className={`h-10.5 flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all duration-200 cursor-pointer relative shrink-0 ${
-                    showAdminDropdown ? 'bg-slate-800 text-white' : ''
+                  className={`h-9 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer relative shrink-0 ${
+                    showAdminDropdown ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   <ShieldCheck className="w-4 h-4 text-slate-400" />
                   <span>Administração</span>
                   {pendingUsersCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-slate-900 animate-pulse"></span>
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-slate-900 animate-pulse"></span>
                   )}
                   <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${showAdminDropdown ? 'rotate-180 text-amber-400' : ''}`} />
                 </button>
@@ -332,7 +332,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* Menu Suspenso Administração */}
                 {showAdminDropdown && (
                   <div 
-                    className="absolute left-0 mt-1.5 w-72 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                    className="absolute left-0 mt-2 w-72 bg-[#0c1527]/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/60 ring-1 ring-white/10 p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                     onMouseEnter={handleAdminEnter}
                     onMouseLeave={handleAdminLeave}
                   >
@@ -343,7 +343,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowAdminDropdown(false);
                         onNavigate('admin');
                       }}
-                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800 transition-all flex items-start gap-3 cursor-pointer group"
+                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800/80 transition-all flex items-start gap-3 cursor-pointer group"
                     >
                       <div className="p-2 rounded-lg bg-rose-950/60 text-rose-400 border border-rose-800/60 shrink-0 mt-0.5">
                         <Users className="w-4 h-4" />
@@ -369,7 +369,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           if (tabAudit) tabAudit.click();
                         }, 100);
                       }}
-                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800 transition-all flex items-start gap-3 cursor-pointer group"
+                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800/80 transition-all flex items-start gap-3 cursor-pointer group"
                     >
                       <div className="p-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 shrink-0 mt-0.5">
                         <ScrollText className="w-4 h-4" />
@@ -387,7 +387,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           setShowAdminDropdown(false);
                           onOpenBackgroundModal();
                         }}
-                        className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800 transition-all flex items-start gap-3 cursor-pointer group"
+                        className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800/80 transition-all flex items-start gap-3 cursor-pointer group"
                       >
                         <div className="p-2 rounded-lg bg-amber-950/60 text-amber-400 border border-amber-800/60 shrink-0 mt-0.5">
                           <Palette className="w-4 h-4" />
@@ -409,10 +409,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="navbar-manual-btn"
                 onClick={onOpenManualModal}
-                className="h-10.5 flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all duration-200 cursor-pointer shrink-0"
+                className="h-9 px-3 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/5 transition-all cursor-pointer shrink-0 flex items-center gap-1.5"
                 title="Manual de Operações do GED"
               >
-                <BookOpen className="w-4.5 h-4.5 text-slate-400" />
+                <BookOpen className="w-4 h-4 text-slate-400" />
                 <span>Manual</span>
               </button>
             )}
@@ -420,13 +420,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
         )}
 
-        {/* 3. EXTREMIDADE DIREITA (UTILITÁRIOS & COMPACT PERFIL) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 pr-1">
+        {/* 3. EXTREMIDADE DIREITA (UTILITÁRIOS & PERFIL EXECUTIVO) */}
+        <div className="flex items-center gap-2 shrink-0 pr-0.5">
           {/* Alerta de Capacidade do Armazenamento R2 */}
           {storageMetrics && (storageMetrics.usedBytes >= (storageMetrics.totalCapacityBytes || 10 * 1024 * 1024 * 1024) || storageMetrics.usedPercent >= 100) && (
             <div 
               id="navbar-storage-indicator"
-              className="h-10 flex items-center gap-1.5 px-2.5 rounded-xl bg-rose-950/60 text-rose-300 border border-rose-800 font-bold text-[10px] animate-pulse"
+              className="h-9 flex items-center gap-1.5 px-2.5 rounded-xl bg-rose-950/60 text-rose-300 border border-rose-800 font-bold text-[10px] animate-pulse"
               title="Capacidade limite atingida no Cloudflare R2"
             >
               <AlertOctagon className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
@@ -434,16 +434,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
 
-          {/* Card de Usuário Compacto e Refinado */}
+          {/* Card de Usuário Executivo e Refinado */}
           {currentUser ? (
             <div className="relative">
               <button
                 id="user-profile-menu-btn"
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="h-10 flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-xl border border-slate-800 bg-slate-900/90 hover:border-slate-700 hover:bg-slate-800 transition-all cursor-pointer group shadow-sm shrink-0 text-slate-100"
+                className="h-10 flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-xl bg-slate-950/50 hover:bg-slate-800/80 border border-white/5 hover:border-white/10 transition-all cursor-pointer group shadow-inner shrink-0 text-slate-100"
               >
-                {/* Avatar com status online com anel verde */}
-                <div className="relative w-7.5 h-7.5 rounded-lg overflow-hidden flex-shrink-0 ring-2 ring-emerald-500/80">
+                {/* Avatar com status online */}
+                <div className="relative w-7.5 h-7.5 rounded-lg overflow-hidden shrink-0 ring-1.5 ring-emerald-500/80 shadow-xs">
                   {currentUser.avatar_url ? (
                     <img 
                       src={currentUser.avatar_url} 
@@ -457,31 +457,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   )}
                   {/* Status Ring verde */}
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-slate-900 absolute bottom-0 right-0"></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-slate-950 absolute -bottom-0.5 -right-0.5"></span>
                 </div>
 
                 {/* Nome e Badge minimalista */}
-                <div className="text-left hidden sm:block">
-                  <p className="text-[11px] font-bold text-slate-100 leading-tight truncate max-w-[110px] group-hover:text-amber-400 transition-colors">
+                <div className="text-left hidden sm:flex flex-col justify-center">
+                  <span className="text-xs font-bold text-slate-100 group-hover:text-amber-400 transition-colors leading-tight">
                     {currentUser.full_name.split(' ')[0]}
-                  </p>
+                  </span>
                   <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-[8px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1 py-0.2 rounded">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-[#E5C378] bg-[#E5C378]/15 border border-[#E5C378]/30 px-1.5 py-0.2 rounded">
                       {currentUser.role === 'admin' ? 'ADMIN' : currentUser.sector || 'LEITOR'}
                     </span>
                   </div>
                 </div>
 
                 {/* Chevron */}
-                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 group-hover:translate-y-0.2 ${showUserDropdown ? 'rotate-180 text-amber-400' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 group-hover:text-slate-200 ${showUserDropdown ? 'rotate-180 text-amber-400' : ''}`} />
               </button>
 
               {/* Menu Dropdown de Perfil Executivo */}
               {showUserDropdown && (
-                <div className="absolute right-0 mt-2 min-w-[260px] bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-slate-100">
+                <div className="absolute right-0 mt-2 min-w-[260px] bg-[#0c1527]/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/60 ring-1 ring-white/10 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-slate-100">
                   
                   {/* Cabeçalho do usuário */}
-                  <div className="bg-slate-800/80 border border-slate-700 p-3 rounded-xl flex items-center gap-3 mb-1">
+                  <div className="bg-slate-950/60 border border-white/5 p-3 rounded-xl flex items-center gap-3 mb-1">
                     <div className="w-9 h-9 rounded-full overflow-hidden bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0 ring-2 ring-emerald-500/80">
                       {currentUser.avatar_url ? (
                         <img 
@@ -498,7 +498,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <p className="font-bold text-xs text-white truncate">{currentUser.full_name}</p>
                       <p className="text-[10px] text-slate-400 truncate mt-0.5">{currentUser.email}</p>
                       <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="bg-slate-700 text-slate-200 text-[9px] font-bold px-1.5 py-0.2 rounded-full">{currentUser.sector}</span>
+                        <span className="bg-slate-800 text-slate-300 text-[9px] font-bold px-1.5 py-0.2 rounded-full">{currentUser.sector}</span>
                         {getRoleBadge(currentUser.role)}
                       </div>
                     </div>
@@ -512,7 +512,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowUserDropdown(false);
                         onOpenProfileModal('profile');
                       }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-2.5 cursor-pointer group"
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2.5 cursor-pointer group"
                     >
                       <User className="w-4 h-4 text-slate-400 group-hover:text-amber-400 transition-colors" />
                       <span>Configurações do Perfil</span>
@@ -524,7 +524,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setShowUserDropdown(false);
                         onOpenProfileModal('security');
                       }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-2.5 cursor-pointer group"
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2.5 cursor-pointer group"
                     >
                       <KeyRound className="w-4 h-4 text-slate-400 group-hover:text-amber-400 transition-colors" />
                       <span>Segurança & Senha</span>
@@ -536,7 +536,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           setShowUserDropdown(false);
                           onOpenLgpdModal();
                         }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-2.5 cursor-pointer group"
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2.5 cursor-pointer group"
                       >
                         <ScrollText className="w-4 h-4 text-slate-400 group-hover:text-amber-400 transition-colors" />
                         <span>LGPD & Privacidade</span>
@@ -549,7 +549,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           setShowUserDropdown(false);
                           onOpenManualModal();
                         }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-2.5 cursor-pointer group"
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2.5 cursor-pointer group"
                       >
                         <BookOpen className="w-4 h-4 text-slate-400 group-hover:text-amber-400 transition-colors" />
                         <span>Manual do Usuário</span>
@@ -562,7 +562,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           setShowUserDropdown(false);
                           onOpenBackgroundModal();
                         }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-2.5 cursor-pointer group"
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2.5 cursor-pointer group"
                       >
                         <Palette className="w-4 h-4 text-slate-400 group-hover:text-amber-400 transition-colors" />
                         <span>Identidade Visual</span>
@@ -571,7 +571,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
 
                   {/* Sair da Conta */}
-                  <div className="border-t border-slate-800 mt-1 pt-1">
+                  <div className="border-t border-slate-800/80 mt-1 pt-1">
                     <button
                       id="logout-btn"
                       onClick={() => {

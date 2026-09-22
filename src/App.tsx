@@ -173,13 +173,41 @@ export default function App() {
   const [backgroundModalTab, setBackgroundModalTab] = useState<'site-background' | 'auth-header'>('site-background');
   const [viewingFile, setViewingFile] = useState<DocumentFile | null>(null);
 
-  // Permanent Native Corporate Dark Mode Setup
+  // Site Background Configuration State (Admin-customizable)
+  const [siteBackgroundConfig, setSiteBackgroundConfig] = useState<SiteBackgroundConfig>(() => {
+    const saved = localStorage.getItem('mvrj_background_config');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return {
+      enabled: false,
+      imageUrl: '',
+      presetId: 'none',
+      opacity: 25,
+      blur: 0,
+      overlayType: 'light',
+      overlayOpacity: 40,
+      position: 'cover',
+    };
+  });
+
+  // Dynamic Corporate Theme Synchronization (Aligns with siteBackgroundConfig.overlayType)
   useEffect(() => {
-    document.documentElement.classList.add('dark');
-    try {
-      localStorage.setItem('ged-theme-mode', 'dark');
-    } catch {}
-  }, []);
+    const isDark = siteBackgroundConfig.overlayType === 'dark';
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      try {
+        localStorage.setItem('ged-theme-mode', 'dark');
+      } catch {}
+    } else {
+      document.documentElement.classList.remove('dark');
+      try {
+        localStorage.setItem('ged-theme-mode', 'light');
+      } catch {}
+    }
+  }, [siteBackgroundConfig.overlayType]);
 
   // CNPJ & Company Consultation Modal State
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
@@ -188,8 +216,6 @@ export default function App() {
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [driveFilterSearch, setDriveFilterSearch] = useState('');
-
-
 
   const handleUpdateFile = async (fileId: string, updates: Partial<DocumentFile>) => {
     // 1. Atualização otimista no estado local
@@ -212,26 +238,6 @@ export default function App() {
     setDriveFilterSearch(searchTerm);
     setActiveView('drive');
   };
-
-  // Site Background Configuration State (Admin-customizable)
-  const [siteBackgroundConfig, setSiteBackgroundConfig] = useState<SiteBackgroundConfig>(() => {
-    const saved = localStorage.getItem('mvrj_background_config');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {}
-    }
-    return {
-      enabled: false,
-      imageUrl: '',
-      presetId: 'none',
-      opacity: 25,
-      blur: 0,
-      overlayType: 'light',
-      overlayOpacity: 40,
-      position: 'cover',
-    };
-  });
 
   // Login Card Header Configuration State (Admin-customizable)
   const [authHeaderConfig, setAuthHeaderConfig] = useState<AuthHeaderConfig>(() => {
@@ -1157,16 +1163,23 @@ export default function App() {
     }
   };
 
+  const isDarkTheme = siteBackgroundConfig.overlayType === 'dark';
+
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-slate-950 text-slate-100 flex flex-col font-sans relative">
+    <div
+      className={`min-h-screen w-full overflow-x-hidden ${
+        isDarkTheme ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'
+      } flex flex-col font-sans relative transition-colors duration-300`}
+    >
       {/* Dynamic Background Image Layer */}
       {siteBackgroundConfig.enabled && siteBackgroundConfig.imageUrl && (
         <div
           id="global-site-background"
           aria-hidden="true"
-          className="fixed top-0 left-0 w-screen h-screen pointer-events-none z-0 bg-cover bg-center opacity-15"
+          className="fixed top-0 left-0 w-screen h-screen pointer-events-none z-0 bg-cover bg-center transition-opacity duration-300"
           style={{
             backgroundImage: `url(${siteBackgroundConfig.imageUrl})`,
+            opacity: (siteBackgroundConfig.opacity ?? 25) / 100,
             backgroundSize: siteBackgroundConfig.position === 'repeat' ? 'auto' : siteBackgroundConfig.position === 'contain' ? 'contain' : 'cover',
             backgroundRepeat: siteBackgroundConfig.position === 'repeat' ? 'repeat' : 'no-repeat',
             backgroundPosition: 'center center',
@@ -1182,7 +1195,9 @@ export default function App() {
         <div
           id="global-site-background-overlay"
           aria-hidden="true"
-          className="fixed top-0 left-0 w-screen h-screen pointer-events-none z-0 bg-slate-950/60"
+          className={`fixed top-0 left-0 w-screen h-screen pointer-events-none z-0 transition-all duration-300 ${
+            isDarkTheme ? 'bg-slate-950' : 'bg-slate-50'
+          }`}
           style={{
             opacity: (siteBackgroundConfig.overlayOpacity ?? 40) / 100,
             transform: 'translateZ(0)',
@@ -1191,8 +1206,8 @@ export default function App() {
         />
       )}
 
-      {/* Foreground Content Wrapper */}
-      <div className="relative z-10 flex flex-col min-h-screen">
+      {/* Foreground Content Wrapper - 100% Fluid & Full Width */}
+      <div className="relative z-10 flex flex-col min-h-screen w-full min-w-0 overflow-x-hidden">
         {/* Top Navigation - Only render when logged in and active */}
         {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
           <Navbar
@@ -1222,8 +1237,8 @@ export default function App() {
 
 
 
-        {/* Main View Area */}
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+        {/* Main View Area - Fluid Full-Width Container */}
+        <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col gap-5 sm:gap-6 min-w-0">
           {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') ? (
             activeView === 'drive' ? (
               <FileManager
@@ -1279,13 +1294,13 @@ export default function App() {
 
         {/* Footer - Only render when logged in */}
         {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
-          <footer className="bg-slate-900/80 backdrop-blur-xs border-t border-slate-800 py-4 px-6 text-center text-xs text-slate-400">
-            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <footer className="w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border-t border-slate-200 dark:border-slate-800 py-3.5 sm:py-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 dark:text-slate-400">
+            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2.5">
               <span>&copy; 2026 MVRJCONTÁBIL Gestão Eletrônica de Documentos. Todos os direitos reservados.</span>
-              <div className="flex items-center space-x-3 text-[11px] text-slate-400">
+              <div className="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400">
                 <button
                   onClick={() => setIsLgpdModalOpen(true)}
-                  className="hover:text-amber-400 underline font-medium transition-colors cursor-pointer"
+                  className="hover:text-amber-600 dark:hover:text-amber-400 underline font-medium transition-colors cursor-pointer"
                 >
                   Termos de Acesso & Privacidade (LGPD)
                 </button>
