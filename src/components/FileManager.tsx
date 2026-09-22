@@ -96,8 +96,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
 }) => {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [selectedSector, setSelectedSector] = useState<Sector | 'ALL'>('ALL');
-  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
-  const [selectedYear, setSelectedYear] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState(externalSearchQuery || '');
   
   const [renamingFile, setRenamingFile] = useState<DocumentFile | null>(null);
@@ -198,10 +196,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
         (file.uploader_name && file.uploader_name.toLowerCase().includes(searchQuery.toLowerCase()))
       : true;
 
-    // Filter by competence if provided (assuming tags contain competence, e.g., 'Ref: 08/2026')
-    const matchesCompetence = (selectedMonth === 'ALL' || file.tags.some(t => t.includes(selectedMonth))) &&
-                              (selectedYear === 'ALL' || file.tags.some(t => t.includes(selectedYear)));
-
     // When inside a specific folder, files of that folder are shown directly; on root/global search, respect selected sector filter
     const matchesSector = currentFolderId 
       ? true 
@@ -210,7 +204,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
     if (searchQuery) {
       // Global search returns matching files the user has permission to see
-      return matchesSearch && matchesCompetence && (selectedSector === 'ALL' || file.sector === selectedSector);
+      return matchesSearch && (selectedSector === 'ALL' || file.sector === selectedSector);
     }
 
     // In regular navigation, show files in current folder strictly
@@ -218,7 +212,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
       ? (file.folder_id === currentFolderId || String(file.folder_id).toLowerCase() === String(currentFolderId).toLowerCase())
       : (!file.folder_id || file.folder_id === null || file.folder_id === '' || file.folder_id === 'root' || file.folder_id === 'fold-fisc-root');
     if (!isInCurrentFolder) return false;
-    return matchesSearch && matchesCompetence;
+    return matchesSearch;
   });
 
   // Sorting
@@ -671,70 +665,25 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
         </div>
 
-        {/* Competence Selectors & Clear Filter */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200 text-xs font-bold text-slate-900">
-          {searchQuery && (
-            <>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-100 text-blue-950 border border-blue-300 text-xs font-bold shrink-0">
-                <Building2 className="w-3.5 h-3.5 text-blue-700 flex-shrink-0" />
-                <span className="truncate max-w-[160px] sm:max-w-xs">Filtro: {searchQuery}</span>
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    if (onClearExternalSearch) onClearExternalSearch();
-                  }}
-                  className="p-0.5 hover:bg-blue-200 rounded-md text-blue-800 cursor-pointer"
-                  title="Remover filtro"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="h-4 w-px bg-slate-300 mx-1 hidden sm:block" />
-            </>
-          )}
-
-          <span className="text-xs font-black text-slate-950 mr-1 flex items-center space-x-1 shrink-0">
-            <Filter className="w-4 h-4 flex-shrink-0 text-blue-700" />
-            <span>Filtro de Período:</span>
-          </span>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="h-9 px-3 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-950 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-hidden cursor-pointer shadow-2xs"
-          >
-            <option value="ALL" className="font-bold text-slate-900">Todos os Meses</option>
-            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
-              <option key={m} value={m} className="font-semibold text-slate-900">Mês {m}</option>
-            ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="h-9 px-3 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-950 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-hidden cursor-pointer shadow-2xs"
-          >
-            <option value="ALL" className="font-bold text-slate-900">Todos os Anos</option>
-            {['2024', '2025', '2026', '2027'].map(y => (
-              <option key={y} value={y} className="font-semibold text-slate-900">Ano {y}</option>
-            ))}
-          </select>
-          
-          {/* Clear Filters Button */}
-          {(selectedMonth !== 'ALL' || selectedYear !== 'ALL') && (
-            <>
-              <div className="h-4 w-px bg-slate-300 mx-1.5 hidden sm:block" />
+        {/* Active Search Badge */}
+        {searchQuery && (
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200 text-xs font-bold text-slate-900">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-100 text-blue-950 border border-blue-300 text-xs font-bold shrink-0">
+              <Building2 className="w-3.5 h-3.5 text-blue-700 flex-shrink-0" />
+              <span className="truncate max-w-[160px] sm:max-w-xs">Filtro: {searchQuery}</span>
               <button
                 onClick={() => {
-                  setSelectedMonth('ALL');
-                  setSelectedYear('ALL');
+                  setSearchQuery('');
+                  if (onClearExternalSearch) onClearExternalSearch();
                 }}
-                className="h-9 px-3.5 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 hover:text-slate-950 border border-slate-300 transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                className="p-0.5 hover:bg-blue-200 rounded-md text-blue-800 cursor-pointer"
+                title="Remover filtro"
               >
-                <X className="w-3.5 h-3.5 text-slate-600" />
-                <span>Limpar Filtro</span>
+                <X className="w-3.5 h-3.5" />
               </button>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Inline Create Folder Input */}
