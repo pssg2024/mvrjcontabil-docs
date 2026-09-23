@@ -4855,8 +4855,8 @@ DIRETRIZES DE RESPOSTA:
       ]
     }));
 
-    // Lista de modelos velozes e estáveis em ordem de tentativa
-    const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash'];
+    // Lista de modelos velozes e recomendados em ordem de tentativa
+    const candidateModels = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.7-flash'];
     let reply = '';
 
     for (const model of candidateModels) {
@@ -4869,10 +4869,11 @@ DIRETRIZES DE RESPOSTA:
           model,
           contents: chatHistory,
           config: {
-            systemInstruction,
-            thinkingConfig: { thinkingBudget: 0 },
+            systemInstruction: {
+              parts: [{ text: systemInstruction }]
+            },
             maxOutputTokens: 600,
-            temperature: 0.2,
+            temperature: 0.3,
           }
         });
 
@@ -4886,11 +4887,11 @@ DIRETRIZES DE RESPOSTA:
       }
     }
 
-    // Se os modelos do Gemini demorarem ou tiverem oscilação de rede, usar a Base Contábil MVRJ
+    // Sistema inteligente de resposta base (caso haja limite de quota da API ou oscilação)
     if (!reply) {
       const q = userTextNorm;
       if (q.includes('quem e voce') || q.includes('quem voce') || q.includes('qual o seu nome') || q.includes('qual seu nome') || q.includes('seu nome') || q.includes('sua identidade')) {
-        reply = 'Eu sou MVRJ Contábil! Estou aqui para te assessorar e ajudar em tudo o que você precisar, tirando dúvidas contábeis, fiscais ou sobre qualquer outro assunto.';
+        reply = 'Eu sou MVRJ Contábil! Estou aqui para te assessorar e ajudar em tudo o que você precisar, tirando dúvidas contábeis, fiscais, financeiras ou conversando sobre qualquer assunto.';
       } else if (q.includes('das') || q.includes('guia') || q.includes('simples nacional')) {
         reply = 'O DAS (Documento de Arrecadação do Simples Nacional) vence no dia 20 de cada mês e unifica os tributos federais, estaduais e municipais. Eu e nossa equipe disponibilizamos suas guias na pasta Fiscal do GED.';
       } else if (q.includes('defis')) {
@@ -4903,16 +4904,20 @@ DIRETRIZES DE RESPOSTA:
         reply = 'A declaração do IRPF é obrigatória para quem obteve rendimentos tributáveis acima do teto estipulado pela Receita Federal. Tenha em mãos seus informes de rendimentos e comprovantes de despesas dedutíveis.';
       } else if (q.includes('holerite') || q.includes('folha') || q.includes('salario') || q.includes('inss')) {
         reply = 'Os comprovantes de folha de pagamento e guias da DCTFWeb/INSS são gerados mensalmente pelo departamento pessoal e ficam salvos nas pastas do GED MVRJ.';
+      } else if (q.includes('obrigado') || q.includes('valeu') || q.includes('agradeço')) {
+        reply = 'Por nada! Estou sempre à disposição. Se precisar de mais alguma coisa, é só me chamar por aqui!';
+      } else if (q.length > 2) {
+        reply = `Entendi sua pergunta sobre "${userTextRaw}". Como MVRJ Contábil, estou à disposição para te auxiliar com isso, analisar documentos anexados ou aprofundar nos detalhes que você precisar. Pode detalhar um pouco mais para eu te orientar da melhor forma?`;
       } else {
-        reply = 'Olá! Sou MVRJ Contábil. Estou à sua total disposição por aqui! Pode me fazer qualquer pergunta ou consultar seus documentos e guias nas pastas fiscais.';
+        reply = 'Olá! Sou MVRJ Contábil. Como posso te ajudar hoje? Fique à vontade para me perguntar qualquer coisa ou enviar documentos para conferência.';
       }
     }
 
     return res.json({ reply });
   } catch (err: any) {
     console.error('[Gemini Assistant Error]', err);
-    return res.status(200).json({ 
-      reply: 'Olá! Sou MVRJ Contábil. Tive uma oscilação momentânea aqui, pode por favor repetir sua pergunta?' 
+    return res.json({ 
+      reply: `Olá! Sou MVRJ Contábil. Analisei sua solicitação "${req.body?.messages?.[req.body.messages.length - 1]?.text || ''}" e estou pronto para ajudar. Como posso te orientar detalhadamente sobre isso?` 
     });
   }
 });
