@@ -73,6 +73,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showPortalsDrawer, setShowPortalsDrawer] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  useEffect(() => {
+    if (showMobileMenu) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showMobileMenu]);
+
   // States for dropdown navigation
   const [showFiscalDropdown, setShowFiscalDropdown] = useState(false);
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
@@ -629,7 +640,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           />
 
           {/* Drawer Content */}
-          <div className="fixed right-0 top-0 bottom-0 w-full max-w-xs sm:max-w-sm bg-slate-900 border-l border-slate-800 shadow-2xl z-50 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-250 p-5 text-slate-100">
+          <div className="fixed right-0 top-0 bottom-0 w-full max-w-xs sm:max-w-sm bg-slate-900 border-l border-slate-800 shadow-2xl z-50 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-250 p-5 text-slate-100 overscroll-contain">
             <div className="space-y-4">
               
               {/* Header do Drawer */}
