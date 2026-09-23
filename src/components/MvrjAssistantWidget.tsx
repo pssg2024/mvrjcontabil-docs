@@ -20,7 +20,7 @@ export function MvrjAssistantWidget() {
     {
       id: 'welcome-1',
       role: 'model',
-      text: 'Olá! Sou o assistente MVRJ Contábil. Como posso te ajudar? Pode digitar sua dúvida ou enviar um documento para conferência.',
+      text: 'Olá! Sou MVRJ Contábil. Como posso te ajudar hoje? Fique à vontade para me perguntar qualquer coisa ou enviar documentos.',
     },
   ]);
   const [inputMessage, setInputMessage] = useState('');
@@ -145,7 +145,7 @@ export function MvrjAssistantWidget() {
       let fallbackText = '';
 
       if (/^(oi|ola|bom dia|boa tarde|boa noite|opa|ola tudo bem|oi tudo bem|e ai|e aí|hello|hey|como vai)\s*[!?.]*$/i.test(q)) {
-        fallbackText = 'Olá! Sou o assistente virtual da MVRJ Contábil. Como posso te ajudar hoje? Posso tirar dúvidas sobre a guia DAS, Simples Nacional, prazos de entrega ou emissão de notas!';
+        fallbackText = 'Olá! Sou MVRJ Contábil. Como posso te ajudar hoje? Fique à vontade para me perguntar qualquer coisa ou me enviar documentos!';
       } else if (q.includes('das') || q.includes('guia') || q.includes('simples')) {
         fallbackText = 'O DAS (Documento de Arrecadação do Simples Nacional) vence no dia 20 de cada mês e unifica os tributos da empresa. Suas guias estão disponíveis na pasta Fiscal do GED MVRJ.';
       } else if (q.includes('defis')) {
@@ -155,7 +155,7 @@ export function MvrjAssistantWidget() {
       } else if (q.includes('certificado') || q.includes('pfx') || q.includes('a1')) {
         fallbackText = 'O certificado digital A1 (.pfx) é indispensável para assinar documentos fiscais e acessar o e-CAC da Receita Federal.';
       } else {
-        fallbackText = 'Aviso Render: Para ativar o assistente completo com leitura de anexos no Render, certifique-se de implantar como "Web Service" e adicionar a variável GEMINI_API_KEY no menu "Environment" do Render.';
+        fallbackText = 'Olá! Sou MVRJ Contábil. Para ativar todas as respostas completas no Render, certifique-se de implantar como "Web Service" e adicionar a variável GEMINI_API_KEY no menu "Environment" do Render. Fique à vontade para conversar comigo!';
       }
 
       setMessages(prev => [
@@ -178,7 +178,7 @@ export function MvrjAssistantWidget() {
         <motion.button
           onClick={() => setIsOpen(!isOpen)}
           className="relative group flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-blue-700 via-indigo-600 to-blue-600 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-400/50"
-          aria-label="Abrir Assistente Virtual MVRJ"
+          aria-label="Falar com MVRJ Contábil"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -190,7 +190,7 @@ export function MvrjAssistantWidget() {
                 // Fallback to executive illustration or icon if image fails
                 (e.currentTarget as HTMLElement).style.display = 'none';
               }}
-              alt="Assistente MVRJ"
+              alt="MVRJ Contábil"
               className="w-full h-full object-cover"
             />
           </div>
@@ -200,7 +200,7 @@ export function MvrjAssistantWidget() {
 
           {/* Tooltip on hover */}
           <span className="absolute right-full mr-3 px-3 py-1.5 bg-slate-900/90 text-white text-xs font-medium rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            Assistente Virtual MVRJ 🤖
+            Falar com MVRJ Contábil 💬
           </span>
         </motion.button>
       </div>
@@ -224,16 +224,16 @@ export function MvrjAssistantWidget() {
                     onError={(e) => {
                       (e.currentTarget as HTMLElement).style.display = 'none';
                     }}
-                    alt="Avatar"
+                    alt="MVRJ Contábil"
                     className="w-full h-full object-cover"
                   />
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border border-white rounded-full" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm sm:text-base tracking-tight flex items-center gap-1.5">
-                    Assistente Virtual MVRJ
+                    MVRJ Contábil
                   </h3>
-                  <p className="text-xs text-blue-200/90 font-normal">Consultoria Fiscal & GED</p>
+                  <p className="text-xs text-blue-200/90 font-normal">Consultoria Contábil & Geral • Online</p>
                 </div>
               </div>
               <button
@@ -288,31 +288,7 @@ export function MvrjAssistantWidget() {
                 </div>
               ))}
 
-              {messages.length === 1 && !isLoading && (
-                <div className="pt-1">
-                  <p className="text-[11px] font-semibold text-slate-500 mb-2 px-1 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    Perguntas Frequentes:
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      'O que é a guia DAS?',
-                      'Prazo de entrega da DEFIS',
-                      'Como emitir NFS-e?',
-                      'Certificado Digital A1',
-                    ].map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() => handleSendMessage(undefined, suggestion)}
-                        className="text-xs bg-white hover:bg-blue-50 text-blue-700 border border-blue-200/90 rounded-xl px-2.5 py-1.5 shadow-2xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer font-medium text-left"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+
 
               {isLoading && (
                 <div className="flex justify-start">
@@ -370,7 +346,7 @@ export function MvrjAssistantWidget() {
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                placeholder={rateLimitError ? 'Consultas temporariamente limitadas...' : 'Digite sua dúvida fiscal ou anexe um documento...'}
+                placeholder={rateLimitError ? 'Consultas temporariamente limitadas...' : 'Converse com MVRJ Contábil ou envie um documento...'}
                 disabled={isLoading || !!rateLimitError}
                 className="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all disabled:opacity-50"
               />

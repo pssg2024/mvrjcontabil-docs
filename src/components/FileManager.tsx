@@ -778,7 +778,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
       {!searchQuery && visibleFolders.length > 0 && (
         <section className="space-y-3.5 w-full">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-black">
               Pastas no Nível Atual ({visibleFolders.length})
             </h3>
           </div>
@@ -872,20 +872,20 @@ export const FileManager: React.FC<FileManagerProps> = ({
       {(currentFolderId !== null || searchQuery.trim() !== '') && (
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-black">
               {searchQuery ? `Documentos Encontrados (${sortedFiles.length})` : `Arquivos na Pasta (${sortedFiles.length})`}
             </h3>
             
-            <div className="flex items-center space-x-2 text-xs text-slate-300 font-bold">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+            <div className="flex items-center space-x-2 text-xs text-black font-bold">
+              <ArrowUpDown className="w-3.5 h-3.5 text-black" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 font-bold text-slate-200 text-xs shadow-2xs focus:ring-1 focus:ring-amber-400 cursor-pointer outline-none"
+                className="bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 font-bold text-black text-xs shadow-2xs focus:ring-2 focus:ring-blue-600 cursor-pointer outline-none"
               >
-                <option value="date" className="font-bold bg-slate-900 text-slate-100">Ordenar por Data</option>
-                <option value="name" className="font-bold bg-slate-900 text-slate-100">Ordenar por Nome</option>
-                <option value="size" className="font-bold bg-slate-900 text-slate-100">Ordenar por Tamanho</option>
+                <option value="date" className="font-bold bg-white text-black">Ordenar por Data</option>
+                <option value="name" className="font-bold bg-white text-black">Ordenar por Nome</option>
+                <option value="size" className="font-bold bg-white text-black">Ordenar por Tamanho</option>
               </select>
             </div>
           </div>

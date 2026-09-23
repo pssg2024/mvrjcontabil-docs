@@ -4799,7 +4799,7 @@ app.post('/api/assistant/chat', async (req: Request, res: Response) => {
     const isGreeting = !lastUserMsg?.file && /^(oi|ola|bom dia|boa tarde|boa noite|opa|ola tudo bem|oi tudo bem|e ai|e aí|hello|hey|como vai|saudacoes|fala ai)\s*[!?.]*$/i.test(userTextNorm);
     if (isGreeting && userMessages.length <= 2) {
       return res.json({
-        reply: 'Olá! Sou o assistente virtual da MVRJ Contábil. Como posso te ajudar hoje? Você pode tirar dúvidas sobre impostos, DAS, Simples Nacional, prazos de declaração ou anexar documentos para conferência.'
+        reply: 'Olá! Sou MVRJ Contábil. Como posso te ajudar hoje? Fique à vontade para me perguntar qualquer coisa ou me enviar documentos!'
       });
     }
 
@@ -4810,7 +4810,7 @@ app.post('/api/assistant/chat', async (req: Request, res: Response) => {
       const q = userTextNorm;
       let offlineReply = '';
       if (q.includes('das') || q.includes('guia') || q.includes('simples nacional')) {
-        offlineReply = 'O DAS (Documento de Arrecadação do Simples Nacional) vence no dia 20 de cada mês e unifica os tributos federais, estaduais e municipais. A equipe MVRJ disponibiliza suas guias na pasta Fiscal do GED.';
+        offlineReply = 'O DAS (Documento de Arrecadação do Simples Nacional) vence no dia 20 de cada mês e unifica os tributos federais, estaduais e municipais. Eu e nossa equipe disponibilizamos suas guias na pasta Fiscal do GED.';
       } else if (q.includes('defis')) {
         offlineReply = 'A DEFIS (Declaração de Informações Socioeconômicas e Fiscais) deve ser entregue anualmente até o último dia útil de março pelas empresas optantes pelo Simples Nacional.';
       } else if (q.includes('nota') || q.includes('nfe') || q.includes('nfse') || q.includes('emitir')) {
@@ -4822,21 +4822,25 @@ app.post('/api/assistant/chat', async (req: Request, res: Response) => {
       } else if (q.includes('holerite') || q.includes('folha') || q.includes('salario') || q.includes('inss')) {
         offlineReply = 'Os comprovantes de folha de pagamento e guias da DCTFWeb/INSS são gerados mensalmente pelo departamento pessoal e ficam salvos nas pastas do GED MVRJ.';
       } else {
-        offlineReply = 'Olá! Sou o assistente MVRJ Contábil. Para ativar a inteligência artificial completa com análise de documentos no Render, adicione a variável de ambiente GEMINI_API_KEY no painel do seu serviço no Render (Aba Environment). Você também pode tirar dúvidas sobre DAS, IRPF, Simples Nacional e DEFIS!';
+        offlineReply = 'Olá! Sou MVRJ Contábil. Para ativar todas as respostas completas no Render, adicione a variável de ambiente GEMINI_API_KEY no painel do seu serviço no Render (Aba Environment). Fique à vontade para me perguntar qualquer coisa!';
       }
       return res.json({ reply: offlineReply });
     }
 
     const ai = new GoogleGenAI({ apiKey });
     
-    const systemInstruction = `Você é o assistente virtual oficial do escritório MVRJ Contábil (Consultoria Fiscal, GED e Tributária).
-Responda sempre com agilidade, clareza e precisão técnica em português do Brasil.
+    const systemInstruction = `Você é uma pessoa real cujo nome é MVRJ Contábil.
 
-Diretrizes de resposta obrigatórias:
-- OBJETIVIDADE E RAPIDEZ: Seja direto e conciso, explicando em no máximo 2 a 3 frases claras.
-- SEM ENROLAÇÃO: Responda exatamente o que o usuário perguntou sem apresentações longas.
-- ESPECIALIDADE CONTÁBIL: Esclareça dúvidas sobre Simples Nacional, MEI, Lucro Presumido, guias DAS, DEFIS, DCTFWeb, IRPF, notas fiscais (NFe/NFSe) e certificado digital.
-- FORMATAÇÃO LIMPA: Texto fluido, natural e agradável. Evite poluição visual com excesso de asteriscos.`;
+IDENTIDADE OBRIGATÓRIA:
+- Seu nome é MVRJ Contábil.
+- NUNCA se apresente ou se refira a si mesmo como "assistente virtual", "IA", "inteligência artificial", "robô", "modelo de linguagem", "bot" ou "sistema".
+- Fale sempre em primeira pessoa humana ("Olá, eu sou MVRJ Contábil", "Estou à disposição para te ajudar", "Posso te orientar com isso", "Fiz a conferência para você", "Conte comigo").
+- Trate o usuário de forma próxima, simpática, profissional e humana.
+
+DIRETRIZES DE RESPOSTA:
+- LIBERDADE TOTAL DE CONTEÚDO: Você pode responder a qualquer pergunta e ajudar em qualquer solicitação sobre qualquer assunto do mundo (contabilidade, impostos, tecnologia, redação, matemática, programação, conselhos, conhecimentos gerais, conversas e qualquer outra dúvida).
+- OBJETIVIDADE E NATURALIDADE: Responda diretamente, com clareza, empatia e sem rodeios.
+- LIMPEZA VISUAL: Escreva em português do Brasil fluido e natural. Evite excesso de asteriscos e poluição visual.`;
 
     const chatHistory = (messages || []).map((m: any) => ({
       role: m.role === 'user' ? 'user' : 'model',
@@ -4851,8 +4855,8 @@ Diretrizes de resposta obrigatórias:
       ]
     }));
 
-    // Lista de modelos suportados e velozes em ordem de tentativa
-    const candidateModels = ['gemini-3.6-flash', 'gemini-3.8-flash'];
+    // Lista de modelos velozes e estáveis em ordem de tentativa
+    const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash'];
     let reply = '';
 
     for (const model of candidateModels) {
@@ -4885,8 +4889,10 @@ Diretrizes de resposta obrigatórias:
     // Se os modelos do Gemini demorarem ou tiverem oscilação de rede, usar a Base Contábil MVRJ
     if (!reply) {
       const q = userTextNorm;
-      if (q.includes('das') || q.includes('guia') || q.includes('simples nacional')) {
-        reply = 'O DAS (Documento de Arrecadação do Simples Nacional) vence no dia 20 de cada mês e unifica os tributos federais, estaduais e municipais. A equipe MVRJ disponibiliza suas guias na pasta Fiscal do GED.';
+      if (q.includes('quem e voce') || q.includes('quem voce') || q.includes('qual o seu nome') || q.includes('qual seu nome') || q.includes('seu nome') || q.includes('sua identidade')) {
+        reply = 'Eu sou MVRJ Contábil! Estou aqui para te assessorar e ajudar em tudo o que você precisar, tirando dúvidas contábeis, fiscais ou sobre qualquer outro assunto.';
+      } else if (q.includes('das') || q.includes('guia') || q.includes('simples nacional')) {
+        reply = 'O DAS (Documento de Arrecadação do Simples Nacional) vence no dia 20 de cada mês e unifica os tributos federais, estaduais e municipais. Eu e nossa equipe disponibilizamos suas guias na pasta Fiscal do GED.';
       } else if (q.includes('defis')) {
         reply = 'A DEFIS (Declaração de Informações Socioeconômicas e Fiscais) deve ser entregue anualmente até o último dia útil de março pelas empresas optantes pelo Simples Nacional.';
       } else if (q.includes('nota') || q.includes('nfe') || q.includes('nfse') || q.includes('emitir')) {
@@ -4898,7 +4904,7 @@ Diretrizes de resposta obrigatórias:
       } else if (q.includes('holerite') || q.includes('folha') || q.includes('salario') || q.includes('inss')) {
         reply = 'Os comprovantes de folha de pagamento e guias da DCTFWeb/INSS são gerados mensalmente pelo departamento pessoal e ficam salvos nas pastas do GED MVRJ.';
       } else {
-        reply = 'Olá! O servidor de inteligência artificial está processando com alta demanda no momento, mas já registramos sua solicitação. Você também pode conferir seus documentos e guias diretamente nas pastas fiscais!';
+        reply = 'Olá! Sou MVRJ Contábil. Estou à sua total disposição por aqui! Pode me fazer qualquer pergunta ou consultar seus documentos e guias nas pastas fiscais.';
       }
     }
 
@@ -4906,7 +4912,7 @@ Diretrizes de resposta obrigatórias:
   } catch (err: any) {
     console.error('[Gemini Assistant Error]', err);
     return res.status(200).json({ 
-      reply: 'Olá! Houve uma pequena oscilação temporária com o serviço de IA. Por favor, repita a pergunta ou consulte os arquivos nas suas pastas fiscais.' 
+      reply: 'Olá! Sou MVRJ Contábil. Tive uma oscilação momentânea aqui, pode por favor repetir sua pergunta?' 
     });
   }
 });
