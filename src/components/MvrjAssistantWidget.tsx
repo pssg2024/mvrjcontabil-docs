@@ -38,7 +38,13 @@ export function MvrjAssistantWidget() {
   useEffect(() => {
     if (isOpen) {
       scrollToBottom();
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
     }
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [isOpen, messages, isLoading]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,7 +219,7 @@ export function MvrjAssistantWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-w-[500px] h-[600px] max-h-[85vh] bg-white rounded-2xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden font-sans"
+            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-w-[500px] h-[600px] max-h-[85vh] bg-white rounded-2xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden font-sans overscroll-contain"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white px-4 py-3.5 flex items-center justify-between shadow-md">
@@ -264,7 +270,7 @@ export function MvrjAssistantWidget() {
             )}
 
             {/* Messages Area */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/60">
+            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/60 overscroll-contain">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
