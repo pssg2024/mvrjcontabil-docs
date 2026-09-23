@@ -296,6 +296,50 @@ export default function App() {
     localStorage.setItem('mvrj_auth_header_config', JSON.stringify(authHeaderConfig));
   }, [authHeaderConfig]);
 
+  // Global scroll lock when any modal, drawer, or dialog is open
+  const isAnyModalOpen = 
+    isUploadModalOpen || 
+    isSqlModalOpen || 
+    isProfileModalOpen || 
+    isFirstAccessModalOpen || 
+    isLgpdModalOpen || 
+    isBackgroundModalOpen || 
+    viewingFile !== null || 
+    isCompanyModalOpen || 
+    isCompanyManagerOpen || 
+    isInvoiceEmissionOpen || 
+    isManualModalOpen || 
+    pendingDeleteAction !== null;
+
+  useEffect(() => {
+    if (isAnyModalOpen) {
+      const scrollY = window.scrollY;
+      const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const originalTop = document.body.style.top;
+      const originalWidth = document.body.style.width;
+      const originalTouchAction = document.body.style.touchAction;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.touchAction = 'none';
+
+      return () => {
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.body.style.overflow = originalOverflow;
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        document.body.style.touchAction = originalTouchAction;
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isAnyModalOpen]);
+
   // Fetch backend R2 status and real-time storage metrics on load
   useEffect(() => {
     fetch('/api/r2/status')
