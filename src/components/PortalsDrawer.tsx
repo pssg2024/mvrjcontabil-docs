@@ -46,15 +46,54 @@ interface PortalsDrawerProps {
 }
 
 export const PortalsDrawer: React.FC<PortalsDrawerProps> = ({ isOpen, onClose }) => {
+  React.useEffect(() => {
+    if (isOpen) {
+      const scrollY = window.scrollY;
+      const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const originalTop = document.body.style.top;
+      const originalWidth = document.body.style.width;
+      const originalTouchAction = document.body.style.touchAction;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.touchAction = 'none';
+
+      return () => {
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.body.style.overflow = originalOverflow;
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        document.body.style.touchAction = originalTouchAction;
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
-      <div className="flex-1 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={onClose} />
+      <div 
+        className="flex-1 bg-slate-900/40 backdrop-blur-sm transition-opacity" 
+        onClick={onClose}
+        onTouchMove={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      />
       
       {/* Drawer */}
-      <div className="fixed top-0 right-0 h-screen w-80 sm:w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-slate-200 transition-transform duration-300 ease-in-out">
+      <div 
+        className="fixed top-0 right-0 h-screen w-80 sm:w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-slate-200 transition-transform duration-300 ease-in-out overscroll-contain"
+        onTouchMove={(e) => e.stopPropagation()}
+      >
         {/* Fixed Header */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <div>

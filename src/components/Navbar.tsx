@@ -75,13 +75,31 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   useEffect(() => {
     if (showMobileMenu) {
+      const scrollY = window.scrollY;
+      const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const originalTop = document.body.style.top;
+      const originalWidth = document.body.style.width;
+      const originalTouchAction = document.body.style.touchAction;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+
+      document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.touchAction = 'none';
+
+      return () => {
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.body.style.overflow = originalOverflow;
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        document.body.style.touchAction = originalTouchAction;
+        window.scrollTo(0, scrollY);
+      };
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
   }, [showMobileMenu]);
 
   // States for dropdown navigation
@@ -631,16 +649,31 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* 5. GAVETA LATERAL SUAVE MOBILE (DRAWER / OFFCANVAS) */}
       {showMobileMenu && (
-        <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-200">
+        <div 
+          className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-200"
+          onTouchMove={(e) => {
+            // Previne propagação de arrasto de tela para o body
+            if (e.target === e.currentTarget) {
+              e.preventDefault();
+            }
+          }}
+        >
           {/* Backdrop */}
           <div 
             className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs transition-opacity"
             onClick={() => setShowMobileMenu(false)}
+            onTouchMove={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             aria-hidden="true"
           />
 
           {/* Drawer Content */}
-          <div className="fixed right-0 top-0 bottom-0 w-full max-w-xs sm:max-w-sm bg-slate-900 border-l border-slate-800 shadow-2xl z-50 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-250 p-5 text-slate-100 overscroll-contain">
+          <div 
+            className="fixed right-0 top-0 bottom-0 w-full max-w-xs sm:max-w-sm bg-slate-900 border-l border-slate-800 shadow-2xl z-50 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-250 p-5 text-slate-100 overscroll-contain"
+            onTouchMove={(e) => e.stopPropagation()}
+          >
             <div className="space-y-4">
               
               {/* Header do Drawer */}
