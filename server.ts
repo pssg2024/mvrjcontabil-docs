@@ -1176,7 +1176,7 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
   const profilesMap = new Map<string, StoredProfile>();
   const isMasterEmail = (email: string) => {
     const e = email.toLowerCase().trim();
-    return e === 'evandro230655@gmail.com' || e === 'evandro132213@gmail.com';
+    return e === 'evandro230655@gmail.com';
   };
 
   // 1. Carregar perfis do Cloudflare R2
@@ -1321,24 +1321,22 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
     }
   }
 
-  // Assegurar Administradores Masters (Evandro)
-  const masterEmails = ['evandro230655@gmail.com', 'evandro132213@gmail.com'];
-  masterEmails.forEach((masterEmail, index) => {
+  // Assegurar Administrador Master (Evandro)
+  const masterEmails = ['evandro230655@gmail.com'];
+  masterEmails.forEach((masterEmail) => {
     if (profilesMap.has(masterEmail)) {
       const admin = profilesMap.get(masterEmail)!;
       admin.role = 'admin';
       admin.status = 'active';
     } else {
       profilesMap.set(masterEmail, {
-        id: index === 0 ? '57e1d483-669b-4791-b09e-7496570e63ea' : 'usr-evandro132213',
+        id: '57e1d483-669b-4791-b09e-7496570e63ea',
         email: masterEmail,
         full_name: 'Evandro (Administrador)',
         sector: 'Diretoria',
         role: 'admin',
         status: 'active',
-        avatar_url: index === 0 
-          ? '/api/r2/avatar/57e1d483-669b-4791-b09e-7496570e63ea.webp?t=1789404217549' 
-          : '/api/r2/avatar/usr-evandro132213.webp?t=1789404217549',
+        avatar_url: '/api/r2/avatar/57e1d483-669b-4791-b09e-7496570e63ea.webp?t=1789404217549',
         created_at: '2026-09-14T16:21:34.630637+00:00',
         updated_at: new Date().toISOString(),
       });

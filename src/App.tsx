@@ -71,7 +71,7 @@ export default function App() {
       }
     });
     
-    // Assegura que evandro230655@gmail.com e evandro132213@gmail.com sempre existem como Administradores ativos
+    // Assegura que evandro230655@gmail.com sempre existe como Administrador ativo
     const evandroExists1 = loaded.find(p => p.email.toLowerCase() === 'evandro230655@gmail.com');
     if (!evandroExists1) {
       loaded.push({
@@ -87,25 +87,10 @@ export default function App() {
         updated_at: '2026-01-01T08:00:00Z',
       });
     }
-    const evandroExists2 = loaded.find(p => p.email.toLowerCase() === 'evandro132213@gmail.com');
-    if (!evandroExists2) {
-      loaded.push({
-        id: 'usr-evandro132213',
-        email: 'evandro132213@gmail.com',
-        full_name: 'Evandro (Administrador Geral)',
-        sector: 'Diretoria',
-        role: 'admin',
-        status: 'active',
-        avatar_url: '/api/r2/avatar/usr-evandro132213.webp',
-        first_access_completed: false,
-        created_at: '2026-01-01T08:00:00Z',
-        updated_at: '2026-01-01T08:00:00Z',
-      });
-    }
     
     loaded = loaded.map(p => {
       const email = p.email.toLowerCase();
-      if (email === 'evandro230655@gmail.com' || email === 'evandro132213@gmail.com') {
+      if (email === 'evandro230655@gmail.com') {
         return { ...p, role: 'admin', status: 'active' };
       }
       return p;
