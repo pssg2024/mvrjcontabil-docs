@@ -118,21 +118,9 @@ export function MvrjAssistantWidget() {
 
       const data = await res.json();
 
-      if (res.status === 429) {
-        setRateLimitError(data.message || 'Limite de consultas temporárias atingido. As suas mensagens gratuitas serão renovadas automaticamente em breve.');
-        setMessages(prev => [
-          ...prev,
-          {
-            id: 'err-' + Date.now(),
-            role: 'model',
-            text: '⚠️ **Limite de Cota Atingido**\n\nLimite de consultas temporárias atingido. As suas mensagens gratuitas serão renovadas automaticamente em breve.',
-          },
-        ]);
-        return;
-      }
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao comunicar com o Assistente');
+      if (res.status === 429 || !res.ok) {
+        // Fallback inteligente automático
+        throw new Error(data.error || 'Rate limit / Error');
       }
 
       const modelMsg: ChatMessage = {

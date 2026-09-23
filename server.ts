@@ -4856,7 +4856,7 @@ DIRETRIZES DE RESPOSTA:
     }));
 
     // Lista de modelos velozes em ordem de tentativa
-    const candidateModels = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-3.5-flash'];
+    const candidateModels = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.7-flash'];
     let reply = '';
 
     for (const model of candidateModels) {
