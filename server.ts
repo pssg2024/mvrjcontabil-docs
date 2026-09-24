@@ -4940,9 +4940,57 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+    const indexPath = path.join(distPath, 'index.html');
+    let cachedIndexHtml = '';
+    try {
+      cachedIndexHtml = fs.readFileSync(indexPath, 'utf-8');
+    } catch {
+      cachedIndexHtml = '';
+    }
+
     app.use(express.static(distPath));
     app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      try {
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+        const host = req.get('host') || 'mvrjcontabil-docs.onrender.com';
+        const baseUrl = `${protocol}://${host}`;
+
+        let html = cachedIndexHtml;
+        if (!html) {
+          html = fs.readFileSync(indexPath, 'utf-8');
+        }
+
+        // Atualiza dinamicamente as tags Open Graph e Twitter Cards com o domínio atual da requisição
+        html = html
+          .replace(/content="https:\/\/[^"]+\/og-image\.jpg"/g, `content="${baseUrl}/og-image.jpg"`)
+          .replace(/content="https:\/\/[^"]+"/g, (match) => {
+            if (match.includes('og-image.jpg')) {
+              return `content="${baseUrl}/og-image.jpg"`;
+            }
+            return match;
+          });
+
+        html = html.replace(
+          /<meta property="og:url" content="[^"]*" \/>/,
+          `<meta property="og:url" content="${baseUrl}${req.originalUrl}" />`
+        );
+        html = html.replace(
+          /<meta property="og:image" content="[^"]*" \/>/,
+          `<meta property="og:image" content="${baseUrl}/og-image.jpg" />`
+        );
+        html = html.replace(
+          /<meta property="og:image:secure_url" content="[^"]*" \/>/,
+          `<meta property="og:image:secure_url" content="${baseUrl}/og-image.jpg" />`
+        );
+        html = html.replace(
+          /<meta name="twitter:image" content="[^"]*" \/>/,
+          `<meta name="twitter:image" content="${baseUrl}/og-image.jpg" />`
+        );
+
+        res.send(html);
+      } catch (err) {
+        res.sendFile(path.join(distPath, 'index.html'));
+      }
     });
   }
 
