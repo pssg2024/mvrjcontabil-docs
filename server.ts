@@ -4932,6 +4932,69 @@ async function startServer() {
     console.warn('[Startup Sync Aviso]', syncErr.message);
   }
 
+  // Rota dedicada para Open Graph og-image.jpg (prioriza a imagem de fundo personalizada do site ou do login)
+  app.get('/og-image.jpg', async (req: Request, res: Response) => {
+    try {
+      const bgStorageKey = 'system/site-background.img';
+
+      // 1. Tenta a imagem de fundo do site (site-background.img)
+      const cachedBg = inMemoryFileStore.get(bgStorageKey);
+      if (cachedBg && cachedBg.buffer) {
+        res.setHeader('Content-Type', cachedBg.mimeType || 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.send(cachedBg.buffer);
+      }
+      const diskBgPath = path.join(ASSETS_DIR, 'site-background.img');
+      const diskBgMeta = path.join(ASSETS_DIR, 'site-background.meta.json');
+      if (fs.existsSync(diskBgPath)) {
+        try {
+          const buf = fs.readFileSync(diskBgPath);
+          let mime = 'image/jpeg';
+          if (fs.existsSync(diskBgMeta)) {
+            const meta = JSON.parse(fs.readFileSync(diskBgMeta, 'utf-8'));
+            if (meta.mimeType) mime = meta.mimeType;
+          }
+          res.setHeader('Content-Type', mime);
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          return res.send(buf);
+        } catch (e) {}
+      }
+
+      // 2. Tenta a imagem de login / header (auth-header.img)
+      const diskAuthPath = path.join(ASSETS_DIR, 'auth-header.img');
+      const diskAuthMeta = path.join(ASSETS_DIR, 'auth-header.meta.json');
+      if (fs.existsSync(diskAuthPath)) {
+        try {
+          const buf = fs.readFileSync(diskAuthPath);
+          let mime = 'image/jpeg';
+          if (fs.existsSync(diskAuthMeta)) {
+            const meta = JSON.parse(fs.readFileSync(diskAuthMeta, 'utf-8'));
+            if (meta.mimeType) mime = meta.mimeType;
+          }
+          res.setHeader('Content-Type', mime);
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          return res.send(buf);
+        } catch (e) {}
+      }
+
+      // 3. Fallback para a imagem padrão og-image.jpg em public/
+      const defaultOgPath = path.join(process.cwd(), 'public', 'og-image.jpg');
+      if (fs.existsSync(defaultOgPath)) {
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.sendFile(defaultOgPath);
+      }
+
+      return res.status(404).send('Not Found');
+    } catch (err) {
+      const defaultOgPath = path.join(process.cwd(), 'public', 'og-image.jpg');
+      if (fs.existsSync(defaultOgPath)) {
+        return res.sendFile(defaultOgPath);
+      }
+      return res.status(500).send('Error');
+    }
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
