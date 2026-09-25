@@ -18,17 +18,19 @@ import {
   FileArchive,
   File as FileGenericIcon,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FolderUp,
+  Folder
 } from 'lucide-react';
-import { Folder, DocumentFile, Sector, UserProfile, StorageMetrics } from '../types';
+import { Folder as FolderType, DocumentFile, Sector, UserProfile, StorageMetrics } from '../types';
 import { optimizeFile, formatBytes, computeChecksum } from '../lib/optimization';
 import { getPresignedUploadUrl, uploadToPresignedUrl, saveFileRecordToApi } from '../lib/storage-service';
 
 interface FileUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentFolder: Folder | null;
-  allFolders: Folder[];
+  currentFolder: FolderType | null;
+  allFolders: FolderType[];
   currentUser: UserProfile;
   onUploadSuccess: (newFile: DocumentFile) => void;
   storageMetrics?: StorageMetrics | null;
@@ -43,7 +45,9 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   onUploadSuccess,
   storageMetrics,
 }) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [folderUploadName, setFolderUploadName] = useState<string | null>(null);
+  const [currentUploadIndex, setCurrentUploadIndex] = useState(1);
   const [customFileName, setCustomFileName] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string>(
     currentFolder ? currentFolder.id : (allFolders[0]?.id || '')
@@ -59,9 +63,12 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
-    setSelectedFile(null);
+    setSelectedFiles([]);
+    setFolderUploadName(null);
+    setCurrentUploadIndex(1);
     setCustomFileName('');
     setTags(['Contábil', '2026']);
     setTagInput('');
@@ -117,8 +124,20 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       setErrorMessage('Limite de armazenamento Cloudflare R2 atingido. Upload bloqueado. Entre em contato com o suporte de TI (21) 97396-0077.');
       return;
     }
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelected(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files) as File[];
+      if (droppedFiles.length === 1) {
+        handleFileSelected(droppedFiles[0]);
+      } else {
+        setSelectedFiles(droppedFiles);
+        setFolderUploadName('Pasta Arrastada');
+        setCustomFileName('Pasta Arrastada');
+        setOptimizationStage('idle');
+        setErrorMessage(null);
+        if (targetFolder && !tags.includes(targetFolder.sector)) {
+          setTags(prev => [...prev, targetFolder.sector]);
+        }
+      }
     }
   };
 
@@ -127,15 +146,56 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       setErrorMessage('Limite de armazenamento Cloudflare R2 atingido. Upload bloqueado. Entre em contato com o suporte de TI (21) 97396-0077.');
       return;
     }
-    setSelectedFile(file);
+    setSelectedFiles([file]);
+    setFolderUploadName(null);
     setCustomFileName(file.name);
     setOptimizationStage('idle');
     setErrorMessage(null);
 
-    // Auto generate tag from sector
     if (targetFolder && !tags.includes(targetFolder.sector)) {
       setTags(prev => [...prev, targetFolder.sector]);
     }
+  };
+
+  const handleFolderSelected = (fileList: FileList) => {
+    if (isQuotaExceeded) {
+      setErrorMessage('Limite de armazenamento Cloudflare R2 atingido. Upload bloqueado. Entre em contato com o suporte de TI (21) 97396-0077.');
+      return;
+    }
+    const filesArray = Array.from(fileList).filter((f: any) => {
+      if (f.name.startsWith('.')) return false;
+      if (f.size === 0 && (!f.type || f.webkitRelativePath?.endsWith('/'))) return false;
+      return true;
+    }) as File[];
+
+    if (filesArray.length === 0) {
+      setErrorMessage('A pasta selecionada está vazia ou não contém arquivos válidos.');
+      return;
+    }
+
+    let fName = 'Pasta Importada';
+    const firstPath = (filesArray[0] as any).webkitRelativePath;
+    if (firstPath) {
+      const parts = firstPath.split('/');
+      if (parts.length > 1) {
+        fName = parts[0];
+      }
+    }
+
+    setSelectedFiles(filesArray);
+    setFolderUploadName(fName);
+    setCustomFileName(fName);
+    setOptimizationStage('idle');
+    setErrorMessage(null);
+
+    const newTagsSet = new Set(tags);
+    if (targetFolder && !newTagsSet.has(targetFolder.sector)) {
+      newTagsSet.add(targetFolder.sector);
+    }
+    if (fName && !newTagsSet.has(fName)) {
+      newTagsSet.add(fName);
+    }
+    setTags(Array.from(newTagsSet));
   };
 
   const handleAddTag = (e: React.KeyboardEvent) => {
@@ -158,98 +218,110 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       setErrorMessage('Limite de armazenamento Cloudflare R2 atingido. Gravação bloqueada. Contate o suporte de TI pelo número (21) 97396-0077.');
       return;
     }
-    if (!selectedFile || !targetFolder) return;
+    if (selectedFiles.length === 0 || !targetFolder) return;
 
     try {
       setIsProcessing(true);
       setErrorMessage(null);
 
-      // ETAPA 1: OTIMIZAÇÃO AUTOMÁTICA (PDF ou IMAGEM)
-      setOptimizationStage('optimizing');
-      const optResult = await optimizeFile(selectedFile);
-      const arrayBuf = await optResult.file.arrayBuffer();
-      const checksum = await computeChecksum(arrayBuf);
+      const totalFiles = selectedFiles.length;
 
-      const stats = {
-        originalSize: optResult.originalSize,
-        optimizedSize: optResult.optimizedSize,
-        reductionPercentage: optResult.reductionPercentage,
-        mimeType: optResult.mimeType,
-        checksum,
-        pagesCount: optResult.pagesCount || 1,
-      };
+      for (let i = 0; i < totalFiles; i++) {
+        setCurrentUploadIndex(i + 1);
+        const currentFile = selectedFiles[i];
 
-      let finalName = customFileName.trim();
-      if (!finalName) {
-        finalName = selectedFile.name;
-      }
-      // Se originalFile possui extensão e finalName não possui a mesma, anexa de forma inteligente
-      const dotIndex = selectedFile.name.lastIndexOf('.');
-      if (dotIndex >= 0) {
-        const ext = selectedFile.name.substring(dotIndex);
-        if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
-          finalName += ext;
+        // ETAPA 1: OTIMIZAÇÃO AUTOMÁTICA (PDF ou IMAGEM)
+        setOptimizationStage('optimizing');
+        const optResult = await optimizeFile(currentFile);
+        const arrayBuf = await optResult.file.arrayBuffer();
+        const checksum = await computeChecksum(arrayBuf);
+
+        const stats = {
+          originalSize: optResult.originalSize,
+          optimizedSize: optResult.optimizedSize,
+          reductionPercentage: optResult.reductionPercentage,
+          mimeType: optResult.mimeType,
+          checksum,
+          pagesCount: optResult.pagesCount || 1,
+        };
+
+        let finalName = currentFile.name;
+        if (folderUploadName && (currentFile as any).webkitRelativePath) {
+          const relPath = (currentFile as any).webkitRelativePath;
+          const parts = relPath.split('/');
+          if (parts.length > 1) {
+            finalName = parts.slice(1).join('/');
+          }
+        } else if (selectedFiles.length === 1 && customFileName.trim()) {
+          finalName = customFileName.trim();
         }
-      }
 
-      // ETAPA 2: SOLICITAÇÃO DA PRESIGNED URL AO BACKEND
-      setOptimizationStage('requesting-url');
-      const presignedData = await getPresignedUploadUrl(
-        finalName,
-        optResult.mimeType,
-        targetFolder.sector,
-        targetFolder.id,
-        optResult.optimizedSize
-      );
-
-      // ETAPA 3: UPLOAD DIRETO PARA CLOUDFLARE R2 COM FALLBACK RESILIENTE
-      setOptimizationStage('uploading-r2');
-      const finalDocName = finalName;
-      await uploadToPresignedUrl(
-        presignedData.uploadUrl,
-        optResult.file,
-        optResult.mimeType,
-        (progress) => setUploadProgress(progress),
-        presignedData.storageKey,
-        finalDocName
-      );
-
-      // ETAPA 4: SUCESSO & REGISTRO NO GED & SUPABASE
-      setOptimizationStage('finished');
-
-      const tempDoc: DocumentFile = {
-        id: `file-${Date.now()}`,
-        folder_id: targetFolder.id,
-        name: finalName,
-        storage_key: presignedData.storageKey,
-        mime_type: optResult.mimeType,
-        original_size: stats.originalSize,
-        optimized_size: stats.optimizedSize,
-        compression_ratio: stats.reductionPercentage,
-        pages_count: stats.pagesCount,
-        tags,
-        uploaded_by: currentUser.id,
-        uploader_name: currentUser.full_name,
-        sector: targetFolder.sector,
-        checksum_sha256: checksum,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        preview_url: optResult.dataUrl,
-      };
-
-      let finalDoc = tempDoc;
-      try {
-        const saved = await saveFileRecordToApi(tempDoc);
-        if (saved && saved.id) {
-          finalDoc = { ...saved, preview_url: optResult.dataUrl || saved.preview_url };
+        const dotIndex = currentFile.name.lastIndexOf('.');
+        if (dotIndex >= 0) {
+          const ext = currentFile.name.substring(dotIndex);
+          if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
+            finalName += ext;
+          }
         }
-      } catch (dbErr: any) {
-        console.error('Falha ao registrar documento:', dbErr);
-        alert('Erro ao salvar documento: ' + (dbErr.message || 'Erro desconhecido'));
+
+        // ETAPA 2: SOLICITAÇÃO DA PRESIGNED URL AO BACKEND
+        setOptimizationStage('requesting-url');
+        const presignedData = await getPresignedUploadUrl(
+          finalName,
+          optResult.mimeType,
+          targetFolder.sector,
+          targetFolder.id,
+          optResult.optimizedSize
+        );
+
+        // ETAPA 3: UPLOAD DIRETO PARA CLOUDFLARE R2 COM FALLBACK RESILIENTE
+        setOptimizationStage('uploading-r2');
+        await uploadToPresignedUrl(
+          presignedData.uploadUrl,
+          optResult.file,
+          optResult.mimeType,
+          (progress) => setUploadProgress(progress),
+          presignedData.storageKey,
+          finalName
+        );
+
+        // ETAPA 4: SUCESSO & REGISTRO NO GED & SUPABASE
+        setOptimizationStage('finished');
+
+        const tempDoc: DocumentFile = {
+          id: `file-${Date.now()}-${i}`,
+          folder_id: targetFolder.id,
+          name: finalName,
+          storage_key: presignedData.storageKey,
+          mime_type: optResult.mimeType,
+          original_size: stats.originalSize,
+          optimized_size: stats.optimizedSize,
+          compression_ratio: stats.reductionPercentage,
+          pages_count: stats.pagesCount,
+          tags,
+          uploaded_by: currentUser.id,
+          uploader_name: currentUser.full_name,
+          sector: targetFolder.sector,
+          checksum_sha256: checksum,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          preview_url: optResult.dataUrl,
+        };
+
+        let finalDoc = tempDoc;
+        try {
+          const saved = await saveFileRecordToApi(tempDoc);
+          if (saved && saved.id) {
+            finalDoc = { ...saved, preview_url: optResult.dataUrl || saved.preview_url };
+          }
+        } catch (dbErr: any) {
+          console.error('Falha ao registrar documento:', dbErr);
+        }
+
+        onUploadSuccess(finalDoc);
       }
 
-      // Notifica sucesso imediatamente e fecha o modal após 1 segundo
-      onUploadSuccess(finalDoc);
+      // Notifica sucesso após concluir todos os arquivos da pasta ou arquivo único
       setTimeout(() => {
         onClose();
         resetForm();
@@ -263,8 +335,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     }
   };
 
-  const hasAccordionData = false;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs">
       <div className="bg-white w-[94%] max-w-lg mx-auto rounded-2xl shadow-2xl border border-slate-200/80 max-h-[85vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
@@ -277,10 +347,10 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
             </div>
             <div className="min-w-0">
               <h3 className="text-slate-900 font-bold text-sm sm:text-base leading-tight truncate">
-                Upload de Documentos
+                Upload de Documentos ou Pasta Inteira
               </h3>
               <p className="text-slate-500 text-[10px] sm:text-xs truncate">
-                PDFs, Imagens, XMLs, Certificados (PFX) e Planilhas
+                Arquivos individuais ou pastas com múltiplos documentos
               </p>
             </div>
           </div>
@@ -349,13 +419,12 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
             </div>
           )}
 
-          {/* Dropzone ou Card do Arquivo Selecionado */}
-          {!selectedFile ? (
+          {/* Dropzone ou Card do Arquivo/Pasta Selecionado */}
+          {selectedFiles.length === 0 ? (
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-300 hover:border-[#1B357B] bg-slate-50 hover:bg-slate-100/80 rounded-xl p-5 sm:p-6 transition-all cursor-pointer flex flex-col items-center justify-center text-center group shadow-2xs"
+              className="border-2 border-dashed border-slate-300 hover:border-[#1B357B] bg-slate-50 hover:bg-slate-100/80 rounded-xl p-5 sm:p-6 transition-all flex flex-col items-center justify-center text-center group shadow-2xs"
             >
               <input
                 ref={fileInputRef}
@@ -367,78 +436,142 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   }
                 }}
               />
+              <input
+                ref={folderInputRef}
+                type="file"
+                webkitdirectory=""
+                directory=""
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    handleFolderSelected(e.target.files);
+                  }
+                }}
+              />
+
               <UploadCloud className="text-[#1B357B] group-hover:scale-110 transition-transform w-9 h-9 mb-2" />
-              <p className="text-xs font-bold text-slate-950">Clique para selecionar ou arraste o arquivo</p>
-              <p className="text-xs font-semibold text-slate-600 mt-1">PDFs, Imagens, XMLs, Planilhas e Certificados</p>
+              <p className="text-xs font-bold text-slate-950">Arraste seus documentos ou pasta inteira aqui</p>
+              <p className="text-xs font-semibold text-slate-600 mt-1 mb-3">PDFs, Imagens, XMLs, Planilhas ou Pastas completas</p>
+
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3.5 py-2 bg-[#1B357B] hover:bg-[#112354] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  <span>Selecionar Arquivo(s)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => folderInputRef.current?.click()}
+                  className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <FolderUp className="w-3.5 h-3.5" />
+                  <span>Puxar Pasta Inteira</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
-              {/* Card Compacto de Arquivo Selecionado em Linha Única */}
-              {(() => {
-                const lowerName = selectedFile.name.toLowerCase();
-                const isPfx = /\.(pfx|p12|cer|crt|key)$/i.test(lowerName);
-                const isPdf = selectedFile.type.includes('pdf') || /\.pdf$/i.test(lowerName);
-                const isImg = selectedFile.type.includes('image') || /\.(webp|png|jpe?g|bmp|gif|svg)$/i.test(lowerName);
-                const isSpreadsheet = /\.(xlsx|xls|csv|ods)$/i.test(lowerName);
-                const isXml = /\.(xml|nfe|cte|sped|ofx|rem|ret)$/i.test(lowerName);
-                const isZip = /\.(zip|rar|7z|tar|gz)$/i.test(lowerName);
-
-                return (
-                  <div className="bg-slate-100 border border-slate-300 rounded-xl p-3 flex items-center justify-between gap-2 shadow-2xs">
-                    <div className="flex items-center space-x-3 min-w-0 overflow-hidden">
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white shrink-0 shadow-xs ${
-                        isPfx ? 'bg-purple-700' :
-                        isPdf ? 'bg-rose-700' :
-                        isImg ? 'bg-blue-700' :
-                        isSpreadsheet ? 'bg-emerald-700' :
-                        isXml ? 'bg-amber-700' :
-                        isZip ? 'bg-teal-700' : 'bg-[#1B357B]'
-                      }`}>
-                        {isPfx ? <KeyRound className="w-5 h-5" /> :
-                         isPdf ? <FileText className="w-5 h-5" /> :
-                         isImg ? <ImageIcon className="w-5 h-5" /> :
-                         isSpreadsheet ? <FileSpreadsheet className="w-5 h-5" /> :
-                         isXml ? <FileCode className="w-5 h-5" /> :
-                         isZip ? <FileArchive className="w-5 h-5" /> :
-                         <FileGenericIcon className="w-5 h-5" />}
-                      </div>
-                      <div className="min-w-0 overflow-hidden">
-                        <h4 className="text-xs font-bold text-slate-950 truncate" title={selectedFile.name}>
-                          {selectedFile.name}
-                        </h4>
-                        <p className="text-xs font-semibold text-slate-600">
-                          {formatBytes(selectedFile.size)}
-                        </p>
-                      </div>
+              {/* Card de Pasta Inteira ou Arquivo Único */}
+              {folderUploadName ? (
+                <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center space-x-3 min-w-0 overflow-hidden">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Folder className="w-5 h-5" />
                     </div>
-
-                    {!isProcessing && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFile(null)}
-                        className="text-xs font-black text-[#1B357B] hover:text-blue-800 underline transition-colors shrink-0 px-2 py-1 cursor-pointer"
-                      >
-                        Trocar Arquivo
-                      </button>
-                    )}
+                    <div className="min-w-0 overflow-hidden">
+                      <h4 className="text-xs font-bold text-slate-950 truncate" title={folderUploadName}>
+                        Pasta: {folderUploadName}
+                      </h4>
+                      <p className="text-xs font-semibold text-emerald-800">
+                        {selectedFiles.length} documento{selectedFiles.length > 1 ? 's' : ''} pronto{selectedFiles.length > 1 ? 's' : ''} para envio
+                      </p>
+                    </div>
                   </div>
-                );
-              })()}
 
-              {/* Nome do Documento para Renomear */}
-              <div>
-                <label className="block text-xs font-bold text-slate-900 mb-1.5">
-                  Nome do Documento (personalizável se desejar renomear)
-                </label>
-                <input
-                  type="text"
-                  disabled={isProcessing}
-                  value={customFileName}
-                  onChange={(e) => setCustomFileName(e.target.value)}
-                  placeholder="Nome do arquivo..."
-                  className="w-full h-9 sm:h-10 px-3 text-xs text-slate-950 bg-white border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-1 focus:ring-[#1B357B] outline-none transition-all font-bold placeholder:text-slate-500 shadow-2xs"
-                />
-              </div>
+                  {!isProcessing && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFiles([])}
+                      className="text-xs font-black text-emerald-900 hover:text-emerald-950 underline transition-colors shrink-0 px-2 py-1 cursor-pointer"
+                    >
+                      Trocar Pasta
+                    </button>
+                  )}
+                </div>
+              ) : (
+                (() => {
+                  const selectedFile = selectedFiles[0];
+                  const lowerName = selectedFile.name.toLowerCase();
+                  const isPfx = /\.(pfx|p12|cer|crt|key)$/i.test(lowerName);
+                  const isPdf = selectedFile.type.includes('pdf') || /\.pdf$/i.test(lowerName);
+                  const isImg = selectedFile.type.includes('image') || /\.(webp|png|jpe?g|bmp|gif|svg)$/i.test(lowerName);
+                  const isSpreadsheet = /\.(xlsx|xls|csv|ods)$/i.test(lowerName);
+                  const isXml = /\.(xml|nfe|cte|sped|ofx|rem|ret)$/i.test(lowerName);
+                  const isZip = /\.(zip|rar|7z|tar|gz)$/i.test(lowerName);
+
+                  return (
+                    <div className="bg-slate-100 border border-slate-300 rounded-xl p-3 flex items-center justify-between gap-2 shadow-2xs">
+                      <div className="flex items-center space-x-3 min-w-0 overflow-hidden">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white shrink-0 shadow-xs ${
+                          isPfx ? 'bg-purple-700' :
+                          isPdf ? 'bg-rose-700' :
+                          isImg ? 'bg-blue-700' :
+                          isSpreadsheet ? 'bg-emerald-700' :
+                          isXml ? 'bg-amber-700' :
+                          isZip ? 'bg-teal-700' : 'bg-[#1B357B]'
+                        }`}>
+                          {isPfx ? <KeyRound className="w-5 h-5" /> :
+                           isPdf ? <FileText className="w-5 h-5" /> :
+                           isImg ? <ImageIcon className="w-5 h-5" /> :
+                           isSpreadsheet ? <FileSpreadsheet className="w-5 h-5" /> :
+                           isXml ? <FileCode className="w-5 h-5" /> :
+                           isZip ? <FileArchive className="w-5 h-5" /> :
+                           <FileGenericIcon className="w-5 h-5" />}
+                        </div>
+                        <div className="min-w-0 overflow-hidden">
+                          <h4 className="text-xs font-bold text-slate-950 truncate" title={selectedFile.name}>
+                            {selectedFile.name}
+                          </h4>
+                          <p className="text-xs font-semibold text-slate-600">
+                            {formatBytes(selectedFile.size)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {!isProcessing && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFiles([])}
+                          className="text-xs font-black text-[#1B357B] hover:text-blue-800 underline transition-colors shrink-0 px-2 py-1 cursor-pointer"
+                        >
+                          Trocar Arquivo
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+
+              {/* Nome do Documento para Renomear (apenas se for arquivo único) */}
+              {!folderUploadName && selectedFiles.length === 1 && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-900 mb-1.5">
+                    Nome do Documento (personalizável se desejar renomear)
+                  </label>
+                  <input
+                    type="text"
+                    disabled={isProcessing}
+                    value={customFileName}
+                    onChange={(e) => setCustomFileName(e.target.value)}
+                    placeholder="Nome do arquivo..."
+                    className="w-full h-9 sm:h-10 px-3 text-xs text-slate-950 bg-white border border-slate-300 rounded-xl focus:border-[#1B357B] focus:ring-1 focus:ring-[#1B357B] outline-none transition-all font-bold placeholder:text-slate-500 shadow-2xs"
+                  />
+                </div>
+              )}
 
               {/* Tags Compactas */}
               <div>
@@ -477,7 +610,11 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
                     <span className="flex items-center space-x-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-[#1B357B] animate-spin" />
-                      <span className="text-[11px]">Processando e gravando no R2...</span>
+                      <span className="text-[11px]">
+                        {selectedFiles.length > 1 
+                          ? `Enviando arquivo ${currentUploadIndex} de ${selectedFiles.length}...`
+                          : 'Processando e gravando no R2...'}
+                      </span>
                     </span>
                     <span className="text-[11px] font-mono">{uploadProgress > 0 ? `${uploadProgress}%` : '...'}</span>
                   </div>
@@ -499,7 +636,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               {optimizationStage === 'finished' && (
                 <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs py-2 px-3 rounded-xl flex items-center gap-2 font-medium animate-in fade-in duration-200">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>✓ Documento gravado e indexado com sucesso!</span>
+                  <span>✓ {selectedFiles.length > 1 ? 'Pasta e documentos gravados com sucesso!' : 'Documento gravado e indexado com sucesso!'}</span>
                 </div>
               )}
             </div>
@@ -525,14 +662,24 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               <AlertOctagon className="w-4 h-4 text-rose-600" />
               <span>Upload Bloqueado</span>
             </div>
-          ) : !selectedFile ? (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-[#1B357B] hover:bg-[#112354] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
-            >
-              Selecionar Arquivo
-            </button>
+          ) : selectedFiles.length === 0 ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-[#1B357B] hover:bg-[#112354] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                Selecionar Arquivo
+              </button>
+              <button
+                type="button"
+                onClick={() => folderInputRef.current?.click()}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <FolderUp className="w-3.5 h-3.5" />
+                <span>Puxar Pasta</span>
+              </button>
+            </div>
           ) : !isProcessing && (
             <button
               id="start-pipeline-btn"
@@ -540,7 +687,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               onClick={handleExecutePipeline}
               className="bg-[#1B357B] hover:bg-[#112354] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
             >
-              <span>Concluir Upload</span>
+              <span>{folderUploadName ? `Enviar Pasta (${selectedFiles.length} arquivos)` : 'Concluir Upload'}</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#C59B4B]" />
             </button>
           )}
@@ -549,4 +696,5 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     </div>
   );
 };
+
 

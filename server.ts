@@ -2598,6 +2598,26 @@ async function getAllUnifiedFiles(): Promise<StoredFile[]> {
     }
   }
 
+  // Limpeza automática de arquivos órfãos (cuja pasta foi excluída ou não existe mais)
+  const validFolderIds = new Set(persistedFolders.map(f => f.id));
+  const defaultRootFolderIds = new Set([
+    'fold-fisc-root', 'fold-dp-root', 'fold-cont-root', 
+    'fold-dir-root', 'fold-fin-root', 'fold-geral-root'
+  ]);
+
+  for (const [id, f] of Array.from(filesMap.entries())) {
+    if (f.folder_id && !validFolderIds.has(f.folder_id) && !defaultRootFolderIds.has(f.folder_id)) {
+      persistedDeletedFileIds.add(f.id);
+      if (f.storage_key) persistedDeletedFileIds.add(f.storage_key);
+      filesMap.delete(id);
+      if (supabase) {
+        try {
+          await supabase.from('files').delete().eq('id', f.id);
+        } catch {}
+      }
+    }
+  }
+
   const result = Array.from(filesMap.values()).filter(f => {
     const isFileDeleted = persistedDeletedFileIds.has(f.id) || 
                           !f.id ||
