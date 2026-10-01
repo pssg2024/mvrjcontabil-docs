@@ -389,6 +389,83 @@ CREATE POLICY "Audit: Authenticated users can insert logs"
   WITH CHECK (auth.uid() IS NOT NULL);
 
 -- ==============================================================================
+-- 10. TABELA DE NOTÍCIAS FISCAIS & LEGISLAÇÃO EM TEMPO REAL
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.noticias_fiscais (
+  id TEXT PRIMARY KEY,
+  titulo TEXT NOT NULL,
+  resumo TEXT,
+  orgao TEXT NOT NULL DEFAULT 'Receita Federal',
+  categoria TEXT DEFAULT 'Legislação',
+  link_oficial TEXT NOT NULL,
+  data_publicacao TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.noticias_fiscais ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Noticias: Leitura publica" ON public.noticias_fiscais;
+CREATE POLICY "Noticias: Leitura publica" ON public.noticias_fiscais FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Noticias: Insercao e atualizacao pelo sistema" ON public.noticias_fiscais;
+CREATE POLICY "Noticias: Insercao e atualizacao pelo sistema" ON public.noticias_fiscais FOR ALL USING (true);
+
+-- ==============================================================================
+-- 11. TABELA DE AVISOS E COMUNICADOS INTERNOS EM TEMPO REAL
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.avisos_sistema (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  titulo TEXT NOT NULL,
+  mensagem TEXT NOT NULL,
+  tipo TEXT NOT NULL DEFAULT 'info' CHECK (tipo IN ('info', 'alerta', 'urgente')),
+  autor_nome TEXT NOT NULL DEFAULT 'Administração',
+  ativo BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Ativar Supabase Realtime para avisos_sistema
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+      AND schemaname = 'public' 
+      AND tablename = 'avisos_sistema'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.avisos_sistema;
+  END IF;
+EXCEPTION
+  WHEN undefined_object THEN null;
+  WHEN duplicate_object THEN null;
+END $$;
+
+ALTER TABLE public.avisos_sistema ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Avisos: Leitura irrestrita" ON public.avisos_sistema;
+CREATE POLICY "Avisos: Leitura irrestrita" ON public.avisos_sistema FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Avisos: Gestao por administradores" ON public.avisos_sistema;
+CREATE POLICY "Avisos: Gestao por administradores" ON public.avisos_sistema FOR ALL USING (true);
+
+-- Dados iniciais de avisos caso a tabela esteja vazia
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.avisos_sistema LIMIT 1) THEN
+    INSERT INTO public.avisos_sistema (titulo, mensagem, tipo, autor_nome, ativo) VALUES
+      (
+        'Fechamento Mensal de Folha e eSocial',
+        'Lembramos a todos os clientes que os apontamentos e horas extras devem ser enviados até o dia 05 para processamento tempestivo da folha de pagamento.',
+        'alerta',
+        'Departamento Pessoal MVRJ',
+        true
+      ),
+      (
+        'Prazo de Entrega DCTFWeb & EFD-Reinf',
+        'Evite multas e retenções. Os documentos comprobatórios devem ser anexados na pasta Fiscal & Tributário com antecedência mínima de 48 horas úteis.',
+        'info',
+        'Setor Fiscal & Tributário',
+        true
+      );
+  END IF;
+END $$;
+
+-- ==============================================================================
 -- DADOS INICIAIS (PASTAS PADRÃO POR SETOR CONTÁBIL)
 -- ==============================================================================
 DO $$

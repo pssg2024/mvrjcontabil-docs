@@ -257,3 +257,27 @@ export interface Invoice {
   document_id?: string;
   created_at: string;
 }
+
+export interface FiscalNewsItem {
+  id: string;
+  titulo: string;
+  resumo: string;
+  orgao: string;
+  categoria?: string;
+  linkOficial: string;
+  dataPublicacao: string;
+  isUrgent?: boolean;
+}
+
+export type AvisoTipo = 'info' | 'alerta' | 'urgente';
+
+export interface AvisoItem {
+  id: string;
+  titulo: string;
+  mensagem: string;
+  tipo: AvisoTipo;
+  autor_nome: string;
+  ativo: boolean;
+  created_at: string;
+}
+

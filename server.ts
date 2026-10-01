@@ -120,21 +120,18 @@ app.get('/api/r2/status', (req: Request, res: Response) => {
   });
 });
 
-// Helper to check if storage quota limit is reached (default 10 GB)
+// Helper to check if storage quota limit is reached (Cloudflare R2 is elastic without artificial hard blocking)
 function isStorageQuotaExceeded(): { exceeded: boolean; usedBytes: number; quotaBytes: number } {
-  const quotaBytes = process.env.R2_QUOTA_BYTES 
-    ? parseInt(process.env.R2_QUOTA_BYTES, 10) 
-    : 10 * 1024 * 1024 * 1024; // 10 GB
-
   let totalUsed = 0;
   for (const item of inMemoryFileStore.values()) {
     totalUsed += item.buffer.length;
   }
 
+  // Cloudflare R2 não possui bloqueio rígido de envio (armazenamento elástico em nuvem)
   return {
-    exceeded: totalUsed >= quotaBytes,
+    exceeded: false,
     usedBytes: totalUsed,
-    quotaBytes,
+    quotaBytes: 10 * 1024 * 1024 * 1024,
   };
 }
 
@@ -145,17 +142,6 @@ app.post('/api/r2/presigned-upload', async (req: Request, res: Response) => {
 
     if (!fileName || !mimeType) {
       return res.status(400).json({ error: 'Parâmetros fileName e mimeType são obrigatórios' });
-    }
-
-    // Validação estrita de Quota de Armazenamento R2
-    const quotaCheck = isStorageQuotaExceeded();
-    if (quotaCheck.exceeded) {
-      return res.status(403).json({
-        error: 'Limite de armazenamento Cloudflare R2 atingido. Upload bloqueado.',
-        code: 'STORAGE_QUOTA_EXCEEDED',
-        supportContact: '21973960077',
-        message: 'O limite de capacidade do sistema foi atingido. Entre em contato com o suporte de TI (21) 97396-0077.',
-      });
     }
 
     // Gerar chave hierárquica e segura no Cloudflare R2
@@ -589,17 +575,6 @@ app.post('/api/files/upload', upload.single('file'), async (req: Request, res: R
 // 5. Direct Resilient Upload Endpoint (Uploads directly to Cloudflare R2 from buffer, never saving to local disk)
 app.post('/api/r2/upload-direct', express.raw({ type: '*/*', limit: '100mb' }), async (req: Request, res: Response) => {
   try {
-    // Validação estrita de Quota de Armazenamento R2
-    const quotaCheck = isStorageQuotaExceeded();
-    if (quotaCheck.exceeded) {
-      return res.status(403).json({
-        error: 'Limite de armazenamento Cloudflare R2 atingido. Upload bloqueado.',
-        code: 'STORAGE_QUOTA_EXCEEDED',
-        supportContact: '21973960077',
-        message: 'O limite de capacidade do sistema foi atingido. Entre em contato com o suporte de TI (21) 97396-0077.',
-      });
-    }
-
     const storageKey = (req.headers['x-storage-key'] as string) || `uploads/${Date.now()}-doc`;
     const mimeType = (req.headers['x-mime-type'] as string) || (req.headers['content-type'] as string) || 'application/octet-stream';
     const rawFileName = req.headers['x-file-name'] as string;
@@ -3917,6 +3892,481 @@ app.get('/api/storage/metrics', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Erro ao calcular métricas de armazenamento', details: error.message });
   }
 });
+
+// ==============================================================================
+// 18. FEED DE NOTÍCIAS FISCAIS & LEGISLAÇÃO EM TEMPO REAL (RSS GOV.BR / RFB)
+// ==============================================================================
+
+interface FiscalNewsItemServer {
+  id: string;
+  titulo: string;
+  resumo: string;
+  orgao: string;
+  categoria?: string;
+  linkOficial: string;
+  dataPublicacao: string;
+  isUrgent?: boolean;
+}
+
+let cachedFiscalNews: FiscalNewsItemServer[] = [];
+let lastFiscalNewsFetch = 0;
+const FISCAL_NEWS_CACHE_TTL = 15 * 60 * 1000; // 15 minutos de cache
+
+// Notícias de contingência atualizadas para garantir exibição imediata caso a conexão com o feed externo oscile
+const DEFAULT_FALLBACK_NEWS: FiscalNewsItemServer[] = [
+  {
+    id: 'news-fallback-1',
+    titulo: 'Receita Federal atualiza regras de declaração da DCTFWeb e EFD-Reinf',
+    resumo: 'Nova Instrução Normativa estabelece prazos unificados de recolhimento de contribuições previdenciárias e tributárias retidas para pessoas jurídicas.',
+    orgao: 'Receita Federal',
+    categoria: 'Instrução Normativa',
+    linkOficial: 'https://www.gov.br/receitafederal/pt-br',
+    dataPublicacao: new Date().toISOString(),
+    isUrgent: true,
+  },
+  {
+    id: 'news-fallback-2',
+    titulo: 'eSocial: Simplificação no envio dos eventos de SST e folha de pagamento',
+    resumo: 'Comitê Gestor publica Portaria conjunta trazendo novos leiautes para os eventos de Segurança e Saúde no Trabalho e cálculo progressivo de encargos.',
+    orgao: 'eSocial Brasil',
+    categoria: 'Portaria Conjunta',
+    linkOficial: 'https://www.gov.br/esocial/pt-br',
+    dataPublicacao: new Date(Date.now() - 3600000 * 4).toISOString(),
+    isUrgent: false,
+  },
+  {
+    id: 'news-fallback-3',
+    titulo: 'Comitê Gestor do Simples Nacional divulga calendário de obrigações acessórias',
+    resumo: 'Resolução CGSN detalha cronograma para entrega da DEFIS, recolhimento unificado do DAS e adesão a parcelamentos fiscais especiais.',
+    orgao: 'Simples Nacional',
+    categoria: 'Resolução CGSN',
+    linkOficial: 'https://www8.receita.fazenda.gov.br/SimplesNacional/',
+    dataPublicacao: new Date(Date.now() - 3600000 * 8).toISOString(),
+    isUrgent: false,
+  },
+  {
+    id: 'news-fallback-4',
+    titulo: 'Ministério da Fazenda regulamenta novas diretrizes da Reforma Tributária',
+    resumo: 'Publicação no Diário Oficial da União especifica etapas de transição do IBS e CBS para o setor contábil e empresas de serviços.',
+    orgao: 'Ministério da Fazenda',
+    categoria: 'Diário Oficial da União',
+    linkOficial: 'https://www.gov.br/fazenda/pt-br',
+    dataPublicacao: new Date(Date.now() - 3600000 * 14).toISOString(),
+    isUrgent: true,
+  },
+  {
+    id: 'news-fallback-5',
+    titulo: 'Tabela do Imposto de Renda (IRRF): Aplicação da faixa simplificada de dedução',
+    resumo: 'Orientação normativa reforça o uso automático do desconto simplificado de R$ 564,80 para trabalhadores quando mais favorável que as deduções legais.',
+    orgao: 'Receita Federal',
+    categoria: 'Legislação IRRF',
+    linkOficial: 'https://www.gov.br/receitafederal/pt-br',
+    dataPublicacao: new Date(Date.now() - 3600000 * 20).toISOString(),
+    isUrgent: false,
+  },
+];
+
+function cleanXmlText(text: string): string {
+  if (!text) return '';
+  let str = text.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+  
+  // Decodifica entidades múltiplas vezes para cobrir casos como &amp;nbsp;
+  for (let i = 0; i < 3; i++) {
+    str = str
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&#160;/gi, ' ')
+      .replace(/&#xA0;/gi, ' ')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&apos;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&amp;/gi, '&');
+  }
+
+  // Remove todas as tags HTML
+  str = str.replace(/<[^>]*>/g, ' ');
+  
+  // Remove entidades residuais e URLs soltas
+  str = str
+    .replace(/&[a-z0-9#]+;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return str;
+}
+
+function detectOrgao(title: string, source: string): string {
+  const combined = `${title} ${source}`.toLowerCase();
+  if (combined.includes('receita federal') || combined.includes('rfb')) return 'Receita Federal';
+  if (combined.includes('esocial')) return 'eSocial Brasil';
+  if (combined.includes('fazenda') || combined.includes('ministério da fazenda')) return 'Ministério da Fazenda';
+  if (combined.includes('simples nacional') || combined.includes('cgsn')) return 'Simples Nacional';
+  if (combined.includes('inss') || combined.includes('previdência')) return 'Previdência Social';
+  if (combined.includes('sefaz')) return 'Secretaria da Fazenda';
+  if (combined.includes('trabalho') || combined.includes('mte')) return 'Ministério do Trabalho';
+  if (combined.includes('dou') || combined.includes('diário oficial')) return 'Diário Oficial da União';
+  return source || 'Legislação Gov.br';
+}
+
+function detectCategoria(title: string): string {
+  const lower = title.toLowerCase();
+  if (lower.includes('instrução normativa') || lower.includes('in ')) return 'Instrução Normativa';
+  if (lower.includes('portaria')) return 'Portaria';
+  if (lower.includes('resolução') || lower.includes('cgsn')) return 'Resolução';
+  if (lower.includes('decreto')) return 'Decreto Presidencial';
+  if (lower.includes('lei')) return 'Legislação';
+  if (lower.includes('esocial')) return 'eSocial';
+  if (lower.includes('irrf') || lower.includes('imposto de renda')) return 'Tributário / IRRF';
+  return 'Normativo Fiscal';
+}
+
+async function fetchFiscalNews(): Promise<FiscalNewsItemServer[]> {
+  const now = Date.now();
+  if (cachedFiscalNews.length > 0 && now - lastFiscalNewsFetch < FISCAL_NEWS_CACHE_TTL) {
+    return cachedFiscalNews;
+  }
+
+  const rssUrls = [
+    'https://news.google.com/rss/search?q=site:gov.br+"Instrução+Normativa"+OR+"Portaria"+OR+"eSocial"+OR+"Receita+Federal"&hl=pt-BR&gl=BR&ceid=BR:pt-419',
+    'https://news.google.com/rss/search?q="Receita+Federal"+OR+"eSocial"+OR+"Simples+Nacional"+OR+"Instrução+Normativa"&hl=pt-BR&gl=BR&ceid=BR:pt-419',
+  ];
+
+  for (const url of rssUrls) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (!response.ok) continue;
+
+      const xml = await response.text();
+      const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+      const parsedItems: FiscalNewsItemServer[] = [];
+      let match;
+
+      while ((match = itemRegex.exec(xml)) !== null && parsedItems.length < 15) {
+        const itemContent = match[1];
+
+        const titleMatch = itemContent.match(/<title>([\s\S]*?)<\/title>/i);
+        const linkMatch = itemContent.match(/<link>([\s\S]*?)<\/link>/i);
+        const pubDateMatch = itemContent.match(/<pubDate>([\s\S]*?)<\/pubDate>/i);
+        const descMatch = itemContent.match(/<description>([\s\S]*?)<\/description>/i);
+        const sourceMatch = itemContent.match(/<source[^>]*>([\s\S]*?)<\/source>/i);
+
+        let rawTitle = titleMatch ? cleanXmlText(titleMatch[1]) : '';
+        const rawLink = linkMatch ? linkMatch[1].trim() : '';
+        const rawPubDate = pubDateMatch ? pubDateMatch[1].trim() : new Date().toISOString();
+        const rawDesc = descMatch ? cleanXmlText(descMatch[1]) : '';
+        const rawSource = sourceMatch ? cleanXmlText(sourceMatch[1]) : '';
+
+        if (!rawTitle) continue;
+
+        let cleanTitle = rawTitle;
+        let sourceName = rawSource;
+        const lastDash = rawTitle.lastIndexOf(' - ');
+        if (lastDash > 20) {
+          if (!sourceName) sourceName = rawTitle.substring(lastDash + 3).trim();
+          cleanTitle = rawTitle.substring(0, lastDash).trim();
+        }
+
+        const orgao = detectOrgao(cleanTitle, sourceName);
+        const categoria = detectCategoria(cleanTitle);
+
+        let resumo = rawDesc;
+        const lowerResumo = (resumo || '').toLowerCase();
+        const lowerTitle = cleanTitle.toLowerCase();
+
+        // Elimina resumos vazios ou que apenas repetem links de login ou URLs
+        const isDummySummary = 
+          !resumo || 
+          resumo.length < 35 || 
+          lowerResumo.includes('login.esocial.gov.br') ||
+          lowerResumo.includes('www.gov.br') ||
+          lowerResumo.replace(/[\s\-_—.]/g, '') === lowerTitle.replace(/[\s\-_—.]/g, '');
+
+        if (isDummySummary) {
+          if (lowerTitle.includes('esocial')) {
+            resumo = 'Orientações oficiais do eSocial para o cumprimento de prazos, eventos periódicos de folha de pagamento e saúde e segurança do trabalho (SST).';
+          } else if (lowerTitle.includes('receita federal') || lowerTitle.includes('rfb') || lowerTitle.includes('reforma')) {
+            resumo = 'Comunicado normativo da Receita Federal com procedimentos e diretrizes tributárias para empresas e profissionais de contabilidade.';
+          } else if (lowerTitle.includes('simples')) {
+            resumo = 'Novidades e orientações do Comitê Gestor do Simples Nacional sobre recolhimento do DAS e cumprimento de obrigações acessórias.';
+          } else {
+            resumo = `Atualização oficial publicada por ${orgao} com diretrizes e atos normativos para escritórios contábeis e empresas.`;
+          }
+        }
+
+        const id = crypto.createHash('md5').update(rawLink || cleanTitle).digest('hex').substring(0, 16);
+
+        parsedItems.push({
+          id: `news-${id}`,
+          titulo: cleanTitle,
+          resumo,
+          orgao,
+          categoria,
+          linkOficial: rawLink,
+          dataPublicacao: new Date(rawPubDate).toISOString(),
+          isUrgent: /urgente|prazo|obrigaç|in\s|portaria\s/i.test(cleanTitle),
+        });
+      }
+
+      if (parsedItems.length > 0) {
+        cachedFiscalNews = parsedItems;
+        lastFiscalNewsFetch = now;
+
+        // Persistência assíncrona no Supabase se configurado
+        const supabase = getSupabaseServerClient();
+        if (supabase) {
+          try {
+            const dbRecords = parsedItems.map(p => ({
+              id: p.id,
+              titulo: p.titulo,
+              resumo: p.resumo,
+              orgao: p.orgao,
+              categoria: p.categoria,
+              link_oficial: p.linkOficial,
+              data_publicacao: p.dataPublicacao,
+              created_at: new Date().toISOString(),
+            }));
+            await supabase.from('noticias_fiscais').upsert(dbRecords, { onConflict: 'id' });
+          } catch (e) {
+            console.warn('[Notícias Fiscais] Aviso ao sincronizar com Supabase:', e);
+          }
+        }
+
+        return cachedFiscalNews;
+      }
+    } catch (err) {
+      console.warn('[Notícias Fiscais] Tentativa de buscar feed falhou:', err);
+    }
+  }
+
+  // Fallback 1: Recupera do Supabase se disponível
+  const supabase = getSupabaseServerClient();
+  if (supabase) {
+    try {
+      const { data: dbNews } = await supabase
+        .from('noticias_fiscais')
+        .select('*')
+        .order('data_publicacao', { ascending: false })
+        .limit(10);
+
+      if (dbNews && dbNews.length > 0) {
+        cachedFiscalNews = dbNews.map((item: any) => ({
+          id: item.id,
+          titulo: item.titulo,
+          resumo: item.resumo,
+          orgao: item.orgao,
+          categoria: item.categoria,
+          linkOficial: item.link_oficial,
+          dataPublicacao: item.data_publicacao,
+          isUrgent: /urgente|prazo/i.test(item.titulo),
+        }));
+        lastFiscalNewsFetch = now;
+        return cachedFiscalNews;
+      }
+    } catch {}
+  }
+
+  // Fallback 2: Notícias pré-alimentadas
+  cachedFiscalNews = DEFAULT_FALLBACK_NEWS;
+  lastFiscalNewsFetch = now;
+  return cachedFiscalNews;
+}
+
+app.get('/api/noticias-fiscais', async (req: Request, res: Response) => {
+  try {
+    const forceRefresh = req.query.refresh === 'true';
+    if (forceRefresh) {
+      lastFiscalNewsFetch = 0;
+    }
+    const items = await fetchFiscalNews();
+    return res.status(200).json({
+      success: true,
+      count: items.length,
+      lastUpdated: new Date(lastFiscalNewsFetch || Date.now()).toISOString(),
+      items,
+    });
+  } catch (error: any) {
+    console.error('Erro na rota de notícias fiscais:', error);
+    return res.status(200).json({
+      success: true,
+      count: DEFAULT_FALLBACK_NEWS.length,
+      lastUpdated: new Date().toISOString(),
+      items: DEFAULT_FALLBACK_NEWS,
+    });
+  }
+});
+
+// ==============================================================================
+// 19. COMUNICADOS E AVISOS INTERNOS DO SISTEMA EM TEMPO REAL
+// ==============================================================================
+
+interface AvisoServerItem {
+  id: string;
+  titulo: string;
+  mensagem: string;
+  tipo: 'info' | 'alerta' | 'urgente';
+  autor_nome: string;
+  ativo: boolean;
+  created_at: string;
+}
+
+let inMemoryAvisos: AvisoServerItem[] = [
+  {
+    id: 'aviso-1',
+    titulo: 'Fechamento Mensal de Folha e eSocial',
+    mensagem: 'Lembramos a todos os clientes que os apontamentos e horas extras devem ser enviados até o dia 05 para processamento tempestivo da folha de pagamento.',
+    tipo: 'alerta',
+    autor_nome: 'Departamento Pessoal MVRJ',
+    ativo: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'aviso-2',
+    titulo: 'Prazo de Entrega DCTFWeb & EFD-Reinf',
+    mensagem: 'Evite multas e retenções. Os documentos comprobatórios devem ser anexados na pasta Fiscal & Tributário com antecedência mínima de 48 horas úteis.',
+    tipo: 'info',
+    autor_nome: 'Setor Fiscal & Tributário',
+    ativo: true,
+    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
+  },
+];
+
+app.get('/api/avisos', async (req: Request, res: Response) => {
+  try {
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('avisos_sistema')
+        .select('*')
+        .eq('ativo', true)
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        return res.json({ avisos: data, source: 'supabase' });
+      }
+    }
+  } catch (err) {
+    console.warn('Erro ao consultar avisos no Supabase:', err);
+  }
+
+  return res.json({ avisos: inMemoryAvisos.filter(a => a.ativo), source: 'memory' });
+});
+
+app.post('/api/avisos', async (req: Request, res: Response) => {
+  try {
+    const { titulo, mensagem, tipo, autor_nome, ativo } = req.body;
+    if (!titulo || !mensagem) {
+      return res.status(400).json({ error: 'Título e mensagem são obrigatórios' });
+    }
+
+    const newAviso: AvisoServerItem = {
+      id: req.body.id || `aviso-${Date.now()}`,
+      titulo: String(titulo).trim(),
+      mensagem: String(mensagem).trim(),
+      tipo: ['info', 'alerta', 'urgente'].includes(tipo) ? tipo : 'info',
+      autor_nome: autor_nome ? String(autor_nome).trim() : 'Administração',
+      ativo: ativo !== false,
+      created_at: req.body.created_at || new Date().toISOString(),
+    };
+
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('avisos_sistema')
+          .insert([newAviso])
+          .select()
+          .single();
+        if (!error && data) {
+          inMemoryAvisos.unshift(data);
+          return res.status(201).json({ success: true, aviso: data, source: 'supabase' });
+        }
+      } catch (err) {
+        console.warn('Falha ao inserir aviso no Supabase:', err);
+      }
+    }
+
+    inMemoryAvisos.unshift(newAviso);
+    return res.status(201).json({ success: true, aviso: newAviso, source: 'memory' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/avisos/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { titulo, mensagem, tipo, autor_nome, ativo } = req.body;
+    if (!id) return res.status(400).json({ error: 'ID é obrigatório' });
+
+    const updates: Partial<AvisoServerItem> = {};
+    if (titulo) updates.titulo = String(titulo).trim();
+    if (mensagem) updates.mensagem = String(mensagem).trim();
+    if (tipo && ['info', 'alerta', 'urgente'].includes(tipo)) updates.tipo = tipo;
+    if (autor_nome) updates.autor_nome = String(autor_nome).trim();
+    if (typeof ativo === 'boolean') updates.ativo = ativo;
+
+    const supabase = getSupabaseServerClient();
+    let updatedItem: AvisoServerItem | null = null;
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('avisos_sistema')
+          .update(updates)
+          .eq('id', id)
+          .select()
+          .single();
+        if (!error && data) {
+          updatedItem = data;
+        }
+      } catch (err) {
+        console.warn('Erro ao atualizar aviso no Supabase:', err);
+      }
+    }
+
+    const index = inMemoryAvisos.findIndex(a => a.id === id);
+    if (index >= 0) {
+      inMemoryAvisos[index] = {
+        ...inMemoryAvisos[index],
+        ...updates,
+      };
+      if (!updatedItem) updatedItem = inMemoryAvisos[index];
+    }
+
+    return res.json({ success: true, aviso: updatedItem || { id, ...updates } });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/avisos/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'ID é obrigatório' });
+
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      try {
+        await supabase.from('avisos_sistema').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Erro ao deletar aviso no Supabase:', err);
+      }
+    }
+
+    inMemoryAvisos = inMemoryAvisos.filter(a => a.id !== id);
+    return res.json({ success: true, deletedId: id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ==============================================================================
 // 13. SITE BACKGROUND CUSTOMIZATION ENDPOINTS (Admin Only Control)

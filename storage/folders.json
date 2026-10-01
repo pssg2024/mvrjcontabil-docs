@@ -1,11 +1,20 @@
 [
   {
-    "id": "0df45d9b-095e-47f5-b1bf-425b0037580f",
+    "id": "5e58358f-90ed-4719-b1ee-11d5df82c614",
     "parent_id": null,
-    "name": "Cliente Bruna",
+    "name": "Avaliação",
     "sector": "Diretoria",
     "created_by": "57e1d483-669b-4791-b09e-7496570e63ea",
-    "created_at": "2026-09-23T15:41:24.590415+00:00",
-    "updated_at": "2026-09-23T15:41:24.264+00:00"
+    "created_at": "2026-09-30T06:28:45.297529+00:00",
+    "updated_at": "2026-09-30T06:28:44.931+00:00"
+  },
+  {
+    "id": "9039782e-2894-4801-bb36-ae2663f19d55",
+    "parent_id": null,
+    "name": "Solicito",
+    "sector": "Diretoria",
+    "created_by": "57e1d483-669b-4791-b09e-7496570e63ea",
+    "created_at": "2026-09-25T15:17:46.059453+00:00",
+    "updated_at": "2026-09-25T15:18:35.093+00:00"
   }
 ]

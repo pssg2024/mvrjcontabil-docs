@@ -22,7 +22,8 @@ import {
   X,
   BookOpen,
   Briefcase,
-  FileDigit
+  FileDigit,
+  Calculator
 } from 'lucide-react';
 import { UserProfile, UserRole, StorageMetrics, AuthHeaderConfig } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -40,6 +41,7 @@ interface NavbarProps {
   onOpenCompanyModal?: () => void;
   onOpenCompanyManager?: () => void;
   onOpenInvoiceEmission?: () => void;
+  onOpenSalaryCalculator?: () => void;
   onOpenManualModal?: () => void;
   onSwitchUser: (profile: UserProfile) => void;
   onLogout: () => void;
@@ -61,6 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCompanyModal,
   onOpenCompanyManager,
   onOpenInvoiceEmission,
+  onOpenSalaryCalculator,
   onOpenManualModal,
   onSwitchUser,
   onLogout,
@@ -294,7 +297,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
                   )}
 
-                  {/* Consulta de CNPJ */}
+                  {/* Consultar de CNPJ */}
                   {onOpenCompanyModal && (
                     <button
                       id="navbar-company-lookup-btn"
@@ -310,6 +313,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="min-w-0">
                         <p className="font-bold text-xs text-slate-100 group-hover:text-amber-400 transition-colors">Consultar CNPJ</p>
                         <p className="text-[10px] text-slate-400 mt-0.5">Situação cadastral na Receita Federal</p>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Simulador de Salário Líquido (DP) */}
+                  {onOpenSalaryCalculator && (
+                    <button
+                      id="navbar-salary-calc-btn"
+                      onClick={() => {
+                        setShowFiscalDropdown(false);
+                        onOpenSalaryCalculator();
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-800/80 transition-all flex items-start gap-3 cursor-pointer group"
+                    >
+                      <div className="p-2 rounded-lg bg-teal-950/60 text-emerald-400 border border-emerald-800/60 shrink-0 mt-0.5">
+                        <Calculator className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-xs text-slate-100 group-hover:text-amber-400 transition-colors">Simulador de Salário Líquido</p>
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-sm bg-emerald-900/60 text-emerald-300 border border-emerald-700/60">DP</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Cálculo trabalhista com INSS e IRRF</p>
                       </div>
                     </button>
                   )}
@@ -800,6 +826,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       <FileText className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       <span>Consultar Empresa / CNPJ</span>
+                    </button>
+                  )}
+
+                  {/* Simulador de Salário Líquido (DP) */}
+                  {onOpenSalaryCalculator && (
+                    <button
+                      onClick={() => {
+                        onOpenSalaryCalculator();
+                        setShowMobileMenu(false);
+                      }}
+                      className="w-full h-11 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center gap-3 px-3.5 font-semibold text-xs transition-all cursor-pointer"
+                    >
+                      <Calculator className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>Simulador de Salário Líquido</span>
                     </button>
                   )}
 

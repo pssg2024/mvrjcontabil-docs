@@ -24,7 +24,6 @@ import {
   Lock, 
   ArrowUpDown, 
   FileSpreadsheet, 
-  AlertOctagon, 
   Phone, 
   Loader2,
   KeyRound, 
@@ -53,7 +52,8 @@ import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetr
 import { formatBytes } from '../lib/optimization';
 import { getPresignedDownloadUrl, getPermanentViewUrl } from '../lib/storage-service';
 import { StorageStatsWidget } from './StorageStatsCard';
-import { StorageLimitModal } from './StorageLimitModal';
+import { FiscalNewsBanner } from './FiscalNewsBanner';
+import { WidgetAvisos } from './WidgetAvisos';
 
 interface FileManagerProps {
   currentUser: UserProfile;
@@ -246,8 +246,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
     ? Number(((effectiveUsedBytes / totalQuotaBytes) * 100).toFixed(1)) 
     : 0;
 
-  const isQuotaExceeded = effectiveUsedBytes >= totalQuotaBytes || (storageMetrics ? storageMetrics.usedPercent >= 100 : false) || currentFilesCount >= maxFilesCapacity;
-  const [showBlockedLimitModal, setShowBlockedLimitModal] = useState(false);
   const [isRefreshingLocal, setIsRefreshingLocal] = useState(false);
 
   const handleRefreshClick = () => {
@@ -276,7 +274,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
     ? (isFullAdmin || isEditorOrAdmin || Boolean(folders.find(f => f.id === currentFolderId)?.allowed_user_ids?.includes(currentUser.id)) || hasFolderPermission(currentFolderId, 'viewer'))
     : (isFullAdmin || isEditorOrAdmin || folders.some(f => f.allowed_user_ids?.includes(currentUser.id)));
 
-  const canUpload = isApprovedOrActive && !isQuotaExceeded && isUserAuthorizedInCurrentFolder;
+  const canUpload = isApprovedOrActive && isUserAuthorizedInCurrentFolder;
 
   const handleCreateFolderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -444,123 +442,40 @@ export const FileManager: React.FC<FileManagerProps> = ({
   return (
     <div className="w-full space-y-4 sm:space-y-6 overflow-x-hidden">
       
-      {/* Top Storage & Bandwidth Optimization Banner (Corporate Deep Blue Theme) */}
-      <div className="bg-gradient-to-r from-[#0B1736] via-[#142654] to-[#1B357B] rounded-2xl p-5 sm:p-6 lg:p-7 shadow-lg relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 text-white w-full border border-blue-900/40">
+      {/* Top Storage, Documents & Real-Time Fiscal News Unified Banner (Corporate Deep Blue Theme) */}
+      <div className="bg-gradient-to-r from-[#0B1736] via-[#142654] to-[#1B357B] rounded-2xl p-5 sm:p-6 lg:p-7 shadow-lg relative overflow-hidden flex flex-col gap-5 text-white w-full border border-blue-900/40">
         {/* Subtle decorative ambient glow */}
         <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
 
-        {/* Lado Esquerdo (Títulos e Descrição) */}
-        <div className="relative z-10 space-y-2 flex-1 min-w-0 pr-0 lg:pr-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs border border-white/15 text-blue-100 text-xs font-semibold tracking-wide">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#DFB76C]" />
-            <span>Drive Corporativo • MVRJ Contábil</span>
+        {/* Linha Principal: Títulos à esquerda / Mural de Avisos à direita */}
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 sm:gap-6 w-full">
+          {/* Lado Esquerdo (Títulos e Descrição) */}
+          <div className="space-y-2 flex-1 min-w-0 pr-0 lg:pr-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs border border-white/15 text-blue-100 text-xs font-semibold tracking-wide">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#DFB76C]" />
+              <span>Drive Corporativo • MVRJ Contábil</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-snug">
+              Gestão Eletrônica de Documentos Contábeis
+            </h2>
+            <p className="text-blue-100/80 text-xs sm:text-sm font-normal leading-relaxed max-w-xl">
+              Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais com controle de permissões.
+            </p>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-            Gestão Eletrônica de Documentos Contábeis
-          </h2>
-          <p className="text-blue-100/85 text-xs sm:text-sm font-normal leading-relaxed max-w-3xl">
-            Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais com controle de permissões.
-          </p>
-        </div>
 
-        {/* Lado Direito (Card de Métricas / Armazenamento) */}
-        <div className="relative z-10 w-full lg:w-80 shrink-0">
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 sm:p-5 w-full shadow-inner flex flex-col gap-3.5">
-            {/* Topo do Card */}
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-white/90">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                </span>
-                <span className="text-[11px] font-bold text-blue-100 uppercase tracking-wider">Documentos Ativos</span>
-              </div>
-              <span className="bg-[#C59B4B] text-white px-2.5 py-0.5 rounded-md font-bold text-xs shadow-2xs">
-                {documentsPercent}%
-              </span>
-            </div>
-
-            {/* Números Principais */}
-            <div className="flex items-baseline gap-1.5">
-              <strong className="text-3xl font-black text-white tracking-tight">
-                {currentFilesCount.toLocaleString('pt-BR')}
-              </strong>
-              <span className="text-sm font-medium text-blue-200">
-                / {maxFilesCapacity.toLocaleString('pt-BR')}
-              </span>
-            </div>
-
-            {/* Barra de Progresso */}
-            <div className="w-full bg-black/30 h-2.5 rounded-full overflow-hidden p-0.5">
-              <div 
-                className="h-full bg-gradient-to-r from-[#E5C378] to-[#C59B4B] rounded-full transition-all duration-500 shadow-xs"
-                style={{ width: `${Math.max(currentFilesCount > 0 ? 3 : 0, Math.min(100, documentsPercent))}%` }}
-              />
-            </div>
-
-            {/* Rodapé do Card */}
-            <div className="flex items-center justify-between text-[11px] font-semibold text-blue-100/90 pt-0.5">
-              <span>Disponíveis: <strong className="text-white font-bold ml-1">{remainingFilesCount.toLocaleString('pt-BR')}</strong></span>
-              <span>Capacidade: <strong className="text-white font-bold ml-1">{maxFilesCapacity >= 1000 ? `${(maxFilesCapacity / 1000).toFixed(0)}k` : maxFilesCapacity}</strong></span>
-            </div>
+          {/* Lado Direito (Mural de Avisos e Comunicados Internos em Tempo Real) */}
+          <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0">
+            <WidgetAvisos currentUser={currentUser} isAdmin={isFullAdmin} />
           </div>
         </div>
+
+        {/* Linha Inferior Interna: Ticker/Barra de Plantão Fiscal Integrada Diretamente no Banner */}
+        <div className="relative z-10 pt-3.5 border-t border-white/10 w-full">
+          <FiscalNewsBanner embedded={true} />
+        </div>
+
       </div>
-
-      {/* CRITICAL WARNING BANNER: Limite de Armazenamento Atingido (Só aparece quando o limite for atingido) */}
-      {isQuotaExceeded && (
-        <div 
-          id="storage-limit-alert-banner"
-          className="bg-rose-950/40 border border-rose-800/80 rounded-2xl p-4 sm:p-5 shadow-lg text-rose-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-200"
-        >
-          <div className="flex items-start space-x-3.5">
-            <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-              <AlertOctagon className="w-6 h-6" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center space-x-2 flex-wrap">
-                <h3 className="font-extrabold text-sm sm:text-base text-white">
-                  Limite de Armazenamento Cloudflare R2 Atingido (100%)
-                </h3>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-600 text-white">
-                  Gravação Bloqueada
-                </span>
-              </div>
-              <p className="text-xs text-rose-200">
-                A capacidade máxima ({formatBytes(totalQuotaBytes)}) foi atingida. Novos uploads foram suspensos. Para liberar espaço ou fazer upgrade da cota, entre em contato com o <strong>Administrador / Suporte de TI</strong>.
-              </p>
-            </div>
-          </div>
-
-          {/* Direct Support Actions */}
-          <div className="flex items-center space-x-2.5 self-stretch md:self-auto shrink-0">
-            <a
-              href="https://wa.me/5521973960077?text=Ol%C3%A1%2C%20o%20limite%20de%20armazenamento%20do%20GED%20MVRJCONT%C3%81BIL%20foi%20atingido.%20Preciso%20de%20suporte."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 md:flex-initial inline-flex items-center justify-center space-x-2 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-colors"
-            >
-              <Phone className="w-3.5 h-3.5" />
-              <span>Suporte TI: (21) 97396-0077</span>
-            </a>
-            <button
-              onClick={() => setShowBlockedLimitModal(true)}
-              className="px-3 py-2 rounded-xl border border-rose-800 bg-slate-900 text-rose-300 text-xs font-semibold hover:bg-slate-800 transition-colors"
-            >
-              Detalhes
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isQuotaExceeded && (
-        <StorageStatsWidget 
-          files={files} 
-          serverMetrics={storageMetrics} 
-          onRefresh={onRefreshStorage}
-        />
-      )}
 
       {/* Control Toolbar (Search, Sector Pills, View toggle, Actions) */}
       <div className="w-full max-w-full overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-3">
@@ -621,17 +536,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               </button>
             )}
 
-            {isQuotaExceeded ? (
-              <button
-                id="upload-blocked-btn"
-                onClick={() => setShowBlockedLimitModal(true)}
-                className="flex-1 lg:flex-initial h-11 px-3 sm:px-4 text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs"
-                title="Limite de armazenamento 100% atingido. Clique para ver detalhes e suporte."
-              >
-                <AlertOctagon className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0" />
-                <span className="whitespace-nowrap">Bloqueado</span>
-              </button>
-            ) : canUpload ? (
+            {canUpload ? (
               <button
                 id="upload-doc-btn"
                 onClick={() => onOpenUploadModal(currentFolderId)}
@@ -906,15 +811,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       : 'Nenhum arquivo na raiz. Selecione uma pasta acima ou faça o upload de um documento.'}
                   </p>
                 </div>
-                {isQuotaExceeded ? (
-                  <button
-                    onClick={() => setShowBlockedLimitModal(true)}
-                    className="mt-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold inline-flex items-center space-x-2 transition-colors cursor-pointer shadow-xs"
-                  >
-                    <AlertOctagon className="w-4 h-4" />
-                    <span>Upload Bloqueado (Limite de Quota Atingido)</span>
-                  </button>
-                ) : canUpload ? (
+                {canUpload ? (
                   <button
                     onClick={() => onOpenUploadModal(currentFolderId)}
                     className="mt-2 bg-[#1B357B] hover:bg-[#152a60] dark:bg-[#C59B4B] dark:hover:bg-[#b0873e] text-white font-bold shadow-xs rounded-xl px-5 py-2.5 inline-flex items-center gap-2 text-xs transition-all cursor-pointer"
@@ -1218,14 +1115,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
       </div>
     </section>
   )}
-
-      {/* Storage Limit Exceeded Modal */}
-      <StorageLimitModal
-        isOpen={showBlockedLimitModal}
-        onClose={() => setShowBlockedLimitModal(false)}
-        usedBytes={effectiveUsedBytes}
-        totalCapacityBytes={totalQuotaBytes}
-      />
 
       {/* Rename File Modal */}
       {renamingFile && (

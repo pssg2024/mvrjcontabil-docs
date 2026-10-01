@@ -9,8 +9,6 @@ import {
   ArrowRight, 
   AlertCircle,
   FolderTree,
-  AlertOctagon,
-  Phone,
   Calendar,
   KeyRound,
   FileCode,
@@ -112,18 +110,8 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
   const targetFolder = accessibleFolders.find(f => f.id === selectedFolderId) || currentFolder || accessibleFolders[0] || allFolders[0];
 
-  // Storage Limit Blocking verification
-  const totalQuotaBytes = storageMetrics?.totalCapacityBytes || (10 * 1024 * 1024 * 1024);
-  const isQuotaExceeded = storageMetrics 
-    ? (storageMetrics.usedBytes >= totalQuotaBytes || storageMetrics.usedPercent >= 100)
-    : false;
-
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    if (isQuotaExceeded) {
-      setErrorMessage('Limite de armazenamento Cloudflare R2 atingido. Upload bloqueado. Entre em contato com o suporte de TI (21) 97396-0077.');
-      return;
-    }
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const droppedFiles = Array.from(e.dataTransfer.files) as File[];
       if (droppedFiles.length === 1) {
@@ -142,10 +130,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   };
 
   const handleFileSelected = (file: File) => {
-    if (isQuotaExceeded) {
-      setErrorMessage('Limite de armazenamento Cloudflare R2 atingido. Upload bloqueado. Entre em contato com o suporte de TI (21) 97396-0077.');
-      return;
-    }
     setSelectedFiles([file]);
     setFolderUploadName(null);
     setCustomFileName(file.name);
@@ -158,10 +142,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   };
 
   const handleFolderSelected = (fileList: FileList) => {
-    if (isQuotaExceeded) {
-      setErrorMessage('Limite de armazenamento Cloudflare R2 atingido. Upload bloqueado. Entre em contato com o suporte de TI (21) 97396-0077.');
-      return;
-    }
     const filesArray = Array.from(fileList).filter((f: any) => {
       if (f.name.startsWith('.')) return false;
       if (f.size === 0 && (!f.type || f.webkitRelativePath?.endsWith('/'))) return false;
@@ -214,10 +194,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   };
 
   const handleExecutePipeline = async () => {
-    if (isQuotaExceeded) {
-      setErrorMessage('Limite de armazenamento Cloudflare R2 atingido. Gravação bloqueada. Contate o suporte de TI pelo número (21) 97396-0077.');
-      return;
-    }
     if (selectedFiles.length === 0 || !targetFolder) return;
 
     try {
@@ -394,30 +370,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               </select>
             </div>
           </div>
-
-          {/* Aviso Crítico de Bloqueio se Espaço Total For Excedido */}
-          {isQuotaExceeded && (
-            <div className="p-3 bg-rose-50 border-2 border-rose-400 rounded-xl space-y-2 text-xs text-rose-950">
-              <div className="flex items-center space-x-2">
-                <AlertOctagon className="w-4 h-4 text-rose-700 shrink-0" />
-                <strong className="text-xs font-black text-rose-950">Capacidade Máxima Atingida</strong>
-              </div>
-              <p className="text-xs font-semibold text-rose-900">
-                Novos uploads bloqueados. Entre em contato com o suporte de TI:
-              </p>
-              <div className="p-2 bg-white rounded-lg border border-rose-300 flex items-center justify-between gap-2">
-                <span className="text-xs font-mono font-black text-slate-950">(21) 97396-0077</span>
-                <a
-                  href="https://wa.me/5521973960077?text=Ol%C3%A1%2C%20o%20limite%20de%20armazenamento%20do%20GED%20MVRJCONT%C3%81BIL%20foi%20atingido.%20Preciso%20de%20suporte."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs"
-                >
-                  WhatsApp TI
-                </a>
-              </div>
-            </div>
-          )}
 
           {/* Dropzone ou Card do Arquivo/Pasta Selecionado */}
           {selectedFiles.length === 0 ? (
@@ -654,15 +606,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
             Cancelar
           </button>
 
-          {isQuotaExceeded ? (
-            <div 
-              className="px-3 py-2 bg-rose-100 text-rose-800 rounded-xl text-xs font-bold flex items-center space-x-1.5"
-              title="Armazenamento 100% atingido. Contate o suporte de TI (21) 97396-0077."
-            >
-              <AlertOctagon className="w-4 h-4 text-rose-600" />
-              <span>Upload Bloqueado</span>
-            </div>
-          ) : selectedFiles.length === 0 ? (
+          {selectedFiles.length === 0 ? (
             <div className="flex items-center gap-2">
               <button
                 type="button"

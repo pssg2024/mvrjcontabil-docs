@@ -15,6 +15,7 @@ import { CompanyConsultModal } from './components/CompanyConsultModal';
 import { CompanyManagerModal } from './components/CompanyManagerModal';
 import { InvoiceEmissionView } from './components/InvoiceEmissionView';
 import { UserManualModal } from './components/UserManualModal';
+import { SalaryCalculatorModal } from './components/SalaryCalculatorModal';
 import { MvrjAssistantWidget } from './components/MvrjAssistantWidget';
 import { ShieldCheck } from 'lucide-react';
 import { 
@@ -199,6 +200,7 @@ export default function App() {
   const [isCompanyManagerOpen, setIsCompanyManagerOpen] = useState(false);
   const [isInvoiceEmissionOpen, setIsInvoiceEmissionOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isSalaryCalculatorOpen, setIsSalaryCalculatorOpen] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [driveFilterSearch, setDriveFilterSearch] = useState('');
 
@@ -1254,6 +1256,7 @@ export default function App() {
             onOpenCompanyModal={() => handleOpenCompanyModal()}
             onOpenCompanyManager={() => setIsCompanyManagerOpen(true)}
             onOpenInvoiceEmission={() => setIsInvoiceEmissionOpen(true)}
+            onOpenSalaryCalculator={() => setIsSalaryCalculatorOpen(true)}
             onOpenManualModal={() => setIsManualModalOpen(true)}
             onSwitchUser={handleSwitchUser}
             onLogout={handleLogout}
@@ -1521,6 +1524,12 @@ export default function App() {
       <UserManualModal
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
+      />
+
+      {/* Simulador de Salário Líquido & Calculadora Trabalhista */}
+      <SalaryCalculatorModal
+        isOpen={isSalaryCalculatorOpen}
+        onClose={() => setIsSalaryCalculatorOpen(false)}
       />
 
       {/* Assistente Virtual Contábil com Inteligência Artificial */}
