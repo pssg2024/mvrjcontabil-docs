@@ -512,7 +512,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           
           {/* Row 1: Instant Search Bar & Compact CNPJ Company Lookup */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 min-w-0">
             <div className="relative flex-1 min-w-0">
               <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -555,8 +555,8 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
 
           {/* Row 2: Action Buttons: New Folder, Upload & View Mode Toggle */}
-          <div className="flex items-center justify-between gap-2.5 w-full lg:w-auto shrink-0">
-            <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full lg:w-auto shrink-0">
+            <div className="flex flex-wrap items-center gap-2 flex-1 sm:flex-initial">
               {canCreateSubfolder && (
                 <button
                   id="create-folder-btn"
@@ -588,7 +588,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl h-10 sm:h-11 gap-0.5 shrink-0 border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl h-10 sm:h-11 gap-0.5 shrink-0 border border-slate-200 dark:border-slate-800 shadow-2xs ml-auto sm:ml-0">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#DFB76C] font-bold shadow-xs border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}
@@ -1034,17 +1034,17 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
         ) : (
           /* LIST VIEW */
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-xs overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-xs overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300">
+            <table className="w-full text-left text-xs border-collapse min-w-[520px] sm:min-w-full">
               <thead>
                 <tr className="bg-slate-100 dark:bg-slate-950 border-b border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-300 font-bold">
-                  <th className="p-3.5">Nome do Documento</th>
-                  <th className="p-3.5">Setor</th>
-                  <th className="p-3.5">Tamanho Original</th>
-                  <th className="p-3.5">Tamanho Otimizado</th>
-                  <th className="p-3.5">Economia R2</th>
-                  <th className="p-3.5">Data de Envio</th>
-                  <th className="p-3.5 text-right">Ações</th>
+                  <th className="p-3 sm:p-3.5">Nome do Documento</th>
+                  <th className="p-3 sm:p-3.5 hidden sm:table-cell">Setor</th>
+                  <th className="p-3 sm:p-3.5 hidden lg:table-cell">Tamanho Original</th>
+                  <th className="p-3 sm:p-3.5">Tamanho Otimizado</th>
+                  <th className="p-3 sm:p-3.5 hidden md:table-cell">Economia R2</th>
+                  <th className="p-3 sm:p-3.5 hidden sm:table-cell">Data de Envio</th>
+                  <th className="p-3 sm:p-3.5 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-medium">
@@ -1059,9 +1059,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
                   return (
                     <tr key={file.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="p-3.5 font-bold text-slate-950 dark:text-white">
-                        <div className="flex items-center space-x-2.5">
-                          <div className={`p-1.5 rounded-lg text-white ${
+                      <td className="p-3 sm:p-3.5 font-bold text-slate-950 dark:text-white min-w-0">
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <div className={`p-1.5 rounded-lg text-white shrink-0 ${
                             isPfx ? 'bg-purple-600' :
                             isPdf ? 'bg-rose-600' :
                             isImage ? 'bg-blue-600' :
@@ -1079,31 +1079,32 @@ export const FileManager: React.FC<FileManagerProps> = ({
                           </div>
                           <span 
                             onClick={() => onOpenFileViewer(file)}
-                            className="font-bold hover:text-[#1B357B] dark:hover:text-[#E2C37A] cursor-pointer break-words text-slate-950 dark:text-white"
+                            className="font-bold hover:text-[#1B357B] dark:hover:text-[#E2C37A] cursor-pointer break-words text-slate-950 dark:text-white truncate max-w-[150px] sm:max-w-xs"
+                            title={file.name}
                           >
                             {file.name}
                           </span>
                           {isPfx && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-800 shrink-0">
                               PFX
                             </span>
                           )}
                           {isXml && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shrink-0">
                               XML
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="p-3.5 text-slate-800 dark:text-slate-300 font-bold">{file.sector}</td>
+                      <td className="p-3 sm:p-3.5 text-slate-800 dark:text-slate-300 font-bold hidden sm:table-cell">{file.sector}</td>
 
-                      <td className="p-3.5 font-mono text-slate-500 line-through">{formatBytes(file.original_size)}</td>
-                      <td className="p-3.5 font-mono font-bold text-slate-900 dark:text-slate-200">{formatBytes(file.optimized_size)}</td>
-                      <td className="p-3.5 font-bold text-emerald-700 dark:text-emerald-400">
+                      <td className="p-3 sm:p-3.5 font-mono text-slate-500 line-through hidden lg:table-cell">{formatBytes(file.original_size)}</td>
+                      <td className="p-3 sm:p-3.5 font-mono font-bold text-slate-900 dark:text-slate-200">{formatBytes(file.optimized_size)}</td>
+                      <td className="p-3 sm:p-3.5 font-bold text-emerald-700 dark:text-emerald-400 hidden md:table-cell">
                         {file.compression_ratio > 0 ? `-${file.compression_ratio}%` : '100% Íntegro'}
                       </td>
-                      <td className="p-3.5 text-slate-700 dark:text-slate-400 font-semibold">{new Date(file.created_at).toLocaleDateString('pt-BR')}</td>
-                      <td className="p-3.5 text-right">
+                      <td className="p-3 sm:p-3.5 text-slate-700 dark:text-slate-400 font-semibold hidden sm:table-cell">{new Date(file.created_at).toLocaleDateString('pt-BR')}</td>
+                      <td className="p-3 sm:p-3.5 text-right shrink-0">
                         <div className="flex items-center justify-end space-x-1">
                           <button
                             onClick={() => onOpenFileViewer(file)}

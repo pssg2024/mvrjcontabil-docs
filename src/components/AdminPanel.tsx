@@ -117,28 +117,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   return (
     <div className="w-full space-y-6">
       {/* Header */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <div className="p-2 bg-purple-100 rounded-lg text-purple-700">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-gray-900 tracking-tight">Painel de Governança & RBAC</h1>
-              <p className="text-sm text-gray-500">Controle de acessos, aprovações de novos funcionários e matriz de segurança por setor</p>
-            </div>
+      {/* Header com quebra responsiva sm:flex-row e alinhamento flexbox */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="p-2.5 bg-purple-100 dark:bg-purple-950/60 rounded-xl text-purple-700 dark:text-purple-300 shrink-0">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">Painel de Governança & RBAC</h1>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Controle de acessos, aprovações de novos funcionários e matriz de segurança por setor</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid de Estatísticas: 2 colunas em mobile e lg:grid-cols-4 em telas grandes */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-6">
+        <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-xl flex items-center space-x-3 shadow-2xs">
+          <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-bold text-amber-600 block tracking-wide truncate">Pendentes</span>
+            <strong className="text-base sm:text-lg font-extrabold text-amber-950">{pendingProfiles.length}</strong>
           </div>
         </div>
 
-        {/* Status badges */}
-        <div className="flex items-center space-x-3 text-xs">
-          <div className="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg flex items-center space-x-2">
-            <Clock className="w-4 h-4 text-amber-600" />
-            <span><strong>{pendingProfiles.length}</strong> pendentes de homologação</span>
+        <div className="p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-xl flex items-center space-x-3 shadow-2xs">
+          <div className="p-2 bg-blue-100 rounded-lg text-blue-700 shrink-0">
+            <UserCheck className="w-4 h-4" />
           </div>
-          <div className="px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg flex items-center space-x-2">
-            <UserCheck className="w-4 h-4 text-blue-600" />
-            <span><strong>{profiles.filter(p => p.status === 'active').length}</strong> ativos</span>
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-bold text-blue-600 block tracking-wide truncate">Ativos</span>
+            <strong className="text-base sm:text-lg font-extrabold text-blue-950">{profiles.filter(p => p.status === 'active' || p.status === 'approved').length}</strong>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-xl flex items-center space-x-3 shadow-2xs">
+          <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700 shrink-0">
+            <FolderTree className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-bold text-emerald-600 block tracking-wide truncate">Pastas GED</span>
+            <strong className="text-base sm:text-lg font-extrabold text-emerald-950">{folders.length}</strong>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-purple-50/80 border border-purple-200/80 rounded-xl flex items-center space-x-3 shadow-2xs">
+          <div className="p-2 bg-purple-100 rounded-lg text-purple-700 shrink-0">
+            <History className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-bold text-purple-600 block tracking-wide truncate">Auditoria</span>
+            <strong className="text-base sm:text-lg font-extrabold text-purple-950">{auditLogs.length}</strong>
           </div>
         </div>
       </div>
@@ -324,11 +354,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                         Definir Papel na Aprovação:
                       </label>
-                      <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
                         <button
                           type="button"
                           onClick={() => setSelectedRoleForApproval(prev => ({ ...prev, [profile.id]: 'viewer' }))}
-                          className={`p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
+                          className={`p-2.5 sm:p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
                             chosenRole === 'viewer' || chosenRole === 'User'
                               ? 'bg-gray-800 text-white border-gray-900'
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -341,7 +371,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <button
                           type="button"
                           onClick={() => setSelectedRoleForApproval(prev => ({ ...prev, [profile.id]: 'editor' }))}
-                          className={`p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
+                          className={`p-2.5 sm:p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
                             chosenRole === 'editor'
                               ? 'bg-blue-600 text-white border-blue-700'
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -354,7 +384,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <button
                           type="button"
                           onClick={() => setSelectedRoleForApproval(prev => ({ ...prev, [profile.id]: 'admin' }))}
-                          className={`p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
+                          className={`p-2.5 sm:p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
                             chosenRole === 'admin'
                               ? 'bg-purple-600 text-white border-purple-700'
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -365,14 +395,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </button>
                       </div>
 
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <button
                           id={`approve-user-${profile.id}`}
                           onClick={() => {
                             const finalSector = selectedSectorForApproval[profile.id] || profile.sector;
                             onApproveUser(profile.id, chosenRole, finalSector);
                           }}
-                          className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors shadow-2xs"
+                          className="flex-1 py-2.5 sm:py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors shadow-2xs cursor-pointer active:scale-98"
                         >
                           <Check className="w-4 h-4" />
                           <span>Aprovar Acesso</span>
@@ -381,7 +411,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <button
                           id={`reject-user-${profile.id}`}
                           onClick={() => onRejectUser(profile.id)}
-                          className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition-colors"
+                          className="py-2.5 sm:py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition-colors cursor-pointer active:scale-98"
                           title="Recusar ou excluir solicitação de cadastro"
                         >
                           <X className="w-4 h-4" />
@@ -495,8 +525,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           <div className="divide-y divide-gray-100">
             {profiles.map(profile => (
-              <div key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center space-x-3">
+              <div key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 text-slate-800 font-bold flex items-center justify-center text-sm shrink-0 border border-slate-300">
                     {profile.avatar_url ? (
                       <img 
@@ -509,9 +539,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       profile.full_name.charAt(0).toUpperCase()
                     )}
                   </div>
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <h4 className="font-bold text-sm text-gray-900">{profile.full_name}</h4>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <h4 className="font-bold text-sm text-gray-900 truncate max-w-[180px] sm:max-w-none">{profile.full_name}</h4>
                       <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
                         profile.status === 'active' || profile.status === 'approved'
                           ? 'bg-emerald-100 text-emerald-800'
@@ -522,24 +552,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {profile.status}
                       </span>
                       {profile.lgpd_accepted_at ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200" title={`Aceite LGPD registrado em ${new Date(profile.lgpd_accepted_at).toLocaleString('pt-BR')}`}>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0" title={`Aceite LGPD registrado em ${new Date(profile.lgpd_accepted_at).toLocaleString('pt-BR')}`}>
                           LGPD: Aceito
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
                           LGPD: Pendente
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500">{profile.email} • Setor: <strong className="text-gray-700">{profile.sector}</strong></p>
+                    <p className="text-xs text-gray-500 truncate mt-0.5">{profile.email} • Setor: <strong className="text-gray-700">{profile.sector}</strong></p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
                   <select
                     value={profile.role}
                     onChange={(e) => onUpdateUserRole(profile.id, e.target.value as UserRole)}
-                    className="text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 outline-hidden"
+                    className="flex-1 sm:flex-initial text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 outline-hidden min-w-[110px]"
                   >
                     <option value="viewer">Papel: Leitor</option>
                     <option value="editor">Papel: Editor</option>
@@ -549,7 +579,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <select
                     value={profile.status}
                     onChange={(e) => onUpdateUserStatus(profile.id, e.target.value as UserStatus)}
-                    className="text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 outline-hidden"
+                    className="flex-1 sm:flex-initial text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 outline-hidden min-w-[110px]"
                   >
                     <option value="active">Status: Ativo</option>
                     <option value="approved">Status: Aprovado</option>
@@ -563,7 +593,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     id={`delete-user-${profile.id}`}
                     onClick={() => onDeleteUser(profile.id, profile.full_name || profile.email)}
-                    className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors border border-rose-100 hover:border-rose-300"
+                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors border border-rose-100 hover:border-rose-300 shrink-0"
                     title={`Excluir ${profile.full_name || profile.email} permanentemente`}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -579,22 +609,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {activeTab === 'audit' && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center space-x-2">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
                 <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                 <input
                   type="text"
                   placeholder="Buscar logs por usuário ou ação..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl w-64 bg-white font-bold text-slate-950 placeholder:text-slate-500 focus:border-blue-600 outline-none shadow-2xs"
+                  className="pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl w-full bg-white font-bold text-slate-950 placeholder:text-slate-500 focus:border-blue-600 outline-none shadow-2xs"
                 />
               </div>
 
               <select
                 value={auditFilter}
                 onChange={(e) => setAuditFilter(e.target.value)}
-                className="text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white font-bold text-slate-900 focus:border-blue-600 outline-none shadow-2xs cursor-pointer"
+                className="text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white font-bold text-slate-900 focus:border-blue-600 outline-none shadow-2xs cursor-pointer w-full sm:w-auto"
               >
                 <option value="ALL">Todas as Ações</option>
                 <option value="LOGIN">LOGIN</option>
@@ -605,19 +635,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </select>
             </div>
 
-            <span className="text-xs text-slate-700 font-bold">Exibindo {filteredLogs.length} eventos de auditoria</span>
+            <span className="text-xs text-slate-700 font-bold self-end sm:self-auto">Exibindo {filteredLogs.length} eventos de auditoria</span>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-300 shadow-xs overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="bg-white rounded-xl border border-slate-300 shadow-xs overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left text-xs border-collapse min-w-[500px] sm:min-w-full">
               <thead>
                 <tr className="bg-slate-100 border-b border-slate-300 text-slate-900 font-black">
                   <th className="p-3">Data / Hora</th>
                   <th className="p-3">Ação</th>
                   <th className="p-3">Usuário</th>
-                  <th className="p-3">Setor</th>
-                  <th className="p-3">Alvo</th>
-                  <th className="p-3">Detalhes Técnicos</th>
+                  <th className="p-3 hidden sm:table-cell">Setor</th>
+                  <th className="p-3 hidden md:table-cell">Alvo</th>
+                  <th className="p-3 hidden lg:table-cell">Detalhes Técnicos</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 font-mono text-[11px]">
@@ -640,9 +670,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </span>
                     </td>
                     <td className="p-3 font-sans font-bold text-slate-950">{log.user_name}</td>
-                    <td className="p-3 font-sans font-semibold text-slate-800">{log.sector}</td>
-                    <td className="p-3 font-sans font-semibold text-slate-700">{log.target_type}</td>
-                    <td className="p-3 font-mono text-slate-800 font-medium max-w-xs truncate" title={JSON.stringify(log.details)}>
+                    <td className="p-3 font-sans font-semibold text-slate-800 hidden sm:table-cell">{log.sector}</td>
+                    <td className="p-3 font-sans font-semibold text-slate-700 hidden md:table-cell">{log.target_type}</td>
+                    <td className="p-3 font-mono text-slate-800 font-medium max-w-xs truncate hidden lg:table-cell" title={JSON.stringify(log.details)}>
                       {JSON.stringify(log.details)}
                     </td>
                   </tr>
