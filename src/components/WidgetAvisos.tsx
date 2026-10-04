@@ -10,7 +10,8 @@ import {
   BellRing,
   ChevronDown,
   Layers,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 import { AvisoItem, UserProfile } from '../types';
 import { fetchAvisos, deleteAviso, subscribeAvisosRealtime, DEFAULT_AVISOS } from '../lib/avisos-service';
@@ -35,7 +36,7 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
   const [modalInitialTab, setModalInitialTab] = useState<'novo' | 'gerenciar'>('novo');
   const [editingAviso, setEditingAviso] = useState<AvisoItem | null>(null);
 
-  // Menu suspenso de ações dentro de "Novo"
+  // Menu suspenso de ações agrupadas no botão "Novo"
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -174,25 +175,26 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
     }
   };
 
+  // Paleta de badges refinada com alto contraste
   const getBadgeStyle = (tipo: string) => {
     switch (tipo) {
       case 'urgente':
         return {
-          bg: 'bg-rose-500/25 border-rose-400/40 text-rose-200',
-          dot: 'bg-rose-400',
+          bg: 'bg-rose-500/15 border-rose-400/35 text-rose-200',
+          dot: 'bg-rose-400 shadow-xs shadow-rose-400',
           label: 'URGENTE',
         };
       case 'alerta':
         return {
-          bg: 'bg-amber-400/25 border-amber-400/40 text-amber-200',
-          dot: 'bg-amber-400',
+          bg: 'bg-amber-500/15 border-amber-400/35 text-amber-200',
+          dot: 'bg-amber-400 shadow-xs shadow-amber-400',
           label: 'ALERTA',
         };
       case 'info':
       default:
         return {
-          bg: 'bg-blue-400/25 border-blue-400/35 text-blue-200',
-          dot: 'bg-blue-400',
+          bg: 'bg-sky-500/15 border-sky-400/35 text-sky-200',
+          dot: 'bg-sky-400 shadow-xs shadow-sky-400',
           label: 'COMUNICADO',
         };
     }
@@ -202,22 +204,27 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
     <>
       <div 
         id="widget-mural-avisos"
-        className="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl p-3.5 sm:p-4 w-full shadow-xs flex flex-col justify-between gap-2.5 text-white transition-all select-none min-h-[160px] relative overflow-hidden"
+        className="bg-gradient-to-br from-white/[0.13] via-white/[0.08] to-white/[0.04] backdrop-blur-xl border border-white/20 hover:border-white/30 rounded-2xl p-4 sm:p-4.5 w-full shadow-xl shadow-[#0B1736]/40 flex flex-col justify-between gap-3 text-white transition-all select-none min-h-[165px] relative overflow-visible group"
         role="region"
         aria-label="Mural de Avisos Internos em Tempo Real"
       >
+        {/* Camada decorativa interior delimitada */}
+        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/5 rounded-full blur-2xl group-hover:bg-amber-400/10 transition-colors" />
+        </div>
+
         {currentAviso ? (
           <>
-            {/* LINHA 1: Topo Descongestionado - Badge de Tipo + Controles de Navegação */}
-            <div className="flex items-center justify-between gap-2 w-full">
-              {/* Badge de tipo com ponto pulsante */}
+            {/* LINHA 1: Topo Descongestionado - Badge Luminosa + Navegação Minimalista */}
+            <div className="flex items-center justify-between gap-2 w-full relative z-10">
+              {/* Badge de tipo com radar pulsante */}
               {(() => {
                 const b = getBadgeStyle(currentAviso.tipo);
                 return (
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold font-mono tracking-wider shadow-2xs shrink-0 ${b.bg}`}>
-                    <span className="relative flex h-1.5 w-1.5">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-bold font-mono tracking-wider shadow-xs backdrop-blur-md shrink-0 ${b.bg}`}>
+                    <span className="relative flex h-2 w-2">
                       <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${b.dot} opacity-75`}></span>
-                      <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${b.dot}`}></span>
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${b.dot}`}></span>
                     </span>
                     <span>{b.label}</span>
                   </span>
@@ -227,23 +234,23 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
               {/* Controles de Navegação e Contador de Avisos */}
               <div className="flex items-center gap-1.5 shrink-0">
                 {avisos.length > 1 && (
-                  <div className="flex items-center bg-black/25 rounded-lg p-0.5 border border-white/15 text-[10px] font-mono">
+                  <div className="inline-flex items-center bg-black/40 hover:bg-black/50 backdrop-blur-md rounded-lg p-0.5 border border-white/15 text-[11px] font-mono shadow-xs transition-colors">
                     <button
                       type="button"
                       onClick={handlePrev}
-                      className="p-1 rounded text-white/70 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+                      className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
                       title="Aviso anterior"
                       aria-label="Anterior"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
-                    <span className="px-1.5 text-white font-bold tracking-tight">
+                    <span className="px-2 text-white/95 font-bold tracking-tight select-none">
                       {currentIndex + 1}/{avisos.length}
                     </span>
                     <button
                       type="button"
                       onClick={handleNext}
-                      className="p-1 rounded text-white/70 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+                      className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
                       title="Próximo aviso"
                       aria-label="Próximo"
                     >
@@ -254,83 +261,86 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
               </div>
             </div>
 
-            {/* LINHA 2: Conteúdo Central Limpo e Sem Sobreposição */}
-            <div className="space-y-1 my-auto">
-              <h4 className="font-bold text-xs sm:text-sm text-white line-clamp-1 leading-snug tracking-tight">
+            {/* LINHA 2: Conteúdo Central - Título em Destaque e Mensagem com Alto Contraste */}
+            <div className="space-y-1.5 my-auto relative z-10">
+              <h4 className="font-extrabold text-sm sm:text-[15px] text-white tracking-tight leading-snug line-clamp-1 drop-shadow-xs">
                 {currentAviso.titulo}
               </h4>
-              <p className="text-[11px] text-blue-100/90 leading-relaxed line-clamp-2 font-normal">
+              <p className="text-xs text-blue-100/90 leading-relaxed line-clamp-2 font-normal">
                 {currentAviso.mensagem}
               </p>
             </div>
 
-            {/* LINHA 3: Rodapé com Informações à Esquerda e Botão ÚNICO "Novo" com Todas as Opções */}
-            <div className="flex items-center justify-between gap-2 text-[10px] text-blue-200/80 pt-2 border-t border-white/10 w-full">
+            {/* LINHA 3: Rodapé Refinado com Data/Autor e Botão Executivo "Novo" */}
+            <div className="flex items-center justify-between gap-2 text-[11px] text-blue-200/85 pt-2.5 border-t border-white/15 w-full relative z-10">
               {/* Esquerda: Data e Autor */}
               <div className="flex items-center space-x-2 min-w-0">
-                <div className="flex items-center space-x-1 font-mono shrink-0">
-                  <Clock className="w-3 h-3 text-[#DFB76C]" />
+                <div className="flex items-center space-x-1 font-mono text-[11px] shrink-0 text-amber-200/90">
+                  <Clock className="w-3.5 h-3.5 text-[#DFB76C]" />
                   <span>{formatDate(currentAviso.created_at)}</span>
                 </div>
 
-                <div className="hidden sm:flex items-center space-x-1 truncate max-w-[120px]" title={currentAviso.autor_nome}>
+                <div className="hidden sm:flex items-center space-x-1 truncate max-w-[120px] text-blue-200/80" title={currentAviso.autor_nome}>
+                  <span className="text-white/40">·</span>
                   <User className="w-3 h-3 text-blue-300 shrink-0" />
                   <span className="truncate">{currentAviso.autor_nome}</span>
                 </div>
               </div>
 
-              {/* Direita: TODAS AS OPÇÕES REUNIDAS DENTRO DE UM ÚNICO BOTÃO "NOVO" */}
+              {/* Direita: BOTÃO EXECUTIVO "NOVO" COM TODAS AS OPÇÕES */}
               {userIsAdmin && (
                 <div className="relative shrink-0" ref={menuRef}>
-                  <div className="inline-flex rounded-lg shadow-xs overflow-hidden bg-[#DFB76C] text-slate-950">
+                  <div className="inline-flex items-stretch rounded-lg shadow-sm hover:shadow-md transition-all overflow-hidden border border-[#E5C378]/40 bg-gradient-to-b from-[#ECD292] via-[#DFB76C] to-[#C99C42] text-slate-950 group">
                     {/* Botão Principal: Abre o modal de Novo/Gerenciamento completo */}
                     <button
                       type="button"
                       onClick={handleOpenNewModal}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold hover:bg-[#cf9e3c] transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold hover:bg-white/20 active:bg-black/5 transition-colors cursor-pointer tracking-tight"
                       title="Publicar ou gerenciar comunicados"
                     >
-                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                       <span>Novo</span>
                     </button>
 
-                    {/* Seta Dropdown: Abre menu suspenso com todas as opções */}
+                    <div className="w-[1px] bg-slate-950/20" />
+
+                    {/* Seta Dropdown: Abre menu suspenso de ações */}
                     <button
                       type="button"
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className="px-1.5 py-1 border-l border-slate-900/15 hover:bg-[#cf9e3c] transition-colors cursor-pointer flex items-center justify-center"
-                      title="Ver todas as opções (Editar, Excluir, Novo)"
+                      className="px-2 py-1.5 hover:bg-white/20 active:bg-black/5 transition-colors cursor-pointer flex items-center justify-center text-slate-950"
+                      title="Opções do comunicado (Editar, Excluir, Novo)"
                       aria-label="Opções de comunicado"
                     >
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isMenuOpen ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
                   </div>
 
-                  {/* Menu Popover com Todas as Opções Reunidas */}
+                  {/* Menu Popover com Todas as Opções Reunidas (Com contraste impecável e sem corte) */}
                   {isMenuOpen && (
                     <div 
-                      className="absolute right-0 bottom-full mb-1.5 w-56 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-1 text-slate-800 dark:text-slate-100 z-50 animate-in fade-in zoom-in-95 duration-150 text-xs font-medium"
+                      className="absolute right-0 bottom-full mb-2 w-64 rounded-xl bg-slate-900/95 border border-slate-700/80 shadow-2xl py-1.5 text-white z-50 animate-in fade-in zoom-in-95 duration-150 text-xs font-medium backdrop-blur-xl ring-1 ring-black/40"
                       role="menu"
                     >
                       {/* Opção 1: Novo Comunicado */}
                       <button
                         type="button"
                         onClick={handleOpenNewModal}
-                        className="w-full px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center space-x-2 transition-colors cursor-pointer text-slate-900 dark:text-white font-bold"
+                        className="w-full px-3.5 py-2.5 text-left hover:bg-slate-800/80 flex items-center space-x-2.5 transition-colors cursor-pointer text-white font-bold"
                         role="menuitem"
                       >
-                        <Plus className="w-3.5 h-3.5 text-[#1B357B] dark:text-[#DFB76C] stroke-[2.5]" />
-                        <span>+ Novo Comunicado</span>
+                        <Plus className="w-4 h-4 text-[#DFB76C] stroke-[2.5]" />
+                        <span>+ Publicar Novo Comunicado</span>
                       </button>
 
                       {/* Opção 2: Editar Este Comunicado */}
                       <button
                         type="button"
                         onClick={handleOpenEditCurrent}
-                        className="w-full px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center space-x-2 transition-colors cursor-pointer text-slate-700 dark:text-slate-300"
+                        className="w-full px-3.5 py-2.5 text-left hover:bg-slate-800/80 flex items-center space-x-2.5 transition-colors cursor-pointer text-slate-200"
                         role="menuitem"
                       >
-                        <Edit2 className="w-3.5 h-3.5 text-blue-500" />
+                        <Edit2 className="w-3.5 h-3.5 text-blue-400" />
                         <span>Editar Comunicado Atual</span>
                       </button>
 
@@ -338,10 +348,10 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
                       <button
                         type="button"
                         onClick={handleOpenDeleteCurrent}
-                        className="w-full px-3 py-2 text-left hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center space-x-2 transition-colors cursor-pointer border-t border-slate-100 dark:border-slate-800"
+                        className="w-full px-3.5 py-2.5 text-left hover:bg-rose-950/40 text-rose-300 flex items-center space-x-2.5 transition-colors cursor-pointer border-t border-slate-800/80"
                         role="menuitem"
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                        <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                         <span>Excluir Publicação (com senha)</span>
                       </button>
 
@@ -349,7 +359,7 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
                       <button
                         type="button"
                         onClick={handleOpenManageList}
-                        className="w-full px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center space-x-2 transition-colors cursor-pointer text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800"
+                        className="w-full px-3.5 py-2 text-left hover:bg-slate-800/80 flex items-center space-x-2.5 transition-colors cursor-pointer text-slate-400 border-t border-slate-800/80 text-[11px]"
                         role="menuitem"
                       >
                         <Layers className="w-3.5 h-3.5 text-slate-400" />
@@ -363,14 +373,14 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
           </>
         ) : (
           /* Estado Vazio */
-          <div className="flex flex-col items-center justify-center text-center p-3 my-auto space-y-2">
+          <div className="flex flex-col items-center justify-center text-center p-3 my-auto space-y-2 relative z-10">
             <BellRing className="w-6 h-6 text-blue-200/50" />
             <p className="text-xs text-blue-100/70">Nenhum comunicado ativo no momento.</p>
             {userIsAdmin && (
               <button
                 type="button"
                 onClick={handleOpenNewModal}
-                className="mt-1 px-3 py-1 bg-[#DFB76C] hover:bg-[#c9a049] text-slate-950 text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                className="mt-1 px-3.5 py-1.5 bg-gradient-to-r from-[#DFB76C] to-[#CE9E3C] hover:brightness-105 text-slate-950 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 <span>Publicar Comunicado</span>

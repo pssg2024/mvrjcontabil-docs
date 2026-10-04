@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   X, 
@@ -14,11 +14,13 @@ import {
   User,
   Plus,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  RotateCcw
 } from 'lucide-react';
 import { AvisoItem, AvisoTipo, UserProfile } from '../types';
 import { insertAviso, updateAviso, deleteAviso } from '../lib/avisos-service';
 import { ModalConfirmarSenhaExclusao } from './ModalConfirmarSenhaExclusao';
+import { lockScroll, unlockScroll, setupBackdropScrollLock } from '../lib/scroll-lock';
 
 interface ModalNovoAvisoProps {
   isOpen: boolean;
@@ -58,6 +60,9 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
   const [targetDeleteAviso, setTargetDeleteAviso] = useState<AvisoItem | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const inputTituloRef = useRef<HTMLInputElement>(null);
+
   // Inicializar campos ao abrir
   useEffect(() => {
     if (isOpen) {
@@ -90,6 +95,9 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
     setAutorNome(aviso.autor_nome);
     setActiveTab('novo');
     setErrorMsg(null);
+    setTimeout(() => {
+      inputTituloRef.current?.focus();
+    }, 100);
   };
 
   const handleStartNew = () => {
@@ -100,33 +108,24 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
     setAutorNome(currentUser.full_name || 'Administração MVRJ');
     setActiveTab('novo');
     setErrorMsg(null);
+    setTimeout(() => {
+      inputTituloRef.current?.focus();
+    }, 100);
   };
 
   // Trava de rolagem rigorosa na página ao fundo (Body Scroll Lock)
   useEffect(() => {
     if (!isOpen) return;
-
-    const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-    const originalBodyOverflow = document.body.style.overflow;
-    const originalHtmlOverflow = document.documentElement.style.overflow;
-    const originalBodyPosition = document.body.style.position;
-    const originalBodyTop = document.body.style.top;
-    const originalBodyWidth = document.body.style.width;
-
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-
+    lockScroll();
     return () => {
-      document.body.style.overflow = originalBodyOverflow;
-      document.documentElement.style.overflow = originalHtmlOverflow;
-      document.body.style.position = originalBodyPosition;
-      document.body.style.top = originalBodyTop;
-      document.body.style.width = originalBodyWidth;
-      window.scrollTo(0, scrollY);
+      unlockScroll();
     };
+  }, [isOpen]);
+
+  // Previne arrasto do fundo por touch ou wheel
+  useEffect(() => {
+    if (!isOpen || !backdropRef.current) return;
+    return setupBackdropScrollLock(backdropRef.current);
   }, [isOpen]);
 
   // Fechar com tecla ESC
@@ -265,6 +264,7 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
   const modalContent = (
     <>
       <div 
+        ref={backdropRef}
         className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-sm overscroll-contain animate-in fade-in duration-200 select-none"
         role="dialog"
         aria-modal="true"
@@ -272,14 +272,9 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
         onClick={(e) => {
           if (e.target === e.currentTarget && !isSubmitting && !isPasswordModalOpen) onClose();
         }}
-        onTouchMove={(e) => {
-          if (e.target === e.currentTarget) {
-            e.preventDefault();
-          }
-        }}
       >
         <div 
-          className="relative w-full max-w-xl max-h-[92vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100 overscroll-contain animate-in zoom-in-95 duration-200 select-text"
+          className="relative w-full max-w-xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100 overscroll-contain animate-in zoom-in-95 duration-200 select-text"
           onClick={(e) => e.stopPropagation()}
         >
           
@@ -304,7 +299,9 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Publique, edite ou exclua avisos em tempo real para toda a equipe
+                  {currentEditing 
+                    ? 'Altere o conteúdo do comunicado para atualização imediata' 
+                    : 'Publique, edite ou exclua avisos em tempo real para toda a equipe'}
                 </p>
               </div>
             </div>
@@ -321,7 +318,7 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
           </div>
 
           {/* Abas Unificadas: Todas as opções reunidas dentro de Novo */}
-          <div className="px-5 pt-3 pb-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-between gap-2">
+          <div className="px-5 pt-2.5 pb-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-between gap-2">
             <div className="flex items-center space-x-1 sm:space-x-2">
               <button
                 type="button"
@@ -333,7 +330,7 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
                 }`}
               >
                 <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                <span>Novo Comunicado</span>
+                <span>+ Novo Comunicado</span>
               </button>
 
               {currentEditing && (
@@ -343,7 +340,7 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
                   className="px-3 py-2 rounded-t-xl text-xs font-bold transition-all border-b-2 border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 flex items-center space-x-1.5 cursor-pointer"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
-                  <span>Editando Publicação</span>
+                  <span>Editando Comunicado</span>
                 </button>
               )}
 
@@ -370,9 +367,31 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
             </div>
           )}
 
+          {/* Banner Informativo quando em Modo de Edição */}
+          {activeTab === 'novo' && currentEditing && (
+            <div className="mx-5 mt-3 p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-200 flex items-center justify-between shrink-0">
+              <div className="flex items-center space-x-2 min-w-0">
+                <Edit2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="truncate">Editando comunicado: <strong>{currentEditing.titulo}</strong></span>
+              </div>
+              <button
+                type="button"
+                onClick={handleStartNew}
+                className="text-[11px] font-bold text-blue-700 dark:text-blue-300 hover:underline flex items-center gap-1 shrink-0 ml-2 cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Criar Novo</span>
+              </button>
+            </div>
+          )}
+
           {/* ABA 1: FORMULÁRIO DE NOVO / EDITAR */}
           {activeTab === 'novo' && (
-            <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto overscroll-contain flex-1">
+            <form 
+              onSubmit={handleSubmit} 
+              className="p-5 sm:p-6 space-y-4 overflow-y-auto overscroll-contain flex-1" 
+              data-modal-scrollable
+            >
               {errorMsg && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-xs text-rose-700 dark:text-rose-300 flex items-center space-x-2 animate-in fade-in">
                   <AlertCircle className="w-4 h-4 shrink-0" />
@@ -383,7 +402,7 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
               {/* Nível de Importância / Tipo */}
               <div className="space-y-1.5">
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  Nível de Importância
+                  Nível de Importância do Comunicado
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   <button
@@ -433,11 +452,12 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
                   Título do Comunicado <span className="text-rose-500">*</span>
                 </label>
                 <input
+                  ref={inputTituloRef}
                   type="text"
                   required
                   value={titulo}
                   onChange={(e) => setTitulo(e.target.value)}
-                  placeholder="Ex: Fechamento Fiscal Mensal ou Feriado Municipal..."
+                  placeholder="Ex: Fechamento Fiscal Mensal, Prazos de DCTFWeb, Aviso de Feriado..."
                   className="w-full h-10 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#1B357B] transition-all"
                 />
               </div>
@@ -445,7 +465,7 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
               {/* Mensagem */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Mensagem <span className="text-rose-500">*</span>
+                  Mensagem / Orientações <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   required
@@ -466,7 +486,7 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
                   type="text"
                   value={autorNome}
                   onChange={(e) => setAutorNome(e.target.value)}
-                  placeholder="Ex: Diretoria, Setor Fiscal ou seu nome..."
+                  placeholder="Ex: Diretoria, Setor Fiscal, DP ou seu nome..."
                   className="w-full h-9 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#1B357B] transition-all"
                 />
               </div>
@@ -479,7 +499,7 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
                     onClick={handleStartNew}
                     className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline cursor-pointer"
                   >
-                    Cancelar edição e criar novo
+                    Cancelar edição
                   </button>
                 ) : (
                   <div />
@@ -506,12 +526,12 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
                       </>
                     ) : currentEditing ? (
                       <>
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Edit2 className="w-3.5 h-3.5 text-[#DFB76C]" />
                         <span>Salvar Alterações</span>
                       </>
                     ) : (
                       <>
-                        <Send className="w-3.5 h-3.5" />
+                        <Send className="w-3.5 h-3.5 text-[#DFB76C]" />
                         <span>Publicar em Tempo Real</span>
                       </>
                     )}
@@ -523,16 +543,19 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
 
           {/* ABA 2: EDITAR / EXCLUIR PUBLICAÇÕES EXISTENTES */}
           {activeTab === 'gerenciar' && (
-            <div className="p-5 space-y-3 overflow-y-auto overscroll-contain flex-1">
+            <div 
+              className="p-5 space-y-3 overflow-y-auto overscroll-contain flex-1" 
+              data-modal-scrollable
+            >
               <div className="flex items-center justify-between text-xs text-slate-500 pb-1">
-                <span>Clique em <strong>Editar</strong> para modificar ou em <strong>Excluir</strong> para apagar com senha.</span>
+                <span>Clique em <strong>Editar</strong> para modificar ou em <strong>Excluir</strong> para apagar com senha corporativa.</span>
                 <button
                   type="button"
                   onClick={handleStartNew}
                   className="text-blue-600 dark:text-[#DFB76C] font-bold hover:underline cursor-pointer flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3" />
-                  <span>+ Novo</span>
+                  <span>+ Novo Comunicado</span>
                 </button>
               </div>
 

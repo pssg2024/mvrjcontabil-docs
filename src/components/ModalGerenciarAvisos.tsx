@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   X, 
@@ -6,7 +6,7 @@ import {
   Plus, 
   Clock, 
   User, 
-  Edit2,
+  Edit2, 
   Megaphone,
   CheckCircle2,
   KeyRound,
@@ -15,6 +15,7 @@ import {
 import { AvisoItem, UserProfile } from '../types';
 import { deleteAviso } from '../lib/avisos-service';
 import { ModalConfirmarSenhaExclusao } from './ModalConfirmarSenhaExclusao';
+import { lockScroll, unlockScroll, setupBackdropScrollLock } from '../lib/scroll-lock';
 
 interface ModalGerenciarAvisosProps {
   isOpen: boolean;
@@ -40,32 +41,21 @@ export const ModalGerenciarAvisos: React.FC<ModalGerenciarAvisosProps> = ({
   const [targetDeleteAviso, setTargetDeleteAviso] = useState<AvisoItem | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
 
   // Trava de rolagem rigorosa na página ao fundo (Body Scroll Lock)
   useEffect(() => {
     if (!isOpen) return;
-
-    const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-    const originalBodyOverflow = document.body.style.overflow;
-    const originalHtmlOverflow = document.documentElement.style.overflow;
-    const originalBodyPosition = document.body.style.position;
-    const originalBodyTop = document.body.style.top;
-    const originalBodyWidth = document.body.style.width;
-
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-
+    lockScroll();
     return () => {
-      document.body.style.overflow = originalBodyOverflow;
-      document.documentElement.style.overflow = originalHtmlOverflow;
-      document.body.style.position = originalBodyPosition;
-      document.body.style.top = originalBodyTop;
-      document.body.style.width = originalBodyWidth;
-      window.scrollTo(0, scrollY);
+      unlockScroll();
     };
+  }, [isOpen]);
+
+  // Previne arrasto do fundo por touch ou wheel
+  useEffect(() => {
+    if (!isOpen || !backdropRef.current) return;
+    return setupBackdropScrollLock(backdropRef.current);
   }, [isOpen]);
 
   // Tecla ESC
@@ -148,17 +138,13 @@ export const ModalGerenciarAvisos: React.FC<ModalGerenciarAvisosProps> = ({
   const modalContent = (
     <>
       <div 
+        ref={backdropRef}
         className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-sm overscroll-contain animate-in fade-in duration-200 select-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-gerenciar-avisos-title"
         onClick={(e) => {
           if (e.target === e.currentTarget && !isPasswordModalOpen) onClose();
-        }}
-        onTouchMove={(e) => {
-          if (e.target === e.currentTarget) {
-            e.preventDefault();
-          }
         }}
       >
         <div 

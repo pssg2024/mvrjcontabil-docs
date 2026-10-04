@@ -46,7 +46,8 @@ import {
   X,
   Users,
   UserCheck,
-  UserX
+  UserX,
+  Info
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -154,6 +155,33 @@ export const FileManager: React.FC<FileManagerProps> = ({
       }
     }
   }, [currentFolderId, folders, currentUser.id, isFullAdmin]);
+
+  // Trava de rolagem rigorosa na página ao fundo (Body Scroll Lock) ao gerenciar permissões
+  useEffect(() => {
+    if (!managingPermsFolder) return;
+
+    const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyPosition = document.body.style.position;
+    const originalBodyTop = document.body.style.top;
+    const originalBodyWidth = document.body.style.width;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.position = originalBodyPosition;
+      document.body.style.top = originalBodyTop;
+      document.body.style.width = originalBodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [managingPermsFolder]);
 
   // Filter folders: direct children or search results across drive
   // Administradores veem tudo; Usuários comuns veem apenas pastas expressamente autorizadas
@@ -443,10 +471,12 @@ export const FileManager: React.FC<FileManagerProps> = ({
     <div className="w-full space-y-4 sm:space-y-6 overflow-x-hidden">
       
       {/* Top Storage, Documents & Real-Time Fiscal News Unified Banner (Corporate Deep Blue Theme) */}
-      <div className="bg-gradient-to-r from-[#0B1736] via-[#142654] to-[#1B357B] rounded-2xl p-5 sm:p-6 lg:p-7 shadow-lg relative overflow-hidden flex flex-col gap-5 text-white w-full border border-blue-900/40">
-        {/* Subtle decorative ambient glow */}
-        <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="bg-gradient-to-r from-[#0B1736] via-[#142654] to-[#1B357B] rounded-2xl p-5 sm:p-6 lg:p-7 shadow-lg relative flex flex-col gap-5 text-white w-full border border-blue-900/40">
+        {/* Subtle decorative ambient glow contained */}
+        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+          <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl" />
+        </div>
 
         {/* Linha Principal: Títulos à esquerda / Mural de Avisos à direita */}
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 sm:gap-6 w-full">
@@ -477,13 +507,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
       </div>
 
-      {/* Control Toolbar (Search, Sector Pills, View toggle, Actions) */}
+      {/* Control Toolbar (Search, Quick Actions, View Toggle) */}
       <div className="w-full max-w-full overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-3">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           
-          {/* Instant Search Bar & CNPJ Company Lookup */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 min-w-0">
-            <div className="relative flex-1">
+          {/* Row 1: Instant Search Bar & Compact CNPJ Company Lookup */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="relative flex-1 min-w-0">
               <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 id="search-docs-input"
@@ -491,7 +521,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 placeholder="Buscar por documento, CNPJ ou empresa..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-950 pl-10 pr-9 text-sm font-semibold focus:bg-white dark:focus:bg-slate-900 focus:border-[#1B357B] dark:focus:border-[#DFB76C] focus:ring-2 focus:ring-[#1B357B]/15 outline-hidden transition-all shadow-2xs placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
+                className="w-full h-10 sm:h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 pl-10 pr-9 text-xs sm:text-sm font-medium focus:bg-white dark:focus:bg-slate-900 focus:border-[#1B357B] dark:focus:border-[#DFB76C] focus:ring-2 focus:ring-[#1B357B]/15 outline-hidden transition-all shadow-xs placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
               />
               {searchQuery && (
                 <button
@@ -514,58 +544,61 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 id="lookup-company-btn"
                 type="button"
                 onClick={() => onOpenCompanyModal(searchQuery)}
-                className="w-full sm:w-auto h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-xs flex items-center justify-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-100 transition-all shadow-2xs shrink-0 cursor-pointer group"
+                className="h-10 sm:h-11 px-3 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 transition-all shadow-xs shrink-0 cursor-pointer active:scale-98"
                 title="Consultar Situação Cadastral de Empresa na Receita Federal (BrasilAPI)"
               >
-                <Building2 className="w-4 h-4 text-[#1B357B] dark:text-[#E2C37A] group-hover:scale-110 transition-transform flex-shrink-0" />
-                <span>Consultar CNPJ</span>
+                <Building2 className="w-4 h-4 text-[#1B357B] dark:text-[#DFB76C] shrink-0" />
+                <span className="hidden sm:inline">Consultar CNPJ</span>
+                <span className="sm:hidden">CNPJ</span>
               </button>
             )}
           </div>
 
-          {/* Action Buttons: New Folder, Upload & View Mode Toggle */}
-          <div className="flex flex-row items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end shrink-0">
-            {canCreateSubfolder && (
-              <button
-                id="create-folder-btn"
-                onClick={() => setIsCreatingFolder(true)}
-                className="flex-1 lg:flex-initial h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-750 transition-all cursor-pointer group"
-              >
-                <FolderPlus className="w-4 h-4 text-[#1B357B] dark:text-[#E2C37A] group-hover:scale-110 transition-transform flex-shrink-0" />
-                <span className="whitespace-nowrap">Nova Pasta</span>
-              </button>
-            )}
+          {/* Row 2: Action Buttons: New Folder, Upload & View Mode Toggle */}
+          <div className="flex items-center justify-between gap-2.5 w-full lg:w-auto shrink-0">
+            <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+              {canCreateSubfolder && (
+                <button
+                  id="create-folder-btn"
+                  onClick={() => setIsCreatingFolder(true)}
+                  className="flex-1 sm:flex-initial h-10 sm:h-11 px-3 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/90 font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 transition-all cursor-pointer active:scale-98"
+                >
+                  <FolderPlus className="w-4 h-4 text-[#1B357B] dark:text-[#DFB76C] shrink-0" />
+                  <span className="whitespace-nowrap">Nova Pasta</span>
+                </button>
+              )}
 
-            {canUpload ? (
-              <button
-                id="upload-doc-btn"
-                onClick={() => onOpenUploadModal(currentFolderId)}
-                className="flex-1 lg:flex-initial h-11 px-3 sm:px-5 rounded-xl bg-[#1B357B] hover:bg-[#152a60] dark:bg-[#C59B4B] dark:hover:bg-[#b0873e] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
-              >
-                <UploadCloud className="w-4 h-4 text-white flex-shrink-0" />
-                <span className="whitespace-nowrap sm:hidden">Upload</span>
-                <span className="whitespace-nowrap hidden sm:inline">Upload de Documento</span>
-              </button>
-            ) : (
-              <div className="flex-1 lg:flex-initial h-11 px-3 sm:px-4 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center gap-1.5" title="Apenas usuários com papel Editor ou Admin nesta pasta podem fazer upload.">
-                <Lock className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="whitespace-nowrap sm:hidden">Bloqueado</span>
-                <span className="whitespace-nowrap hidden sm:inline">Upload Bloqueado</span>
-              </div>
-            )}
+              {canUpload ? (
+                <button
+                  id="upload-doc-btn"
+                  onClick={() => onOpenUploadModal(currentFolderId)}
+                  className="flex-1 sm:flex-initial h-10 sm:h-11 px-3.5 sm:px-5 rounded-xl bg-gradient-to-r from-[#1B357B] to-[#122452] hover:brightness-110 dark:from-[#DFB76C] dark:via-[#E8C785] dark:to-[#D4A755] dark:text-slate-950 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-950/20 dark:shadow-amber-950/20 transition-all cursor-pointer active:scale-98"
+                >
+                  <UploadCloud className="w-4 h-4 shrink-0" />
+                  <span className="whitespace-nowrap sm:hidden">Upload</span>
+                  <span className="whitespace-nowrap hidden sm:inline">Upload de Documento</span>
+                </button>
+              ) : (
+                <div className="flex-1 sm:flex-initial h-10 sm:h-11 px-3 sm:px-4 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center gap-1.5" title="Apenas usuários com papel Editor ou Admin nesta pasta podem fazer upload.">
+                  <Lock className="w-3.5 h-3.5 shrink-0" />
+                  <span className="whitespace-nowrap sm:hidden">Bloqueado</span>
+                  <span className="whitespace-nowrap hidden sm:inline">Upload Bloqueado</span>
+                </div>
+              )}
+            </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl h-11 gap-1 flex-shrink-0 border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl h-10 sm:h-11 gap-0.5 shrink-0 border border-slate-200 dark:border-slate-800 shadow-2xs">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] font-bold shadow-xs border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#DFB76C] font-bold shadow-xs border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}
                 title="Visualização em Grade"
               >
                 <Grid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] font-bold shadow-xs border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#DFB76C] font-bold shadow-xs border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}
                 title="Visualização em Lista"
               >
                 <List className="w-4 h-4" />
@@ -639,21 +672,21 @@ export const FileManager: React.FC<FileManagerProps> = ({
       )}
 
       {/* Breadcrumbs Navigation */}
-      <nav className="flex items-center space-x-2 text-xs font-semibold text-slate-300 bg-slate-900 px-4 py-3 rounded-2xl border border-slate-800 overflow-x-auto shadow-sm w-full">
+      <nav className="flex items-center space-x-2 text-xs font-medium text-slate-600 dark:text-slate-300 bg-white/90 dark:bg-slate-900/80 backdrop-blur-md px-3.5 sm:px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-2xs w-full">
         <button
           onClick={() => setCurrentFolderId(null)}
-          className={`flex items-center space-x-1.5 hover:text-amber-400 transition-colors cursor-pointer ${!currentFolderId ? 'font-bold text-slate-100' : 'text-slate-300'}`}
+          className={`flex items-center space-x-1.5 hover:text-[#1B357B] dark:hover:text-[#DFB76C] transition-colors cursor-pointer shrink-0 ${!currentFolderId ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
         >
-          <Home className="w-4 h-4 text-amber-400" />
-          <span className="text-slate-300 font-semibold">Drive Raiz</span>
+          <Home className="w-4 h-4 text-[#1B357B] dark:text-[#DFB76C]" />
+          <span>Drive Raiz</span>
         </button>
 
         {breadcrumbs.map((crumb, idx) => (
           <React.Fragment key={crumb.id}>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600 shrink-0" />
             <button
               onClick={() => setCurrentFolderId(crumb.id)}
-              className={`hover:text-amber-400 transition-colors whitespace-nowrap cursor-pointer ${idx === breadcrumbs.length - 1 ? 'font-bold text-slate-100' : 'text-slate-300 font-semibold'}`}
+              className={`hover:text-[#1B357B] dark:hover:text-[#DFB76C] transition-colors whitespace-nowrap cursor-pointer ${idx === breadcrumbs.length - 1 ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 font-medium'}`}
             >
               {crumb.name}
             </button>
@@ -661,8 +694,8 @@ export const FileManager: React.FC<FileManagerProps> = ({
         ))}
 
         {searchQuery && (
-          <span className="ml-auto text-xs font-bold text-amber-300 bg-amber-950/60 px-3 py-1 rounded-lg border border-amber-800 shrink-0">
-            Filtro de busca: "{searchQuery}"
+          <span className="ml-auto text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800 shrink-0">
+            Filtro: "{searchQuery}"
           </span>
         )}
 
@@ -670,10 +703,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
           <button
             type="button"
             onClick={() => handleOpenPermsModal(currentFolder)}
-            className="ml-auto inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-950/80 text-blue-300 hover:bg-blue-900 border border-blue-800 transition-colors shrink-0 cursor-pointer shadow-xs"
+            className="ml-auto inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 transition-colors shrink-0 cursor-pointer shadow-2xs"
             title="Gerenciar quais usuários comuns podem ver esta pasta"
           >
-            <ShieldCheck className="w-4 h-4 text-blue-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>Permissões de Acesso</span>
           </button>
         )}
@@ -681,19 +714,25 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
       {/* FOLDERS SECTION */}
       {!searchQuery && visibleFolders.length > 0 && (
-        <section className="space-y-3.5 w-full">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-black">
-              Pastas no Nível Atual ({visibleFolders.length})
-            </h3>
+        <section className="space-y-3 w-full">
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              <FolderIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                Pastas no Nível Atual
+              </h3>
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-mono font-bold">
+                {visibleFolders.length}
+              </span>
+            </div>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3.5 sm:gap-4 w-full">
             {visibleFolders.map(folder => (
               <div
                 key={folder.id}
                 onClick={() => setCurrentFolderId(folder.id)}
-                className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 hover:border-[#1B357B]/50 dark:hover:border-amber-500/50 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all flex items-start justify-between group cursor-pointer min-w-0"
+                className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800/90 text-slate-900 dark:text-slate-100 hover:border-[#1B357B]/40 dark:hover:border-[#DFB76C]/40 rounded-2xl p-3.5 sm:p-4 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all flex items-start justify-between group cursor-pointer min-w-0"
               >
                 <div className="flex items-start space-x-3 min-w-0 flex-1">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] border border-blue-100 dark:border-slate-700 group-hover:bg-[#1B357B] group-hover:text-white dark:group-hover:bg-[#C59B4B] dark:group-hover:text-slate-950 transition-all flex items-center justify-center font-bold shrink-0 shadow-2xs mt-0.5">
@@ -1182,96 +1221,114 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
       {/* Granular Folder Permissions Management Modal (Admin / Diretoria) */}
       {managingPermsFolder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-lg mx-auto rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-sm overscroll-contain animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSavingPerms) setManagingPermsFolder(null);
+          }}
+          onTouchMove={(e) => {
+            if (e.target === e.currentTarget) e.preventDefault();
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 w-full max-w-lg mx-auto rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[92vh] overflow-hidden overscroll-contain animate-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
-            <div className="px-4 sm:px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-950/40 shrink-0">
               <div className="flex items-center space-x-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-xl bg-[#1B357B]/10 dark:bg-[#DFB76C]/10 text-[#1B357B] dark:text-[#DFB76C] border border-[#1B357B]/20 dark:border-[#DFB76C]/30 flex items-center justify-center shrink-0 shadow-2xs">
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-slate-900 font-bold text-sm sm:text-base flex items-center gap-2 truncate">
-                    <span>Permissões de Visualização</span>
+                  <h3 className="text-slate-900 dark:text-white font-bold text-sm sm:text-base truncate">
+                    Permissões de Acesso à Pasta
                   </h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs font-bold text-blue-700 truncate max-w-[150px] sm:max-w-[220px]">{managingPermsFolder.name}</span>
-                    <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">• {managingPermsFolder.sector}</span>
+                  <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[150px] sm:max-w-xs">{managingPermsFolder.name}</span>
+                    <span>·</span>
+                    <span className="text-[11px] font-medium">{managingPermsFolder.sector}</span>
                   </div>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setManagingPermsFolder(null)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+                disabled={isSavingPerms}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                aria-label="Fechar"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Informational Guidance Alert (Native Light) */}
-            <div className="px-4 sm:px-5 py-3.5 bg-slate-100 border-b border-slate-200 text-xs flex flex-col gap-2.5">
-              <div className="flex flex-col gap-0.5">
-                <span className="font-bold text-blue-700 flex items-center gap-1.5 text-xs">
-                  <span>👑</span> Acesso Total Irrestrito:
-                </span>
-                <p className="text-slate-700 pl-0.5 leading-relaxed text-[11px] sm:text-xs font-normal">
-                  Usuários Administrador e Diretoria visualizam e acessam todas as pastas automaticamente.
+            {/* Informational Guidance (Clean & Modern SaaS) */}
+            <div className="px-5 py-3 bg-blue-50/60 dark:bg-blue-950/30 border-b border-blue-100 dark:border-blue-900/40 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2.5 shrink-0">
+              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <div className="text-[11px] sm:text-xs leading-relaxed space-y-0.5">
+                <p>
+                  <strong>Diretoria e Administradores</strong> possuem acesso total irrestrito automático a esta pasta.
                 </p>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
-                  <span>🔒</span> Usuários Comuns (Fiscal, DP, Operacional):
-                </span>
-                <p className="text-slate-700 pl-0.5 leading-relaxed text-[11px] sm:text-xs font-normal">
-                  Só podem visualizar esta pasta se estiverem autorizados abaixo. Pastas não autorizadas ficam 100% ocultas.
+                <p className="text-slate-500 dark:text-slate-400">
+                  Marque abaixo os colaboradores que terão permissão para visualizar e abrir seus arquivos.
                 </p>
               </div>
             </div>
 
             {/* Filters & Actions Bar */}
-            <div className="p-3 sm:p-4 border-b border-slate-300 space-y-2.5 bg-white">
-              <div className="flex flex-col sm:flex-row gap-2">
+            <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 space-y-2.5 bg-white dark:bg-slate-900 shrink-0">
+              <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Filtrar por nome, email ou setor..."
+                    placeholder="Filtrar por colaborador, email ou setor..."
                     value={permsUserSearch}
                     onChange={(e) => setPermsUserSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-950 placeholder:text-slate-500 focus:bg-white focus:border-blue-600 outline-none transition-all font-bold"
+                    className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-[#1B357B] dark:focus:border-[#DFB76C] outline-none transition-all font-medium"
                   />
+                  {permsUserSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setPermsUserSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={handleSelectAllFiltered}
-                    className="flex-1 sm:flex-none px-3.5 py-2 text-xs font-bold text-blue-900 bg-blue-100 hover:bg-blue-200 border border-blue-300 rounded-xl transition-colors cursor-pointer text-center whitespace-nowrap shadow-2xs"
+                    className="px-2.5 py-2 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded-xl transition-colors cursor-pointer whitespace-nowrap active:scale-98 shadow-2xs"
                   >
-                    Marcar Filtrados
+                    Marcar Todos
                   </button>
                   <button
                     type="button"
                     onClick={handleDeselectAll}
-                    className="flex-1 sm:flex-none px-3.5 py-2 text-xs font-bold text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors cursor-pointer text-center whitespace-nowrap shadow-2xs"
+                    className="px-2.5 py-2 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors cursor-pointer whitespace-nowrap active:scale-98 shadow-2xs"
                   >
-                    Desmarcar Todos
+                    Desmarcar
                   </button>
                 </div>
               </div>
 
               {/* Sector Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 w-full text-xs">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full text-xs">
                 {(['ALL', 'Fiscal', 'Departamento Pessoal', 'Contábil', 'Financeiro', 'Geral'] as const).map(sec => (
                   <button
                     key={sec}
                     type="button"
                     onClick={() => setPermsSectorFilter(sec)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                       permsSectorFilter === sec
-                        ? 'bg-blue-700 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border border-slate-300'
+                        ? 'bg-[#1B357B] dark:bg-[#DFB76C] text-white dark:text-slate-950 shadow-2xs'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700/80'
                     }`}
                   >
                     {sec === 'ALL' ? 'Todos os Setores' : sec}
@@ -1280,12 +1337,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
               </div>
             </div>
 
-            {/* Users List */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4 divide-y divide-slate-100 min-h-0 bg-white">
+            {/* Users List with isolated overscroll */}
+            <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 divide-y divide-slate-100 dark:divide-slate-800/60 min-h-0 bg-white dark:bg-slate-900">
               {filteredCommonUsers.length === 0 ? (
-                <div className="py-10 text-center text-slate-700 text-xs font-bold">
-                  <UserX className="w-8 h-8 mx-auto text-slate-500 mb-2" />
-                  <p>Nenhum usuário comum encontrado para os filtros selecionados.</p>
+                <div className="py-12 text-center text-slate-500 text-xs space-y-2">
+                  <UserX className="w-8 h-8 mx-auto text-slate-400" />
+                  <p className="font-semibold text-slate-700 dark:text-slate-300">Nenhum colaborador encontrado.</p>
+                  <p className="text-[11px]">Tente ajustar a busca ou o setor selecionado.</p>
                 </div>
               ) : (
                 filteredCommonUsers.map(user => {
@@ -1294,20 +1352,20 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     <div
                       key={user.id}
                       onClick={() => toggleUserAccess(user.id)}
-                      className={`py-2.5 px-3 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                      className={`py-2.5 px-3 rounded-xl flex items-center justify-between gap-3 cursor-pointer transition-all ${
                         isAllowed
-                          ? 'bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-300'
-                          : 'hover:bg-slate-50 border border-transparent'
+                          ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/80'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <input
                           type="checkbox"
                           checked={isAllowed}
-                          onChange={() => {}} // Controlled by div click
-                          className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0 bg-white"
+                          onChange={() => {}} // Controlled by parent click
+                          className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0"
                         />
-                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-300 overflow-hidden">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700 overflow-hidden">
                           {user.avatar_url ? (
                             <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
                           ) : (
@@ -1315,23 +1373,23 @@ export const FileManager: React.FC<FileManagerProps> = ({
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-slate-950 truncate max-w-[130px] sm:max-w-none">{user.full_name}</p>
-                          <p className="text-xs text-slate-600 font-medium truncate max-w-[130px] sm:max-w-none">{user.email}</p>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{user.full_name}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">{user.email}</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-300 whitespace-nowrap">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 whitespace-nowrap">
                           {user.sector}
                         </span>
                         {isAllowed ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-950 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-300 whitespace-nowrap">
-                            <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-800 whitespace-nowrap shadow-2xs">
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                             <span>Autorizado</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 whitespace-nowrap">
-                            <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                            <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                             <span>Oculto</span>
                           </span>
                         )}
@@ -1343,22 +1401,23 @@ export const FileManager: React.FC<FileManagerProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-              <div className="text-xs text-slate-800 flex items-center justify-between sm:justify-start font-medium">
-                <div>
-                  <span className="font-black text-slate-950">{selectedAllowedUserIds.length}</span> de <span className="font-black text-slate-950">{commonUsers.length}</span> autorizados
-                </div>
+            <div className="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/40 flex items-center justify-between gap-3 shrink-0">
+              <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2 font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span>
+                  <strong className="text-slate-900 dark:text-white font-bold">{selectedAllowedUserIds.length}</strong> de {commonUsers.length} autorizados
+                </span>
                 {permsSuccessMessage && (
-                  <span className="ml-2 font-bold text-emerald-700 animate-in fade-in">{permsSuccessMessage}</span>
+                  <span className="text-xs font-bold text-emerald-600 animate-in fade-in">· {permsSuccessMessage}</span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setManagingPermsFolder(null)}
                   disabled={isSavingPerms}
-                  className="flex-1 sm:flex-none px-4 py-2.5 min-h-[40px] bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer transition-colors text-center shadow-2xs"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -1366,16 +1425,16 @@ export const FileManager: React.FC<FileManagerProps> = ({
                   type="button"
                   onClick={handleSavePermsSubmit}
                   disabled={isSavingPerms}
-                  className="flex-1 sm:flex-none px-5 py-2.5 min-h-[40px] bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs flex items-center justify-center space-x-1.5 text-center"
+                  className="px-4.5 py-2 bg-[#1B357B] hover:bg-[#152a60] dark:bg-[#DFB76C] dark:hover:bg-[#ce9e3c] text-white dark:text-slate-950 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 active:scale-98"
                 >
                   {isSavingPerms ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>Salvando...</span>
                     </>
                   ) : (
                     <>
-                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                      <ShieldCheck className="w-3.5 h-3.5" />
                       <span>Salvar Permissões</span>
                     </>
                   )}

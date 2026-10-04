@@ -99,6 +99,18 @@ const GRADIENT_PRESETS: Array<{
 // Header background image presets
 const HEADER_IMAGE_PRESETS = [
   {
+    id: 'header-accounting-office-gif',
+    name: 'Escritório de Contabilidade Animado (GIF)',
+    url: '/images/accounting_office.gif',
+    thumb: '/images/accounting_office.gif',
+  },
+  {
+    id: 'header-accounting-office-static',
+    name: 'Escritório de Contabilidade Estático',
+    url: '/images/accounting_office.jpg',
+    thumb: '/images/accounting_office.jpg',
+  },
+  {
     id: 'header-architecture',
     name: 'Fachada Corporativa Espelhada',
     url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',

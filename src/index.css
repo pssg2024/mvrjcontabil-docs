@@ -39,6 +39,19 @@ html, body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
+/* Trava rigorosa quando um modal estiver aberto: nenhum elemento de fundo pode se mover */
+html.modal-open,
+body.modal-open {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none !important;
+}
+
+html.modal-open #root {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 #root {
   min-height: 100%;
   min-height: 100dvh;

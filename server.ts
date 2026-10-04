@@ -4802,8 +4802,8 @@ interface ServerAuthHeaderConfig {
 
 let authHeaderConfig: ServerAuthHeaderConfig = {
   title: 'MVRJ CONTÁBIL',
-  subtitle: 'Gestão Eletrônica de Documentos Segura',
-  badgeText: 'Supabase RLS & Cloudflare R2',
+  subtitle: 'Gestão Eletrônica Contábil',
+  badgeText: 'MVRJ Contábil Corporativo',
   showBadge: true,
   bgType: 'gradient',
   gradientPreset: 'slate-indigo-blue',

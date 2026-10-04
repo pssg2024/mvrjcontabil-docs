@@ -231,7 +231,13 @@ export default function App() {
     const saved = localStorage.getItem('mvrj_auth_header_config');
     if (saved) {
       try {
-        return { ...DEFAULT_AUTH_HEADER_CONFIG, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        if (parsed.bgImageUrl?.includes('accounting_office')) {
+          parsed.bgImageUrl = '';
+          parsed.bgType = 'gradient';
+          localStorage.setItem('mvrj_auth_header_config', JSON.stringify({ ...DEFAULT_AUTH_HEADER_CONFIG, ...parsed }));
+        }
+        return { ...DEFAULT_AUTH_HEADER_CONFIG, ...parsed };
       } catch {}
     }
     return DEFAULT_AUTH_HEADER_CONFIG;
@@ -1326,8 +1332,8 @@ export default function App() {
 
         {/* Footer - Only render when logged in */}
         {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
-          <footer className="w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border-t border-slate-200 dark:border-slate-800 py-3.5 sm:py-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 dark:text-slate-400">
-            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <footer className="w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border-t border-slate-200 dark:border-slate-800 pt-3.5 pb-20 sm:pb-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 dark:text-slate-400">
+            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2.5 pr-14 sm:pr-0">
               <span>&copy; 2026 MVRJCONTÁBIL Gestão Eletrônica de Documentos. Todos os direitos reservados.</span>
               <div className="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400">
                 <button

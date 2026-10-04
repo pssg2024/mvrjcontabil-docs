@@ -552,8 +552,8 @@ export async function resetSiteBackground(
 
 export const DEFAULT_AUTH_HEADER_CONFIG: AuthHeaderConfig = {
   title: 'MVRJ CONTÁBIL',
-  subtitle: 'Gestão Eletrônica de Documentos Segura',
-  badgeText: 'Supabase RLS & Cloudflare R2',
+  subtitle: 'Gestão Eletrônica Contábil',
+  badgeText: 'MVRJ Contábil Corporativo',
   showBadge: true,
   showTitle: true,
   showSubtitle: true,
