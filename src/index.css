@@ -94,3 +94,69 @@ html:not(.dark), html:not(.dark) body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Executive Corporate Animations for Login and Interactive Elements */
+@keyframes shimmerSweep {
+  0% { transform: translateX(-160%) skewX(-20deg); }
+  45%, 100% { transform: translateX(260%) skewX(-20deg); }
+}
+
+@keyframes floatSubtle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes pulseGlowSlow {
+  0%, 100% { opacity: 0.35; transform: scale(0.95); }
+  50% { opacity: 0.8; transform: scale(1.15); }
+}
+
+@keyframes goldShimmer {
+  0% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+  100% { background-position: 0% center; }
+}
+
+@keyframes twinkleSlow {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 0.9; transform: scale(1.3); }
+}
+
+@keyframes orbDrift1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(30px, -25px) scale(1.1); }
+}
+
+@keyframes orbDrift2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(-35px, 20px) scale(1.15); }
+}
+
+.animate-shimmer-sweep {
+  animation: shimmerSweep 5.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-float-subtle {
+  animation: floatSubtle 4s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlowSlow 4s ease-in-out infinite;
+}
+
+.animate-gold-shimmer {
+  background-size: 200% auto;
+  animation: goldShimmer 4s ease-in-out infinite;
+}
+
+.animate-twinkle {
+  animation: twinkleSlow 3s ease-in-out infinite;
+}
+
+.animate-orb-1 {
+  animation: orbDrift1 12s ease-in-out infinite;
+}
+
+.animate-orb-2 {
+  animation: orbDrift2 14s ease-in-out infinite;
+}

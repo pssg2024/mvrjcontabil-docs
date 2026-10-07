@@ -91,28 +91,28 @@ export const PortalsDrawer: React.FC<PortalsDrawerProps> = ({ isOpen, onClose })
       
       {/* Drawer */}
       <div 
-        className="fixed top-0 right-0 h-screen w-80 sm:w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-slate-200 transition-transform duration-300 ease-in-out overscroll-contain"
+        className="fixed top-0 right-0 h-screen w-80 sm:w-96 bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-slate-800 transition-transform duration-300 ease-in-out overscroll-contain"
         onTouchMove={(e) => e.stopPropagation()}
       >
         {/* Fixed Header */}
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <h2 className="text-[#112354] font-bold text-sm">Portais Contábeis Úteis</h2>
-            <p className="text-slate-500 text-xs">Acesso rápido aos sistemas fiscais</p>
+            <h2 className="text-[#112354] dark:text-slate-100 font-bold text-sm">Portais Contábeis Úteis</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-xs">Acesso rápido aos sistemas fiscais</p>
           </div>
           <button 
             onClick={onClose} 
-            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
           {PORTAL_CATEGORIES.map((cat) => (
             <div key={cat.title}>
-              <h3 className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">{cat.title}</h3>
+              <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">{cat.title}</h3>
               <div className="space-y-2">
                 {cat.links.map((link) => (
                   <a
@@ -120,13 +120,13 @@ export const PortalsDrawer: React.FC<PortalsDrawerProps> = ({ isOpen, onClose })
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-[#1B357B]/5 hover:border-[#1B357B]/30 flex items-center justify-between transition-all group"
+                    className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 hover:bg-[#1B357B]/5 dark:hover:bg-slate-750 hover:border-[#1B357B]/30 dark:hover:border-amber-400/30 flex items-center justify-between transition-all group"
                   >
                     <div>
-                      <p className="text-xs font-semibold text-slate-800 group-hover:text-[#1B357B]">{link.name}</p>
-                      <p className="text-[10px] text-slate-500">{link.desc}</p>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-[#1B357B] dark:group-hover:text-amber-400">{link.name}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">{link.desc}</p>
                     </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#C59B4B]" />
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#C59B4B] dark:group-hover:text-amber-400 transition-colors" />
                   </a>
                 ))}
               </div>

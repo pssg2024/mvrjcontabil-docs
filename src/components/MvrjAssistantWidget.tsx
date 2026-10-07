@@ -1,7 +1,51 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Paperclip, Bot, User, AlertCircle, FileText, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
+import { MessageSquare, X, Send, Paperclip, Bot, User, AlertCircle, FileText, CheckCircle2, Loader2, Sparkles, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import ivanAvatar from '../assets/images/ivan_1790048076804.jpg';
+
+const CONSULTANT_TIPS = [
+  {
+    title: 'Consultoria MVRJ',
+    text: 'Olá! Sou sua consultora virtual da MVRJ Contábil. Como posso te ajudar hoje?',
+    query: 'Olá! Quais orientações fiscais e contábeis você pode me fornecer?',
+  },
+  {
+    title: 'Guia Simples Nacional (DAS)',
+    text: 'Precisa emitir ou consultar a guia DAS do mês? Posso te orientar!',
+    query: 'Como consulto e emito o DAS do Simples Nacional?',
+  },
+  {
+    title: 'Envio de Documentos',
+    text: 'Você pode me enviar notas fiscais e relatórios em PDF para conferência!',
+    query: 'Como funciona o envio e análise de documentos contábeis?',
+  },
+  {
+    title: 'Certificados & Prazos',
+    text: 'Dúvidas sobre Certificado Digital A1 ou prazos tributários de 2026/2027?',
+    query: 'Quais os principais prazos fiscais e como renovar o certificado A1?',
+  },
+];
+
+export function AssistantAvatar({
+  className = "w-full h-full",
+  showStatus = false,
+}: {
+  className?: string;
+  showStatus?: boolean;
+}) {
+  return (
+    <div className={`relative rounded-full overflow-hidden flex items-center justify-center ${className}`}>
+      <img
+        src="/images/accounting_consultant.jpg"
+        alt="Consultoria Contábil MVRJ"
+        className="w-full h-full object-cover object-top select-none pointer-events-none"
+        referrerPolicy="no-referrer"
+      />
+      {showStatus && (
+        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full shadow" />
+      )}
+    </div>
+  );
+}
 
 interface ChatMessage {
   id: string;
@@ -27,9 +71,47 @@ export function MvrjAssistantWidget() {
   const [attachedFile, setAttachedFile] = useState<{ name: string; mimeType: string; data: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+
+  // Estados de Interatividade da Consultora
+  const [isHovered, setIsHovered] = useState(false);
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
+  const [showBubble, setShowBubble] = useState(false);
+  const [dismissedBubble, setDismissedBubble] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Ciclo periódico de interação amigável
+  useEffect(() => {
+    if (isOpen || dismissedBubble) return;
+
+    // Primeiro cumprimento aos 3.5s
+    const firstTimer = setTimeout(() => {
+      setShowBubble(true);
+    }, 3500);
+
+    // Ciclo a cada 26 segundos com nova dica interativa
+    const interval = setInterval(() => {
+      if (!isOpen && !dismissedBubble) {
+        setCurrentTipIndex(prev => (prev + 1) % CONSULTANT_TIPS.length);
+        setShowBubble(true);
+        setTimeout(() => setShowBubble(false), 7000);
+      }
+    }, 26000);
+
+    return () => {
+      clearTimeout(firstTimer);
+      clearInterval(interval);
+    };
+  }, [isOpen, dismissedBubble]);
+
+  const handleQuickQuestion = (query: string) => {
+    setShowBubble(false);
+    setIsOpen(true);
+    setTimeout(() => {
+      handleSendMessage(undefined, query);
+    }, 250);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -190,33 +272,90 @@ export function MvrjAssistantWidget() {
 
   return (
     <>
-      {/* Floating Action Button */}
+      {/* Balão de Fala Interativo da Consultora */}
+      <AnimatePresence>
+        {!isOpen && showBubble && (
+          <motion.div
+            initial={{ opacity: 0, y: 15, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.9 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed bottom-28 right-6 z-50 max-w-[290px] sm:max-w-xs bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl p-3.5 shadow-2xl border border-blue-200/80 dark:border-blue-900/60 text-slate-800 dark:text-slate-100 font-sans"
+          >
+            {/* Ponta do balão apontando para o botão */}
+            <div className="absolute -bottom-2 right-9 w-4 h-4 bg-white dark:bg-slate-900 border-r border-b border-blue-200/80 dark:border-blue-900/60 rotate-45" />
+
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase tracking-wider">
+                <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+                {CONSULTANT_TIPS[currentTipIndex].title}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowBubble(false);
+                  setDismissedBubble(true);
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded cursor-pointer transition-colors"
+                title="Fechar dica"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-snug mb-2.5">
+              {CONSULTANT_TIPS[currentTipIndex].text}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => handleQuickQuestion(CONSULTANT_TIPS[currentTipIndex].query)}
+              className="w-full py-1.5 px-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center justify-between transition-all group cursor-pointer active:scale-98"
+            >
+              <span>Falar com Consultoria</span>
+              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Action Button - Consultoria Contábil (Referência Exata) */}
       <div className="fixed bottom-6 right-6 z-50">
         <motion.button
-          onClick={() => setIsOpen(!isOpen)}
-          className="relative group flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-blue-700 via-indigo-600 to-blue-600 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-400/50"
+          onClick={() => {
+            setIsOpen(!isOpen);
+            setShowBubble(false);
+          }}
+          onMouseEnter={() => {
+            setIsHovered(true);
+            if (!dismissedBubble) {
+              setShowBubble(true);
+            }
+          }}
+          onMouseLeave={() => {
+            setIsHovered(false);
+          }}
+          className="relative group flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-blue-700 via-indigo-600 to-blue-600 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-400/50 cursor-pointer"
           aria-label="Falar com MVRJ Contábil"
-          whileHover={{ scale: 1.05 }}
+          whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.95 }}
         >
-          {/* Executive Avatar Image */}
-          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/90 shadow-inner bg-slate-900 flex items-center justify-center">
+          {/* Foto Circular da Consultora Contábil */}
+          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/95 shadow-inner bg-slate-100 flex items-center justify-center">
             <img
-              src={ivanAvatar}
-              onError={(e) => {
-                // Fallback to executive illustration or icon if image fails
-                (e.currentTarget as HTMLElement).style.display = 'none';
-              }}
-              alt="MVRJ Contábil"
-              className="w-full h-full object-cover"
+              src="/images/accounting_consultant.jpg"
+              alt="Consultoria MVRJ Contábil"
+              className="w-full h-full object-cover object-top select-none pointer-events-none"
+              referrerPolicy="no-referrer"
             />
           </div>
 
-          {/* Online status indicator badge */}
-          <span className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-md animate-pulse" />
+          {/* Indicador de Status Online no Topo Direito (igual à imagem de referência) */}
+          <span className="absolute top-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-md animate-pulse z-10" />
 
           {/* Tooltip on hover */}
-          <span className="absolute right-full mr-3 px-3 py-1.5 bg-slate-900/90 text-white text-xs font-medium rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          <span className="absolute right-full top-1/2 -translate-y-1/2 mr-3 px-3 py-1.5 bg-slate-900/95 text-white text-xs font-medium rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-white/10">
             Falar com MVRJ Contábil 💬
           </span>
         </motion.button>
@@ -230,19 +369,17 @@ export function MvrjAssistantWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-w-[500px] h-[600px] max-h-[85vh] bg-white rounded-2xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden font-sans overscroll-contain"
+            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-w-[500px] h-[600px] max-h-[85vh] bg-white rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden font-sans overscroll-contain"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white px-4 py-3.5 flex items-center justify-between shadow-md">
+            <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 text-white px-4 py-3.5 flex items-center justify-between shadow-md border-b border-white/10">
               <div className="flex items-center space-x-3">
-                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-white/80 bg-blue-800 flex items-center justify-center shadow">
+                <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-[#DFB76C]/80 bg-slate-900 flex items-center justify-center shadow flex-shrink-0">
                   <img
-                    src={ivanAvatar}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLElement).style.display = 'none';
-                    }}
-                    alt="MVRJ Contábil"
-                    className="w-full h-full object-cover"
+                    src="/images/accounting_consultant.jpg"
+                    alt="Consultora MVRJ Contábil"
+                    className="w-full h-full object-cover object-top"
+                    referrerPolicy="no-referrer"
                   />
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border border-white rounded-full" />
                 </div>
@@ -250,12 +387,14 @@ export function MvrjAssistantWidget() {
                   <h3 className="font-bold text-sm sm:text-base tracking-tight flex items-center gap-1.5">
                     MVRJ Contábil
                   </h3>
-                  <p className="text-xs text-blue-200/90 font-normal">Consultoria Contábil & Geral • Online</p>
+                  <p className="text-xs text-blue-200/90 font-normal">
+                    {isLoading ? 'Consultoria digitando resposta...' : 'Consultoria Contábil & Geral • Online'}
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 aria-label="Fechar chat"
               >
                 <X className="w-5 h-5" />
@@ -281,17 +420,27 @@ export function MvrjAssistantWidget() {
             )}
 
             {/* Messages Area */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/60 overscroll-contain">
+            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/70 overscroll-contain">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
+                  {msg.role === 'model' && (
+                    <div className="w-8 h-8 rounded-full overflow-hidden border border-blue-400/40 shadow-xs shrink-0 self-end mb-1">
+                      <img
+                        src="/images/accounting_consultant.jpg"
+                        alt="Consultora MVRJ"
+                        className="w-full h-full object-cover object-top"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm leading-relaxed ${
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-xs leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-blue-600 text-white rounded-br-none'
-                        : 'bg-white text-slate-800 border border-slate-200/80 rounded-bl-none'
+                        ? 'bg-gradient-to-r from-blue-700 to-[#1B357B] text-white rounded-br-none shadow-sm'
+                        : 'bg-white text-slate-800 border border-slate-200/80 rounded-bl-none shadow-xs'
                     }`}
                   >
                     {msg.file && (

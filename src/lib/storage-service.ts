@@ -436,7 +436,7 @@ export async function getSiteBackgroundConfig(): Promise<SiteBackgroundConfig> {
     presetId: 'none',
     opacity: 25,
     blur: 0,
-    overlayType: 'light',
+    overlayType: 'dark',
     overlayOpacity: 40,
     position: 'cover',
   };

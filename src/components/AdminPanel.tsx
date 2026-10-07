@@ -132,62 +132,62 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* Grid de Estatísticas: 2 colunas em mobile e lg:grid-cols-4 em telas grandes */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-6">
-        <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-xl flex items-center space-x-3 shadow-2xs">
-          <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0">
+        <div className="p-3.5 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 rounded-xl flex items-center space-x-3 shadow-2xs">
+          <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg text-amber-700 dark:text-amber-300 shrink-0">
             <Clock className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] uppercase font-bold text-amber-600 block tracking-wide truncate">Pendentes</span>
-            <strong className="text-base sm:text-lg font-extrabold text-amber-950">{pendingProfiles.length}</strong>
+            <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 block tracking-wide truncate">Pendentes</span>
+            <strong className="text-base sm:text-lg font-extrabold text-amber-950 dark:text-amber-100">{pendingProfiles.length}</strong>
           </div>
         </div>
 
-        <div className="p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-xl flex items-center space-x-3 shadow-2xs">
-          <div className="p-2 bg-blue-100 rounded-lg text-blue-700 shrink-0">
+        <div className="p-3.5 bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/50 rounded-xl flex items-center space-x-3 shadow-2xs">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg text-blue-700 dark:text-blue-300 shrink-0">
             <UserCheck className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] uppercase font-bold text-blue-600 block tracking-wide truncate">Ativos</span>
-            <strong className="text-base sm:text-lg font-extrabold text-blue-950">{profiles.filter(p => p.status === 'active' || p.status === 'approved').length}</strong>
+            <span className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 block tracking-wide truncate">Ativos</span>
+            <strong className="text-base sm:text-lg font-extrabold text-blue-950 dark:text-blue-100">{profiles.filter(p => p.status === 'active' || p.status === 'approved').length}</strong>
           </div>
         </div>
 
-        <div className="p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-xl flex items-center space-x-3 shadow-2xs">
-          <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700 shrink-0">
+        <div className="p-3.5 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 rounded-xl flex items-center space-x-3 shadow-2xs">
+          <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg text-emerald-700 dark:text-emerald-300 shrink-0">
             <FolderTree className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] uppercase font-bold text-emerald-600 block tracking-wide truncate">Pastas GED</span>
-            <strong className="text-base sm:text-lg font-extrabold text-emerald-950">{folders.length}</strong>
+            <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block tracking-wide truncate">Pastas GED</span>
+            <strong className="text-base sm:text-lg font-extrabold text-emerald-950 dark:text-emerald-100">{folders.length}</strong>
           </div>
         </div>
 
-        <div className="p-3.5 bg-purple-50/80 border border-purple-200/80 rounded-xl flex items-center space-x-3 shadow-2xs">
-          <div className="p-2 bg-purple-100 rounded-lg text-purple-700 shrink-0">
+        <div className="p-3.5 bg-purple-50/80 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/50 rounded-xl flex items-center space-x-3 shadow-2xs">
+          <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg text-purple-700 dark:text-purple-300 shrink-0">
             <History className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] uppercase font-bold text-purple-600 block tracking-wide truncate">Auditoria</span>
-            <strong className="text-base sm:text-lg font-extrabold text-purple-950">{auditLogs.length}</strong>
+            <span className="text-[10px] uppercase font-bold text-purple-600 dark:text-purple-400 block tracking-wide truncate">Auditoria</span>
+            <strong className="text-base sm:text-lg font-extrabold text-purple-950 dark:text-purple-100">{auditLogs.length}</strong>
           </div>
         </div>
       </div>
 
       {/* Tabs Navigation - Executive Segmented Control */}
-      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/80 mb-6 max-w-full">
+      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-slate-100/90 dark:bg-slate-900/90 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 mb-6 max-w-full">
         <button
           id="tab-admin-pending"
           onClick={() => setActiveTab('pending')}
-          className={`px-4 py-2 text-xs font-medium flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl ${
+          className={`px-4 py-2 text-xs font-semibold flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl cursor-pointer ${
             activeTab === 'pending'
-              ? 'bg-[#1B357B] text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              ? 'bg-[#1B357B] dark:bg-[#C59B4B] text-white dark:text-slate-950 shadow-sm'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <Clock className={`w-4 h-4 ${activeTab === 'pending' ? 'text-[#DFB76C]' : 'text-slate-500'}`} />
+          <Clock className={`w-4 h-4 ${activeTab === 'pending' ? 'text-[#DFB76C] dark:text-slate-950' : 'text-slate-400'}`} />
           <span>Solicitações</span>
           {pendingProfiles.length > 0 && (
-            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${activeTab === 'pending' ? 'bg-[#C59B4B] text-white' : 'bg-amber-500 text-white'}`}>
+            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${activeTab === 'pending' ? 'bg-[#C59B4B] dark:bg-slate-900 text-white dark:text-amber-300' : 'bg-amber-500 text-white'}`}>
               {pendingProfiles.length}
             </span>
           )}
@@ -196,52 +196,52 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <button
           id="tab-admin-matrix"
           onClick={() => setActiveTab('matrix')}
-          className={`px-4 py-2 text-xs font-medium flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl ${
+          className={`px-4 py-2 text-xs font-semibold flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl cursor-pointer ${
             activeTab === 'matrix'
-              ? 'bg-[#1B357B] text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              ? 'bg-[#1B357B] dark:bg-[#C59B4B] text-white dark:text-slate-950 shadow-sm'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <FolderLock className={`w-4 h-4 ${activeTab === 'matrix' ? 'text-[#DFB76C]' : 'text-slate-500'}`} />
+          <FolderLock className={`w-4 h-4 ${activeTab === 'matrix' ? 'text-[#DFB76C] dark:text-slate-950' : 'text-slate-400'}`} />
           <span>Permissões</span>
         </button>
 
         <button
           id="tab-admin-users"
           onClick={() => setActiveTab('users')}
-          className={`px-4 py-2 text-xs font-medium flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl ${
+          className={`px-4 py-2 text-xs font-semibold flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl cursor-pointer ${
             activeTab === 'users'
-              ? 'bg-[#1B357B] text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              ? 'bg-[#1B357B] dark:bg-[#C59B4B] text-white dark:text-slate-950 shadow-sm'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <UserCog className={`w-4 h-4 ${activeTab === 'users' ? 'text-[#DFB76C]' : 'text-slate-500'}`} />
+          <UserCog className={`w-4 h-4 ${activeTab === 'users' ? 'text-[#DFB76C] dark:text-slate-950' : 'text-slate-400'}`} />
           <span>Usuários</span>
         </button>
 
         <button
           id="tab-admin-audit"
           onClick={() => setActiveTab('audit')}
-          className={`px-4 py-2 text-xs font-medium flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl ${
+          className={`px-4 py-2 text-xs font-semibold flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl cursor-pointer ${
             activeTab === 'audit'
-              ? 'bg-[#1B357B] text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              ? 'bg-[#1B357B] dark:bg-[#C59B4B] text-white dark:text-slate-950 shadow-sm'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <History className={`w-4 h-4 ${activeTab === 'audit' ? 'text-[#DFB76C]' : 'text-slate-500'}`} />
+          <History className={`w-4 h-4 ${activeTab === 'audit' ? 'text-[#DFB76C] dark:text-slate-950' : 'text-slate-400'}`} />
           <span>Auditoria</span>
         </button>
 
         <button
           id="tab-admin-appearance"
           onClick={() => setActiveTab('appearance')}
-          className={`px-4 py-2 text-xs font-medium flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl ${
+          className={`px-4 py-2 text-xs font-semibold flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl cursor-pointer ${
             activeTab === 'appearance'
-              ? 'bg-[#1B357B] text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              ? 'bg-[#1B357B] dark:bg-[#C59B4B] text-white dark:text-slate-950 shadow-sm'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <Palette className={`w-4 h-4 ${activeTab === 'appearance' ? 'text-[#DFB76C]' : 'text-slate-500'}`} />
+          <Palette className={`w-4 h-4 ${activeTab === 'appearance' ? 'text-[#DFB76C] dark:text-slate-950' : 'text-slate-400'}`} />
           <span>Personalização</span>
           {siteBackgroundConfig?.enabled && (
             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-xs" title="Fundo personalizado ativo" />
@@ -252,27 +252,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* TAB 1: PENDING ACCESS REQUESTS */}
       {activeTab === 'pending' && (
         <div className="space-y-4">
-          <div className="bg-blue-50/60 border border-blue-200/80 rounded-2xl p-4 flex items-start space-x-3">
-            <ShieldCheck className="w-5 h-5 text-[#1B357B] shrink-0 mt-0.5" />
-            <div className="text-xs text-slate-700 leading-relaxed font-medium">
+          <div className="bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/40 rounded-2xl p-4 flex items-start space-x-3">
+            <ShieldCheck className="w-5 h-5 text-[#1B357B] dark:text-blue-400 shrink-0 mt-0.5" />
+            <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
               Controle de Adesão: Novos cadastros de colaboradores permanecem retidos nesta fila até a aprovação formal e definição de setor pelo Administrador.
             </div>
           </div>
 
           {pendingProfiles.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm p-10 text-center">
-              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-xs">
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 shadow-sm p-10 text-center">
+              <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 shadow-xs">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-semibold text-[#112354]">Nenhuma solicitação pendente</h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Nenhuma solicitação pendente</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
                 Não há novos colaboradores aguardando liberação de acesso no momento.
               </p>
               <div className="mt-4">
                 <button
                   type="button"
                   onClick={() => window.location.reload()}
-                  className="inline-flex items-center space-x-2 text-xs font-medium text-[#1B357B] bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
+                  className="inline-flex items-center space-x-2 text-xs font-medium text-[#1B357B] dark:text-[#DFB76C] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Atualizar Fila</span>
@@ -284,7 +284,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="inline-flex items-center space-x-2 text-xs font-medium text-[#1B357B] bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
+                className="inline-flex items-center space-x-2 text-xs font-medium text-[#1B357B] dark:text-[#DFB76C] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Atualizar Fila (Sincronizar Banco)</span>
@@ -298,13 +298,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 const chosenRole = selectedRoleForApproval[profile.id] || 'viewer';
 
                 return (
-                  <div key={profile.id} className="bg-white rounded-xl border border-amber-300 shadow-sm p-5 relative overflow-hidden">
+                  <div key={profile.id} className="bg-white dark:bg-slate-900/90 rounded-2xl border border-amber-300/80 dark:border-amber-700/60 shadow-sm p-5 relative overflow-hidden">
                     <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-bl-lg">
                       Aguardando Homologação
                     </div>
 
                     <div className="flex items-start space-x-3.5 mb-4">
-                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-tr from-amber-500 to-orange-500 text-white font-black text-lg flex items-center justify-center shadow-xs shrink-0 border border-amber-200">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-tr from-amber-500 to-orange-500 text-white font-black text-lg flex items-center justify-center shadow-xs shrink-0 border border-amber-200 dark:border-amber-800">
                         {profile.avatar_url ? (
                           <img 
                             src={profile.avatar_url} 
@@ -317,30 +317,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         )}
                       </div>
                       <div className="pr-12">
-                        <h4 className="font-bold text-gray-900 text-sm leading-snug">{profile.full_name}</h4>
-                        <p className="text-xs text-gray-500">{profile.email}</p>
+                        <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-snug">{profile.full_name}</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{profile.email}</p>
                         <div className="flex items-center space-x-2 mt-1.5">
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                             Setor: {profile.sector}
                           </span>
-                          <span className="text-[11px] text-gray-400">
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500">
                             Cadastrado em {new Date(profile.created_at).toLocaleDateString('pt-BR')}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-gray-100">
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
                       {/* Definir Setor / Departamento */}
                       <div className="mb-3">
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                           Definir Setor / Departamento de Atuação:
                         </label>
                         <select
                           id={`select-sector-${profile.id}`}
                           value={selectedSectorForApproval[profile.id] || profile.sector}
                           onChange={(e) => setSelectedSectorForApproval(prev => ({ ...prev, [profile.id]: e.target.value as Sector }))}
-                          className="w-full text-xs py-1.5 px-2.5 border border-gray-300 rounded-lg bg-white font-medium text-gray-800 outline-hidden focus:ring-2 focus:ring-blue-500"
+                          className="w-full text-xs py-1.5 px-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 outline-hidden focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="Fiscal">Fiscal</option>
                           <option value="Departamento Pessoal">Departamento Pessoal (DP)</option>
@@ -360,8 +360,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           onClick={() => setSelectedRoleForApproval(prev => ({ ...prev, [profile.id]: 'viewer' }))}
                           className={`p-2.5 sm:p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
                             chosenRole === 'viewer' || chosenRole === 'User'
-                              ? 'bg-gray-800 text-white border-gray-900'
-                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              ? 'bg-slate-800 text-white border-slate-900 dark:bg-slate-700 dark:border-slate-600'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750'
                           }`}
                         >
                           Leitor (User)
@@ -374,7 +374,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           className={`p-2.5 sm:p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
                             chosenRole === 'editor'
                               ? 'bg-blue-600 text-white border-blue-700'
-                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750'
                           }`}
                         >
                           Editor
@@ -387,7 +387,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           className={`p-2.5 sm:p-2 rounded-lg text-xs font-semibold border transition-all text-center ${
                             chosenRole === 'admin'
                               ? 'bg-purple-600 text-white border-purple-700'
-                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750'
                           }`}
                         >
                           Admin
@@ -411,7 +411,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <button
                           id={`reject-user-${profile.id}`}
                           onClick={() => onRejectUser(profile.id)}
-                          className="py-2.5 sm:py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition-colors cursor-pointer active:scale-98"
+                          className="py-2.5 sm:py-2 px-3 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition-colors cursor-pointer active:scale-98"
                           title="Recusar ou excluir solicitação de cadastro"
                         >
                           <X className="w-4 h-4" />
@@ -429,42 +429,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* TAB 2: GRANULAR PERMISSIONS MATRIX (RBAC) */}
       {activeTab === 'matrix' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-gray-200 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-              <h3 className="font-bold text-sm text-gray-900">Matriz de Acessos por Pasta e Setor</h3>
-              <p className="text-xs text-gray-500">Defina o nível individual de permissão de cada colaborador em cada pasta do GED.</p>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">Matriz de Acessos por Pasta e Setor</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Defina o nível individual de permissão de cada colaborador em cada pasta do GED.</p>
             </div>
             <div className="flex items-center space-x-3 text-xs">
-              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-400"></span> <span>Nenhum</span></span>
-              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span> <span>Leitor</span></span>
-              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span> <span>Editor</span></span>
-              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span> <span>Admin</span></span>
+              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-400"></span> <span className="text-slate-600 dark:text-slate-400">Nenhum</span></span>
+              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span> <span className="text-slate-600 dark:text-slate-400">Leitor</span></span>
+              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span> <span className="text-slate-600 dark:text-slate-400">Editor</span></span>
+              <span className="inline-flex items-center space-x-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span> <span className="text-slate-600 dark:text-slate-400">Admin</span></span>
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-gray-100/70 border-b border-gray-200 text-gray-700">
-                  <th className="p-3 font-bold sticky left-0 bg-gray-100 min-w-[220px] z-10">Pasta / Setor</th>
+                <tr className="bg-slate-100/70 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                  <th className="p-3 font-bold sticky left-0 bg-slate-100 dark:bg-slate-950 min-w-[220px] z-10">Pasta / Setor</th>
                   {activeProfiles.map(p => (
                     <th key={p.id} className="p-3 font-semibold text-center min-w-[150px]">
-                      <div className="font-bold text-gray-900 truncate max-w-[140px] mx-auto">{p.full_name}</div>
-                      <div className="text-[10px] text-gray-500 font-normal">{p.sector} • {p.role}</div>
+                      <div className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px] mx-auto">{p.full_name}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">{p.sector} • {p.role}</div>
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {folders.map(folder => (
-                  <tr key={folder.id} className="hover:bg-gray-50/80 transition-colors">
-                    <td className="p-3 font-medium text-gray-900 sticky left-0 bg-white shadow-xs z-10">
+                  <tr key={folder.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="p-3 font-medium text-slate-900 dark:text-slate-100 sticky left-0 bg-white dark:bg-slate-900 shadow-xs z-10">
                       <div className="flex items-center space-x-2">
                         <FolderTree className="w-4 h-4 text-blue-600 shrink-0" />
                         <div>
                           <span className="font-bold block text-xs">{folder.name}</span>
-                          <span className="text-[10px] text-gray-500">{folder.sector}</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">{folder.sector}</span>
                         </div>
                       </div>
                     </td>
@@ -481,7 +481,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       return (
                         <td key={profile.id} className="p-2.5 text-center">
                           {isGlobalAdmin ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200" title="Acesso total herdado do papel de Administrador Global / Diretoria">
+                            <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] font-bold bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800" title="Acesso total herdado do papel de Administrador Global / Diretoria">
                               Admin Total
                             </span>
                           ) : (
@@ -490,12 +490,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               onChange={(e) => onUpdateFolderPermission(folder.id, profile.id, e.target.value as any)}
                               className={`text-xs rounded-md px-2 py-1 border font-medium outline-hidden transition-all ${
                                 currentPerm === 'admin'
-                                  ? 'bg-purple-50 text-purple-800 border-purple-300 font-bold'
-                                  : currentPerm === 'editor'
-                                  ? 'bg-blue-50 text-blue-800 border-blue-300 font-bold'
-                                  : currentPerm === 'viewer'
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold'
-                                  : 'bg-white text-gray-400 border-gray-200'
+                                   ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800 font-bold'
+                                   : currentPerm === 'editor'
+                                   ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800 font-bold'
+                                   : currentPerm === 'viewer'
+                                   ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 font-semibold'
+                                   : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700'
                               }`}
                             >
                               <option value="none">Sem Acesso (Oculta)</option>
@@ -517,17 +517,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* TAB 3: USER MANAGEMENT */}
       {activeTab === 'users' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 className="font-bold text-sm text-gray-900">Colaboradores Cadastrados</h3>
-            <span className="text-xs text-gray-500">Total: {profiles.length} usuários</span>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">Colaboradores Cadastrados</h3>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Total: {profiles.length} usuários</span>
           </div>
 
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {profiles.map(profile => (
-              <div key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 hover:bg-gray-50 transition-colors">
+              <div key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                 <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 text-slate-800 font-bold flex items-center justify-center text-sm shrink-0 border border-slate-300">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center text-sm shrink-0 border border-slate-300 dark:border-slate-700">
                     {profile.avatar_url ? (
                       <img 
                         src={profile.avatar_url} 
@@ -541,27 +541,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                      <h4 className="font-bold text-sm text-gray-900 truncate max-w-[180px] sm:max-w-none">{profile.full_name}</h4>
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate max-w-[180px] sm:max-w-none">{profile.full_name}</h4>
                       <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
                         profile.status === 'active' || profile.status === 'approved'
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                           : profile.status === 'pending'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-rose-100 text-rose-800'
+                          ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                          : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
                       }`}>
                         {profile.status}
                       </span>
                       {profile.lgpd_accepted_at ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0" title={`Aceite LGPD registrado em ${new Date(profile.lgpd_accepted_at).toLocaleString('pt-BR')}`}>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0" title={`Aceite LGPD registrado em ${new Date(profile.lgpd_accepted_at).toLocaleString('pt-BR')}`}>
                           LGPD: Aceito
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
                           LGPD: Pendente
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 truncate mt-0.5">{profile.email} • Setor: <strong className="text-gray-700">{profile.sector}</strong></p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{profile.email} • Setor: <strong className="text-slate-700 dark:text-slate-300">{profile.sector}</strong></p>
                   </div>
                 </div>
 
@@ -569,7 +569,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <select
                     value={profile.role}
                     onChange={(e) => onUpdateUserRole(profile.id, e.target.value as UserRole)}
-                    className="flex-1 sm:flex-initial text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 outline-hidden min-w-[110px]"
+                    className="flex-1 sm:flex-initial text-xs rounded-lg px-2.5 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-hidden min-w-[110px]"
                   >
                     <option value="viewer">Papel: Leitor</option>
                     <option value="editor">Papel: Editor</option>
@@ -579,7 +579,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <select
                     value={profile.status}
                     onChange={(e) => onUpdateUserStatus(profile.id, e.target.value as UserStatus)}
-                    className="flex-1 sm:flex-initial text-xs rounded-lg px-2.5 py-1.5 border border-gray-300 bg-white font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 outline-hidden min-w-[110px]"
+                    className="flex-1 sm:flex-initial text-xs rounded-lg px-2.5 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-hidden min-w-[110px]"
                   >
                     <option value="active">Status: Ativo</option>
                     <option value="approved">Status: Aprovado</option>
@@ -593,7 +593,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     id={`delete-user-${profile.id}`}
                     onClick={() => onDeleteUser(profile.id, profile.full_name || profile.email)}
-                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors border border-rose-100 hover:border-rose-300 shrink-0"
+                    className="p-2 text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors border border-rose-100 dark:border-rose-900/50 hover:border-rose-300 shrink-0"
                     title={`Excluir ${profile.full_name || profile.email} permanentemente`}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -611,20 +611,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <div className="relative flex-1 sm:w-64">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-2.5" />
                 <input
                   type="text"
                   placeholder="Buscar logs por usuário ou ação..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl w-full bg-white font-bold text-slate-950 placeholder:text-slate-500 focus:border-blue-600 outline-none shadow-2xs"
+                  className="pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-800 rounded-xl w-full bg-white dark:bg-slate-900 font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-blue-600 outline-none shadow-2xs"
                 />
               </div>
 
               <select
                 value={auditFilter}
                 onChange={(e) => setAuditFilter(e.target.value)}
-                className="text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white font-bold text-slate-900 focus:border-blue-600 outline-none shadow-2xs cursor-pointer w-full sm:w-auto"
+                className="text-xs border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 bg-white dark:bg-slate-900 font-medium text-slate-800 dark:text-slate-200 focus:border-blue-600 outline-none shadow-2xs cursor-pointer w-full sm:w-auto"
               >
                 <option value="ALL">Todas as Ações</option>
                 <option value="LOGIN">LOGIN</option>
@@ -635,13 +635,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </select>
             </div>
 
-            <span className="text-xs text-slate-700 font-bold self-end sm:self-auto">Exibindo {filteredLogs.length} eventos de auditoria</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium self-end sm:self-auto">Exibindo {filteredLogs.length} eventos de auditoria</span>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-300 shadow-xs overflow-x-auto scrollbar-thin">
+          <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-xs overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
             <table className="w-full text-left text-xs border-collapse min-w-[500px] sm:min-w-full">
               <thead>
-                <tr className="bg-slate-100 border-b border-slate-300 text-slate-900 font-black">
+                <tr className="bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
                   <th className="p-3">Data / Hora</th>
                   <th className="p-3">Ação</th>
                   <th className="p-3">Usuário</th>
@@ -650,29 +650,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <th className="p-3 hidden lg:table-cell">Detalhes Técnicos</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 font-mono text-[11px]">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-[11px]">
                 {filteredLogs.map(log => (
-                  <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3 text-slate-700 font-semibold whitespace-nowrap">
+                  <tr key={log.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="p-3 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">
                       {new Date(log.created_at).toLocaleString('pt-BR')}
                     </td>
                     <td className="p-3">
-                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-black border ${
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border ${
                         log.action.includes('UPLOAD')
-                          ? 'bg-blue-100 text-blue-950 border-blue-300'
+                          ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
                           : log.action.includes('PERMISSION') || log.action.includes('APPROVED')
-                          ? 'bg-purple-100 text-purple-950 border-purple-300'
+                          ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800'
                           : log.action.includes('REQUEST')
-                          ? 'bg-amber-100 text-amber-950 border-amber-300'
-                          : 'bg-slate-100 text-slate-900 border-slate-300'
+                          ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                       }`}>
                         {log.action}
                       </span>
                     </td>
-                    <td className="p-3 font-sans font-bold text-slate-950">{log.user_name}</td>
-                    <td className="p-3 font-sans font-semibold text-slate-800 hidden sm:table-cell">{log.sector}</td>
-                    <td className="p-3 font-sans font-semibold text-slate-700 hidden md:table-cell">{log.target_type}</td>
-                    <td className="p-3 font-mono text-slate-800 font-medium max-w-xs truncate hidden lg:table-cell" title={JSON.stringify(log.details)}>
+                    <td className="p-3 font-sans font-bold text-slate-900 dark:text-slate-100">{log.user_name}</td>
+                    <td className="p-3 font-sans font-medium text-slate-600 dark:text-slate-300 hidden sm:table-cell">{log.sector}</td>
+                    <td className="p-3 font-sans font-medium text-slate-500 dark:text-slate-400 hidden md:table-cell">{log.target_type}</td>
+                    <td className="p-3 font-mono text-slate-500 dark:text-slate-400 font-normal max-w-xs truncate hidden lg:table-cell" title={JSON.stringify(log.details)}>
                       {JSON.stringify(log.details)}
                     </td>
                   </tr>
@@ -687,31 +687,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {activeTab === 'appearance' && (
         <div className="space-y-6">
           {/* Sub-tabs for Appearance */}
-          <div className="flex items-center space-x-2 bg-gray-100 p-1.5 rounded-2xl w-fit border border-gray-200">
+          <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl w-fit border border-slate-200 dark:border-slate-800">
             <button
               id="subtab-site-bg"
               type="button"
               onClick={() => setAppearanceSubTab('site-bg')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer ${
                 appearanceSubTab === 'site-bg'
-                  ? 'bg-white text-purple-700 shadow-xs border border-gray-200 font-black'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-300 shadow-xs border border-slate-200 dark:border-slate-700 font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Palette className="w-4 h-4 text-purple-600" />
+              <Palette className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span>Fundo Geral do Site</span>
             </button>
             <button
               id="subtab-auth-header"
               type="button"
               onClick={() => setAppearanceSubTab('auth-header')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer ${
                 appearanceSubTab === 'auth-header'
-                  ? 'bg-white text-blue-700 shadow-xs border border-gray-200 font-black'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 shadow-xs border border-slate-200 dark:border-slate-700 font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Lock className="w-4 h-4 text-blue-600" />
+              <Lock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>Cabeçalho de Login & Boas-Vindas</span>
             </button>
           </div>

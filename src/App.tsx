@@ -1200,12 +1200,12 @@ export default function App() {
     }
   };
 
-  const isDarkTheme = siteBackgroundConfig.overlayType === 'dark';
+  const isDarkTheme = siteBackgroundConfig.overlayType !== 'light';
 
   return (
     <div
       className={`min-h-screen w-full overflow-x-hidden ${
-        isDarkTheme ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'
+        isDarkTheme ? 'bg-[#091224] text-slate-100' : 'bg-slate-100 text-slate-900'
       } flex flex-col font-sans relative transition-colors duration-300`}
     >
       {/* Dynamic Background Image Layer */}
