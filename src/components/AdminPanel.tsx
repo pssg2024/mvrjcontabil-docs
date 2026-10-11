@@ -18,7 +18,9 @@ import {
   ChevronRight,
   Palette,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Edit2,
+  Loader2
 } from 'lucide-react';
 import { 
   UserProfile, 
@@ -51,6 +53,7 @@ interface AdminPanelProps {
   onUpdateUserStatus: (userId: string, status: UserStatus) => void;
   onUpdateUserRole: (userId: string, role: UserRole) => void;
   onUpdateFolderPermission: (folderId: string, profileId: string, level: PermissionLevel | 'none') => void;
+  onRenameFolder?: (folderId: string, newName: string) => Promise<any> | void;
   onUpdateSiteBackgroundConfig?: (config: SiteBackgroundConfig) => void;
   onUpdateAuthHeaderConfig?: (config: AuthHeaderConfig) => void;
   onAuditLog?: (details: Record<string, any>) => void;
@@ -71,6 +74,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateUserStatus,
   onUpdateUserRole,
   onUpdateFolderPermission,
+  onRenameFolder,
   onUpdateSiteBackgroundConfig,
   onUpdateAuthHeaderConfig,
   onAuditLog,
@@ -81,6 +85,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [selectedSectorForApproval, setSelectedSectorForApproval] = useState<Record<string, Sector>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [auditFilter, setAuditFilter] = useState<string>('ALL');
+
+  // Folder Renaming Modal State (Admin)
+  const [renamingFolder, setRenamingFolder] = useState<Folder | null>(null);
+  const [newFolderNameInput, setNewFolderNameInput] = useState('');
+  const [isSubmittingFolderRename, setIsSubmittingFolderRename] = useState(false);
+  const [folderRenameError, setFolderRenameError] = useState<string | null>(null);
+
+  const handleConfirmRenameFolder = async () => {
+    if (!renamingFolder) return;
+    const trimmed = newFolderNameInput.trim();
+    if (!trimmed) {
+      setFolderRenameError('O nome da pasta não pode ficar vazio.');
+      return;
+    }
+    if (trimmed === renamingFolder.name) {
+      setRenamingFolder(null);
+      setFolderRenameError(null);
+      return;
+    }
+    if (onRenameFolder) {
+      try {
+        setIsSubmittingFolderRename(true);
+        setFolderRenameError(null);
+        await onRenameFolder(renamingFolder.id, trimmed);
+        setRenamingFolder(null);
+        setFolderRenameError(null);
+      } catch (err: any) {
+        setFolderRenameError(err.message || 'Erro ao renomear a pasta.');
+      } finally {
+        setIsSubmittingFolderRename(false);
+      }
+    } else {
+      setRenamingFolder(null);
+    }
+  };
 
   const pendingProfiles = profiles.filter(p => p.status === 'pending');
   const activeProfiles = profiles.filter(p => p.status !== 'pending');
@@ -460,12 +499,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {folders.map(folder => (
                   <tr key={folder.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="p-3 font-medium text-slate-900 dark:text-slate-100 sticky left-0 bg-white dark:bg-slate-900 shadow-xs z-10">
-                      <div className="flex items-center space-x-2">
-                        <FolderTree className="w-4 h-4 text-blue-600 shrink-0" />
-                        <div>
-                          <span className="font-bold block text-xs">{folder.name}</span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400">{folder.sector}</span>
+                      <div className="flex items-center justify-between space-x-2">
+                        <div className="flex items-center space-x-2 min-w-0">
+                          <FolderTree className="w-4 h-4 text-blue-600 shrink-0" />
+                          <div className="min-w-0">
+                            <span className="font-bold block text-xs truncate" title={folder.name}>{folder.name}</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400">{folder.sector}</span>
+                          </div>
                         </div>
+                        {onRenameFolder && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRenamingFolder(folder);
+                              setNewFolderNameInput(folder.name);
+                              setFolderRenameError(null);
+                            }}
+                            className="text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 p-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors shrink-0 cursor-pointer"
+                            title="Editar Nome da Pasta"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
 
@@ -630,6 +685,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <option value="LOGIN">LOGIN</option>
                 <option value="ACCESS_REQUEST">ACCESS_REQUEST</option>
                 <option value="FILE_UPLOAD">FILE_UPLOAD</option>
+                <option value="FOLDER_CREATE">FOLDER_CREATE</option>
+                <option value="FOLDER_RENAME">FOLDER_RENAME</option>
                 <option value="PERMISSION_CHANGE">PERMISSION_CHANGE</option>
                 <option value="USER_APPROVED">USER_APPROVED</option>
               </select>
@@ -748,6 +805,135 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               onAuditLog={onAuditLog}
             />
           )}
+        </div>
+      )}
+
+      {/* Rename Folder Modal (Admin) */}
+      {renamingFolder && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSubmittingFolderRename) {
+              setRenamingFolder(null);
+              setFolderRenameError(null);
+            }
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 w-[94%] max-w-md mx-auto rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 text-slate-900 dark:text-slate-100 animate-in zoom-in-95 duration-150"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 flex items-center justify-center border border-amber-200/80 dark:border-amber-800/80 shadow-2xs">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-slate-900 dark:text-slate-100 font-bold text-sm sm:text-base leading-tight">
+                    Editar Nome da Pasta
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+                    Setor: <span className="font-semibold text-slate-700 dark:text-slate-300">{renamingFolder.sector}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isSubmittingFolderRename) {
+                    setRenamingFolder(null);
+                    setFolderRenameError(null);
+                  }
+                }}
+                disabled={isSubmittingFolderRename}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {folderRenameError && (
+              <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-center space-x-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="font-medium">{folderRenameError}</span>
+              </div>
+            )}
+
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nome Atual
+                </label>
+                <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-600 dark:text-slate-400 font-medium truncate flex items-center space-x-2">
+                  <FolderTree className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span className="truncate">{renamingFolder.name}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Novo Nome da Pasta
+                </label>
+                <input
+                  type="text"
+                  value={newFolderNameInput}
+                  onChange={(e) => {
+                    setNewFolderNameInput(e.target.value);
+                    if (folderRenameError) setFolderRenameError(null);
+                  }}
+                  placeholder="Digite o novo nome da pasta..."
+                  disabled={isSubmittingFolderRename}
+                  className="w-full h-10 px-3 text-xs text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:border-[#1B357B] dark:focus:border-amber-400 focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all font-semibold placeholder:text-slate-400"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleConfirmRenameFolder();
+                    } else if (e.key === 'Escape') {
+                      if (!isSubmittingFolderRename) {
+                        setRenamingFolder(null);
+                        setFolderRenameError(null);
+                      }
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end space-x-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isSubmittingFolderRename}
+                onClick={() => {
+                  setRenamingFolder(null);
+                  setFolderRenameError(null);
+                }}
+                className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingFolderRename || !newFolderNameInput.trim() || newFolderNameInput.trim() === renamingFolder.name}
+                onClick={handleConfirmRenameFolder}
+                className="px-4 py-2 bg-[#1B357B] hover:bg-[#14285D] dark:bg-amber-600 dark:hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs flex items-center space-x-1.5"
+              >
+                {isSubmittingFolderRename ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Salvando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Salvar Alteração</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

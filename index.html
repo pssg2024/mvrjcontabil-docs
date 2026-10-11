@@ -2,10 +2,54 @@
 <html lang="pt-BR" translate="no" class="dark notranslate">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no" />
     <meta name="google" content="notranslate" />
     <title>MVRJ CONTABIL | Consultoria & GED Corporativo</title>
     <meta name="description" content="Sistema de Gestão Eletrônica de Documentos corporativo da MVRJ CONTÁBIL com autenticação RBAC granular, integração Cloudflare R2 e auditoria imutável." />
+    
+    <!-- Script de Bloqueio Rigoroso de Zoom Acidental (Scroll Ctrl+Rodinha, Atalhos de Teclado e Gestos) -->
+    <script>
+      (function() {
+        // 1. Interceptar e bloquear zoom na rolagem do mouse com Ctrl (wheel + ctrlKey)
+        window.addEventListener('wheel', function(e) {
+          if (e.ctrlKey) {
+            e.preventDefault();
+          }
+        }, { passive: false });
+
+        // 2. Interceptar e bloquear atalhos comuns de teclado para zoom (Ctrl + "+", "-", "0", "=", numpad)
+        window.addEventListener('keydown', function(e) {
+          if (e.ctrlKey || e.metaKey) {
+            if (
+              e.key === '+' || 
+              e.key === '-' || 
+              e.key === '=' || 
+              e.key === '0' || 
+              e.code === 'NumpadAdd' || 
+              e.code === 'NumpadSubtract' || 
+              e.code === 'Numpad0' || 
+              e.code === 'Digit0' || 
+              e.code === 'Equal' || 
+              e.code === 'Minus'
+            ) {
+              e.preventDefault();
+            }
+          }
+        }, { passive: false });
+
+        // 3. Bloquear gestos de pinça / zoom em trackpads Safari/Chrome
+        window.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+        window.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
+        window.addEventListener('gestureend', function(e) { e.preventDefault(); }, { passive: false });
+
+        // 4. Bloquear multi-touch zoom acidental em telas sensíveis ao toque
+        document.addEventListener('touchstart', function(e) {
+          if (e.touches && e.touches.length > 1) {
+            e.preventDefault();
+          }
+        }, { passive: false });
+      })();
+    </script>
     
     <!-- Google Fonts: Inter & JetBrains Mono for SaaS Financial Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

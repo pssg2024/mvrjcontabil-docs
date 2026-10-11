@@ -1,11 +1,47 @@
 [
   {
-    "id": "a20ead42-915d-40ad-ab1c-4a715ae6eb3f",
-    "parent_id": null,
-    "name": "Teste",
+    "id": "712f4e41-dfd0-42f7-b286-3f832a3a5cf6",
+    "parent_id": "19a33f3e-8ad8-47b6-b730-b60b6fee16d6",
+    "name": "lulu1",
     "sector": "Diretoria",
     "created_by": "57e1d483-669b-4791-b09e-7496570e63ea",
-    "created_at": "2026-10-03T06:50:33.646621+00:00",
-    "updated_at": "2026-10-03T07:00:31.484+00:00"
+    "created_at": "2026-10-11T16:49:24.679754+00:00",
+    "updated_at": "2026-10-11T16:49:24.387+00:00"
+  },
+  {
+    "id": "19a33f3e-8ad8-47b6-b730-b60b6fee16d6",
+    "parent_id": "a62e4471-b400-4470-bade-f8e622b1acdd",
+    "name": "lulu",
+    "sector": "Diretoria",
+    "created_by": "57e1d483-669b-4791-b09e-7496570e63ea",
+    "created_at": "2026-10-11T16:49:21.863802+00:00",
+    "updated_at": "2026-10-11T16:49:21.547+00:00"
+  },
+  {
+    "id": "a62e4471-b400-4470-bade-f8e622b1acdd",
+    "parent_id": null,
+    "name": "lucas",
+    "sector": "Diretoria",
+    "created_by": "57e1d483-669b-4791-b09e-7496570e63ea",
+    "created_at": "2026-10-11T15:30:06.214009+00:00",
+    "updated_at": "2026-10-11T15:30:05.902+00:00"
+  },
+  {
+    "id": "dd74eb67-e538-4017-b1b6-11ddc197e4bf",
+    "parent_id": "09897e45-50c7-4e74-9800-5a76b0273bd3",
+    "name": "FISCAL",
+    "sector": "Fiscal",
+    "created_by": null,
+    "created_at": "2026-10-09T17:35:11.197728+00:00",
+    "updated_at": "2026-10-09T17:35:10.43+00:00"
+  },
+  {
+    "id": "09897e45-50c7-4e74-9800-5a76b0273bd3",
+    "parent_id": null,
+    "name": "BRINCAR",
+    "sector": "Fiscal",
+    "created_by": null,
+    "created_at": "2026-10-09T17:31:56.733739+00:00",
+    "updated_at": "2026-10-09T17:31:56.395+00:00"
   }
 ]

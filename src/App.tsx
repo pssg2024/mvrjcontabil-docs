@@ -904,6 +904,11 @@ export default function App() {
         setFiles(apiFiles);
       }
     });
+    fetchFoldersFromApi().then(apiFolders => {
+      if (apiFolders && apiFolders.length > 0) {
+        setFolders(apiFolders);
+      }
+    }).catch(() => {});
     notifyBroadcastSync();
     logAudit('FILE_UPLOAD', 'FILE', newDoc.id, {
       name: newDoc.name,
@@ -1008,6 +1013,38 @@ export default function App() {
       alert('Erro ao renomear arquivo: ' + (err.message || 'Erro desconhecido'));
       const updatedFiles = await fetchFilesFromApi();
       setFiles(updatedFiles);
+    }
+  };
+
+  const handleRenameFolder = async (folderId: string, newName: string) => {
+    const folder = folders.find(f => f.id === folderId);
+    if (!folder) return;
+
+    const finalName = newName.trim();
+    if (!finalName || finalName === folder.name) return;
+
+    lastFolderActionRef.current = Date.now();
+    logAudit('FOLDER_RENAME', 'FOLDER', folderId, { old_name: folder.name, new_name: finalName });
+
+    // Atualização otimista imediata
+    setFolders(prev => {
+      const updated = prev.map(f => f.id === folderId ? { ...f, name: finalName, updated_at: new Date().toISOString() } : f);
+      try {
+        localStorage.setItem('mvrj_folders', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    try {
+      await updateFolderInApi(folderId, { name: finalName });
+      notifyBroadcastSync();
+    } catch (err: any) {
+      console.error('Erro ao renomear pasta:', err);
+      const updatedFolders = await fetchFoldersFromApi().catch(() => []);
+      if (updatedFolders.length > 0) {
+        setFolders(updatedFolders);
+      }
+      throw err;
     }
   };
 
@@ -1276,7 +1313,7 @@ export default function App() {
 
 
         {/* Main View Area - Fluid Full-Width Container */}
-        <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col gap-5 sm:gap-6 min-w-0">
+        <main className="flex-1 w-full max-w-none px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col gap-5 sm:gap-6 min-w-0">
           {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') ? (
             activeView === 'drive' ? (
               <FileManager
@@ -1293,6 +1330,7 @@ export default function App() {
                 }}
                 onCreateFolder={handleCreateFolder}
                 onDeleteFolder={handleDeleteFolder}
+                onRenameFolder={handleRenameFolder}
                 onDeleteFile={handleDeleteFile}
                 onRenameFile={handleRenameFile}
                 onUpdateFolderAllowedUsers={handleUpdateFolderAllowedUsers}
@@ -1325,6 +1363,7 @@ export default function App() {
                 onUpdateUserStatus={handleUpdateUserStatus}
                 onUpdateUserRole={handleUpdateUserRole}
                 onUpdateFolderPermission={handleUpdateFolderPermission}
+                onRenameFolder={handleRenameFolder}
               />
             )
           ) : null}
@@ -1332,8 +1371,8 @@ export default function App() {
 
         {/* Footer - Only render when logged in */}
         {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
-          <footer className="w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border-t border-slate-200 dark:border-slate-800 pt-3.5 pb-20 sm:pb-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 dark:text-slate-400">
-            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2.5 pr-14 sm:pr-0">
+          <footer className="w-full max-w-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border-t border-slate-200 dark:border-slate-800 pt-3.5 pb-20 sm:pb-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 dark:text-slate-400">
+            <div className="w-full max-w-none flex flex-col sm:flex-row items-center justify-between gap-2.5 pr-14 sm:pr-0">
               <span>&copy; 2026 MVRJCONTÁBIL Gestão Eletrônica de Documentos. Todos os direitos reservados.</span>
               <div className="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400">
                 <button
@@ -1397,6 +1436,17 @@ export default function App() {
         allFolders={folders}
         currentUser={currentUser || profiles[0]}
         onUploadSuccess={handleUploadSuccess}
+        onFolderCreated={(newFolder) => {
+          setFolders(prev => {
+            const exists = prev.some(f => f.id === newFolder.id);
+            if (exists) return prev;
+            const updated = [...prev, newFolder];
+            try {
+              localStorage.setItem('mvrj_folders', JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        }}
         storageMetrics={storageMetrics}
       />
 

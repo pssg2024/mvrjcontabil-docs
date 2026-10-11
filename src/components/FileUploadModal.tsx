@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   UploadCloud, 
   X, 
@@ -22,7 +22,85 @@ import {
 } from 'lucide-react';
 import { Folder as FolderType, DocumentFile, Sector, UserProfile, StorageMetrics } from '../types';
 import { optimizeFile, formatBytes, computeChecksum } from '../lib/optimization';
-import { getPresignedUploadUrl, uploadToPresignedUrl, saveFileRecordToApi } from '../lib/storage-service';
+import { getPresignedUploadUrl, uploadToPresignedUrl, saveFileRecordToApi, createFolderInApi } from '../lib/storage-service';
+
+/**
+ * Recursively extracts all files and directory structure from a drag-and-drop event
+ * using the HTML5 File System Directory Entry API.
+ */
+async function getFilesFromDataTransfer(dataTransfer: DataTransfer): Promise<{ files: File[]; rootFolderName: string | null }> {
+  const items = dataTransfer.items;
+  let rootFolderName: string | null = null;
+  const files: File[] = [];
+
+  if (items && items.length > 0) {
+    const queue: { entry: any; currentPath: string }[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.webkitGetAsEntry) {
+        const entry = item.webkitGetAsEntry();
+        if (entry) {
+          if (entry.isDirectory && !rootFolderName) {
+            rootFolderName = entry.name;
+          }
+          queue.push({ entry, currentPath: '' });
+        }
+      }
+    }
+
+    while (queue.length > 0) {
+      const { entry, currentPath } = queue.shift()!;
+      if (entry.isFile) {
+        await new Promise<void>((resolve) => {
+          entry.file((file: File) => {
+            if (!file.name.startsWith('.')) {
+              const relPath = currentPath ? `${currentPath}/${file.name}` : file.name;
+              try {
+                Object.defineProperty(file, 'webkitRelativePath', {
+                  value: relPath,
+                  writable: true,
+                  configurable: true,
+                });
+              } catch {
+                (file as any).webkitRelativePath = relPath;
+              }
+              files.push(file);
+            }
+            resolve();
+          }, () => resolve());
+        });
+      } else if (entry.isDirectory) {
+        const dirPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+        const dirReader = entry.createReader();
+
+        const readAllEntries = async (): Promise<any[]> => {
+          const allEntries: any[] = [];
+          const readBatch = async (): Promise<void> => {
+            const batch: any[] = await new Promise((res) => dirReader.readEntries(res, () => res([])));
+            if (batch && batch.length > 0) {
+              allEntries.push(...batch);
+              await readBatch();
+            }
+          };
+          await readBatch();
+          return allEntries;
+        };
+
+        const children = await readAllEntries();
+        for (const child of children) {
+          queue.push({ entry: child, currentPath: dirPath });
+        }
+      }
+    }
+  }
+
+  if (files.length === 0 && dataTransfer.files.length > 0) {
+    return { files: Array.from(dataTransfer.files), rootFolderName: null };
+  }
+
+  return { files, rootFolderName };
+}
 
 interface FileUploadModalProps {
   isOpen: boolean;
@@ -31,6 +109,7 @@ interface FileUploadModalProps {
   allFolders: FolderType[];
   currentUser: UserProfile;
   onUploadSuccess: (newFile: DocumentFile) => void;
+  onFolderCreated?: (newFolder: FolderType) => void;
   storageMetrics?: StorageMetrics | null;
 }
 
@@ -41,6 +120,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   allFolders,
   currentUser,
   onUploadSuccess,
+  onFolderCreated,
   storageMetrics,
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -57,6 +137,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   // Pipeline execution state
   const [isProcessing, setIsProcessing] = useState(false);
   const [optimizationStage, setOptimizationStage] = useState<'idle' | 'optimizing' | 'requesting-url' | 'uploading-r2' | 'finished'>('idle');
+  const [pipelineStatusText, setPipelineStatusText] = useState<string>('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -72,6 +153,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     setTagInput('');
     setIsProcessing(false);
     setOptimizationStage('idle');
+    setPipelineStatusText('');
     setUploadProgress(0);
     setErrorMessage(null);
   };
@@ -106,26 +188,51 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     }
   }, [isOpen, currentFolderId]);
 
+  // Detected subfolders structure summary for visual user feedback
+  const subfolderSummary = useMemo(() => {
+    if (!folderUploadName || selectedFiles.length === 0) return [];
+    const paths = new Set<string>();
+    for (const file of selectedFiles) {
+      const rel = ((file as any).webkitRelativePath || '').replace(/\\/g, '/');
+      const parts = rel.split('/').filter(Boolean);
+      if (parts.length > 2) {
+        // e.g. PastaPai/SubpastaA/arquivo.pdf => subpath is SubpastaA
+        const subPath = parts.slice(1, parts.length - 1).join(' / ');
+        if (subPath) paths.add(subPath);
+      }
+    }
+    return Array.from(paths);
+  }, [folderUploadName, selectedFiles]);
+
   if (!isOpen) return null;
 
   const targetFolder = accessibleFolders.find(f => f.id === selectedFolderId) || currentFolder || accessibleFolders[0] || allFolders[0];
 
-  const handleFileDrop = (e: React.DragEvent) => {
+  const handleFileDrop = async (e: React.DragEvent) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFiles = Array.from(e.dataTransfer.files) as File[];
-      if (droppedFiles.length === 1) {
-        handleFileSelected(droppedFiles[0]);
-      } else {
-        setSelectedFiles(droppedFiles);
-        setFolderUploadName('Pasta Arrastada');
-        setCustomFileName('Pasta Arrastada');
-        setOptimizationStage('idle');
-        setErrorMessage(null);
-        if (targetFolder && !tags.includes(targetFolder.sector)) {
-          setTags(prev => [...prev, targetFolder.sector]);
-        }
+    setErrorMessage(null);
+
+    const { files, rootFolderName } = await getFilesFromDataTransfer(e.dataTransfer);
+    if (!files || files.length === 0) return;
+
+    if (files.length === 1 && !rootFolderName && !(files[0] as any).webkitRelativePath?.includes('/')) {
+      handleFileSelected(files[0]);
+    } else {
+      setSelectedFiles(files);
+      const fName = rootFolderName || 'Pasta Importada';
+      setFolderUploadName(fName);
+      setCustomFileName(fName);
+      setOptimizationStage('idle');
+      setErrorMessage(null);
+
+      const newTagsSet = new Set(tags);
+      if (targetFolder && !newTagsSet.has(targetFolder.sector)) {
+        newTagsSet.add(targetFolder.sector);
       }
+      if (fName && !newTagsSet.has(fName)) {
+        newTagsSet.add(fName);
+      }
+      setTags(Array.from(newTagsSet));
     }
   };
 
@@ -156,7 +263,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     let fName = 'Pasta Importada';
     const firstPath = (filesArray[0] as any).webkitRelativePath;
     if (firstPath) {
-      const parts = firstPath.split('/');
+      const parts = firstPath.replace(/\\/g, '/').split('/').filter(Boolean);
       if (parts.length > 1) {
         fName = parts[0];
       }
@@ -201,13 +308,93 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       setErrorMessage(null);
 
       const totalFiles = selectedFiles.length;
+      const knownFolders: FolderType[] = [...allFolders];
+      const createdFoldersMap = new Map<string, FolderType>();
 
       for (let i = 0; i < totalFiles; i++) {
         setCurrentUploadIndex(i + 1);
         const currentFile = selectedFiles[i];
+        const fullRelPath = ((currentFile as any).webkitRelativePath || '').replace(/\\/g, '/');
+
+        // Resolve destination folder hierarchically:
+        // When dragging or selecting a folder with subfolders (e.g. PastaA/SubpastaB/arquivo.docx),
+        // automatically create/find each subfolder level in order!
+        let destinationFolderId = targetFolder.id;
+        let cleanDocName = currentFile.name;
+
+        if (fullRelPath) {
+          const parts = fullRelPath.split('/').filter(Boolean);
+          if (parts.length > 1) {
+            cleanDocName = parts[parts.length - 1];
+            const folderSegments = parts.slice(0, parts.length - 1);
+
+            // If user renamed the root folder in the input, apply the custom name
+            if (folderUploadName && customFileName.trim() && folderSegments.length > 0) {
+              folderSegments[0] = customFileName.trim();
+            }
+
+            // Traverse folder levels starting from targetFolder.id
+            let currentParentId = targetFolder.id;
+            for (let s = 0; s < folderSegments.length; s++) {
+              const segName = folderSegments[s].trim();
+              if (!segName) continue;
+
+              const cacheKey = `${currentParentId}::${segName.toLowerCase()}`;
+              let existing = createdFoldersMap.get(cacheKey) ||
+                knownFolders.find(f => 
+                  f.name.trim().toLowerCase() === segName.toLowerCase() &&
+                  (f.parent_id === currentParentId || (!f.parent_id && !currentParentId)) &&
+                  f.sector === targetFolder.sector
+                );
+
+              if (!existing) {
+                setPipelineStatusText(`Criando pasta "${segName}"...`);
+                const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `fold-${Date.now()}-${s}`;
+                const created = await createFolderInApi(
+                  segName,
+                  currentParentId,
+                  targetFolder.sector,
+                  currentUser.id,
+                  newId
+                );
+                const folderObj: FolderType = created && created.id ? created : {
+                  id: newId,
+                  parent_id: currentParentId,
+                  name: segName,
+                  sector: targetFolder.sector,
+                  created_by: currentUser.id,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                };
+                createdFoldersMap.set(cacheKey, folderObj);
+                knownFolders.push(folderObj);
+                if (onFolderCreated) {
+                  onFolderCreated(folderObj);
+                }
+                existing = folderObj;
+              }
+
+              currentParentId = existing.id;
+            }
+
+            destinationFolderId = currentParentId;
+          }
+        } else if (selectedFiles.length === 1 && customFileName.trim()) {
+          cleanDocName = customFileName.trim();
+        }
+
+        let finalName = cleanDocName;
+        const dotIndex = currentFile.name.lastIndexOf('.');
+        if (dotIndex >= 0) {
+          const ext = currentFile.name.substring(dotIndex);
+          if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
+            finalName += ext;
+          }
+        }
 
         // ETAPA 1: OTIMIZAÇÃO AUTOMÁTICA (PDF ou IMAGEM)
         setOptimizationStage('optimizing');
+        setPipelineStatusText(`Otimizando "${finalName}" (${i + 1} de ${totalFiles})...`);
         const optResult = await optimizeFile(currentFile);
         const arrayBuf = await optResult.file.arrayBuffer();
         const checksum = await computeChecksum(arrayBuf);
@@ -221,37 +408,20 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
           pagesCount: optResult.pagesCount || 1,
         };
 
-        let finalName = currentFile.name;
-        if (folderUploadName && (currentFile as any).webkitRelativePath) {
-          const relPath = (currentFile as any).webkitRelativePath;
-          const parts = relPath.split('/');
-          if (parts.length > 1) {
-            finalName = parts.slice(1).join('/');
-          }
-        } else if (selectedFiles.length === 1 && customFileName.trim()) {
-          finalName = customFileName.trim();
-        }
-
-        const dotIndex = currentFile.name.lastIndexOf('.');
-        if (dotIndex >= 0) {
-          const ext = currentFile.name.substring(dotIndex);
-          if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
-            finalName += ext;
-          }
-        }
-
         // ETAPA 2: SOLICITAÇÃO DA PRESIGNED URL AO BACKEND
         setOptimizationStage('requesting-url');
+        setPipelineStatusText(`Preparando canal de envio seguro...`);
         const presignedData = await getPresignedUploadUrl(
           finalName,
           optResult.mimeType,
           targetFolder.sector,
-          targetFolder.id,
+          destinationFolderId,
           optResult.optimizedSize
         );
 
         // ETAPA 3: UPLOAD DIRETO PARA CLOUDFLARE R2 COM FALLBACK RESILIENTE
         setOptimizationStage('uploading-r2');
+        setPipelineStatusText(`Enviando "${finalName}" para o Cloudflare R2...`);
         await uploadToPresignedUrl(
           presignedData.uploadUrl,
           optResult.file,
@@ -263,10 +433,11 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
         // ETAPA 4: SUCESSO & REGISTRO NO GED & SUPABASE
         setOptimizationStage('finished');
+        setPipelineStatusText(`Registrado com sucesso no GED.`);
 
         const tempDoc: DocumentFile = {
           id: `file-${Date.now()}-${i}`,
-          folder_id: targetFolder.id,
+          folder_id: destinationFolderId,
           name: finalName,
           storage_key: presignedData.storageKey,
           mime_type: optResult.mimeType,
@@ -308,6 +479,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       setErrorMessage(err.message || 'Erro durante o processamento do documento.');
       setIsProcessing(false);
       setOptimizationStage('idle');
+      setPipelineStatusText('');
     }
   };
 
@@ -343,9 +515,18 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         {/* Corpo com Scroll Vertical Suave */}
         <div className="p-3.5 sm:p-5 space-y-3 overflow-y-auto flex-1">
           {errorMessage && (
-            <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start space-x-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <span>{errorMessage}</span>
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start justify-between gap-2 shadow-2xs">
+              <div className="flex items-start space-x-2 min-w-0">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span className="break-words font-medium">{errorMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleExecutePipeline}
+                className="shrink-0 px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer"
+              >
+                Tentar novamente
+              </button>
             </div>
           )}
 
@@ -429,31 +610,53 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
             <div className="space-y-3">
               {/* Card de Pasta Inteira ou Arquivo Único */}
               {folderUploadName ? (
-                <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 flex items-center justify-between gap-2 shadow-2xs">
-                  <div className="flex items-center space-x-3 min-w-0 overflow-hidden">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
-                      <Folder className="w-5 h-5" />
+                <>
+                  <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 flex items-center justify-between gap-2 shadow-2xs">
+                    <div className="flex items-center space-x-3 min-w-0 overflow-hidden">
+                      <div className="w-9 h-9 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Folder className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 overflow-hidden">
+                        <h4 className="text-xs font-bold text-slate-950 truncate" title={folderUploadName}>
+                          Pasta: {folderUploadName}
+                        </h4>
+                        <p className="text-xs font-semibold text-emerald-800">
+                          {selectedFiles.length} documento{selectedFiles.length > 1 ? 's' : ''} pronto{selectedFiles.length > 1 ? 's' : ''} para envio
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 overflow-hidden">
-                      <h4 className="text-xs font-bold text-slate-950 truncate" title={folderUploadName}>
-                        Pasta: {folderUploadName}
-                      </h4>
-                      <p className="text-xs font-semibold text-emerald-800">
-                        {selectedFiles.length} documento{selectedFiles.length > 1 ? 's' : ''} pronto{selectedFiles.length > 1 ? 's' : ''} para envio
-                      </p>
-                    </div>
+
+                    {!isProcessing && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFiles([])}
+                        className="text-xs font-black text-emerald-900 hover:text-emerald-950 underline transition-colors shrink-0 px-2 py-1 cursor-pointer"
+                      >
+                        Trocar Pasta
+                      </button>
+                    )}
                   </div>
 
-                  {!isProcessing && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFiles([])}
-                      className="text-xs font-black text-emerald-900 hover:text-emerald-950 underline transition-colors shrink-0 px-2 py-1 cursor-pointer"
-                    >
-                      Trocar Pasta
-                    </button>
+                  {/* Detalhes de Subpastas Detectadas Automaticamente */}
+                  {subfolderSummary.length > 0 && (
+                    <div className="bg-blue-50/90 border border-blue-200/90 rounded-xl p-3 text-xs text-blue-900 shadow-2xs space-y-1.5 animate-in fade-in duration-150">
+                      <div className="flex items-center gap-1.5 font-bold text-blue-950">
+                        <FolderTree className="w-4 h-4 text-blue-700 shrink-0" />
+                        <span>{subfolderSummary.length} subpasta{subfolderSummary.length > 1 ? 's' : ''} interna{subfolderSummary.length > 1 ? 's' : ''} identificada{subfolderSummary.length > 1 ? 's' : ''}:</span>
+                      </div>
+                      <p className="text-[11px] text-blue-800 leading-relaxed">
+                        Todas as subpastas serão <strong>criadas automaticamente</strong> no GED e os documentos serão indexados organizadamente dentro de cada uma delas!
+                      </p>
+                      <div className="flex flex-wrap gap-1.5 pt-0.5 max-h-24 overflow-y-auto">
+                        {subfolderSummary.map((sp, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md font-mono text-[10px] text-blue-950 shadow-2xs font-semibold">
+                            📁 {sp}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </div>
+                </>
               ) : (
                 (() => {
                   const selectedFile = selectedFiles[0];
@@ -560,12 +763,12 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               {isProcessing && optimizationStage !== 'finished' && (
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-                    <span className="flex items-center space-x-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#1B357B] animate-spin" />
-                      <span className="text-[11px]">
-                        {selectedFiles.length > 1 
+                    <span className="flex items-center space-x-1.5 min-w-0">
+                      <Sparkles className="w-3.5 h-3.5 text-[#1B357B] animate-spin shrink-0" />
+                      <span className="text-[11px] truncate font-medium text-slate-800">
+                        {pipelineStatusText || (selectedFiles.length > 1 
                           ? `Enviando arquivo ${currentUploadIndex} de ${selectedFiles.length}...`
-                          : 'Processando e gravando no R2...'}
+                          : 'Processando e gravando no Cloudflare R2...')}
                       </span>
                     </span>
                     <span className="text-[11px] font-mono">{uploadProgress > 0 ? `${uploadProgress}%` : '...'}</span>

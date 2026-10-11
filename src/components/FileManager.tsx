@@ -47,7 +47,9 @@ import {
   Users,
   UserCheck,
   UserX,
-  Info
+  Info,
+  MoreVertical,
+  MoreHorizontal
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -68,6 +70,7 @@ interface FileManagerProps {
   onDeleteFolder?: (folderId: string) => void;
   onDeleteFile: (fileId: string) => void;
   onRenameFile?: (fileId: string, newName: string) => void;
+  onRenameFolder?: (folderId: string, newName: string) => Promise<any> | void;
   onUpdateFolderAllowedUsers?: (folderId: string, allowedUserIds: string[]) => Promise<void> | void;
   hasFolderPermission: (folderId: string, minLevel: PermissionLevel) => boolean;
   onOpenCompanyModal?: (initialQuery?: string) => void;
@@ -88,6 +91,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   onDeleteFolder,
   onDeleteFile,
   onRenameFile,
+  onRenameFolder,
   onUpdateFolderAllowedUsers,
   hasFolderPermission,
   onOpenCompanyModal,
@@ -101,6 +105,11 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const [renamingFile, setRenamingFile] = useState<DocumentFile | null>(null);
   const [newNameInput, setNewNameInput] = useState('');
 
+  const [renamingFolder, setRenamingFolder] = useState<Folder | null>(null);
+  const [newFolderNameInput, setNewFolderNameInput] = useState('');
+  const [isSubmittingFolderRename, setIsSubmittingFolderRename] = useState(false);
+  const [folderRenameError, setFolderRenameError] = useState<string | null>(null);
+
   useEffect(() => {
     if (externalSearchQuery !== undefined) {
       setSearchQuery(externalSearchQuery);
@@ -112,6 +121,33 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const [isSubmittingFolder, setIsSubmittingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [sharingFileId, setSharingFileId] = useState<string | null>(null);
+
+  // Estados dos menus suspensos de opções descritas (substituindo botões soltos)
+  const [openFolderMenuId, setOpenFolderMenuId] = useState<string | null>(null);
+  const [openFileMenuId, setOpenFileMenuId] = useState<string | null>(null);
+  const [isBreadcrumbMenuOpen, setIsBreadcrumbMenuOpen] = useState(false);
+
+  // Fecha menus ao clicar fora ou apertar Escape
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setOpenFolderMenuId(null);
+      setOpenFileMenuId(null);
+      setIsBreadcrumbMenuOpen(false);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenFolderMenuId(null);
+        setOpenFileMenuId(null);
+        setIsBreadcrumbMenuOpen(false);
+      }
+    };
+    window.addEventListener('click', handleGlobalClick);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // Granular Folder Permissions Management Modal State (Admin / Diretoria)
   const [managingPermsFolder, setManagingPermsFolder] = useState<Folder | null>(null);
@@ -325,6 +361,35 @@ export const FileManager: React.FC<FileManagerProps> = ({
     }
   };
 
+  const handleConfirmRenameFolder = async () => {
+    if (!renamingFolder) return;
+    const trimmed = newFolderNameInput.trim();
+    if (!trimmed) {
+      setFolderRenameError('O nome da pasta não pode ficar vazio.');
+      return;
+    }
+    if (trimmed === renamingFolder.name) {
+      setRenamingFolder(null);
+      setFolderRenameError(null);
+      return;
+    }
+    if (onRenameFolder) {
+      try {
+        setIsSubmittingFolderRename(true);
+        setFolderRenameError(null);
+        await onRenameFolder(renamingFolder.id, trimmed);
+        setRenamingFolder(null);
+        setFolderRenameError(null);
+      } catch (err: any) {
+        setFolderRenameError(err.message || 'Erro ao renomear a pasta.');
+      } finally {
+        setIsSubmittingFolderRename(false);
+      }
+    } else {
+      setRenamingFolder(null);
+    }
+  };
+
   // Granular Folder Permissions Handlers (Admin / Diretoria)
   const handleOpenPermsModal = (folder: Folder) => {
     setManagingPermsFolder(folder);
@@ -488,7 +553,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-snug">
               Gestão Eletrônica de Documentos Contábeis
             </h2>
-            <p className="text-blue-100/80 text-xs sm:text-sm font-normal leading-relaxed max-w-xl">
+            <p className="text-blue-100/80 text-xs sm:text-sm font-normal leading-relaxed w-full max-w-none">
               Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais com controle de permissões.
             </p>
           </div>
@@ -507,7 +572,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
       </div>
 
       {/* Control Toolbar (Search, Quick Actions, View Toggle) */}
-      <div className="w-full max-w-full overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-3">
+      <div className="w-full max-w-none overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-3">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           
           {/* Row 1: Instant Search Bar & Compact CNPJ Company Lookup */}
@@ -699,15 +764,71 @@ export const FileManager: React.FC<FileManagerProps> = ({
         )}
 
         {currentFolder && isFullAdmin && !searchQuery && (
-          <button
-            type="button"
-            onClick={() => handleOpenPermsModal(currentFolder)}
-            className="ml-auto inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 transition-colors shrink-0 cursor-pointer shadow-2xs"
-            title="Gerenciar quais usuários comuns podem ver esta pasta"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span>Permissões de Acesso</span>
-          </button>
+          <div className="ml-auto relative flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              id="btn-folder-options-menu"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsBreadcrumbMenuOpen(!isBreadcrumbMenuOpen);
+                setOpenFolderMenuId(null);
+                setOpenFileMenuId(null);
+              }}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 transition-colors shrink-0 cursor-pointer shadow-2xs"
+              title="Opções da Pasta Atual"
+            >
+              <MoreHorizontal className="w-4 h-4 text-[#1B357B] dark:text-[#DFB76C]" />
+              <span>Opções da Pasta</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isBreadcrumbMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isBreadcrumbMenuOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full mt-1.5 w-60 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-left"
+              >
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1">
+                  Gerenciar Pasta Atual
+                </div>
+                {onRenameFolder && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBreadcrumbMenuOpen(false);
+                      setRenamingFolder(currentFolder);
+                      setNewFolderNameInput(currentFolder.name);
+                      setFolderRenameError(null);
+                    }}
+                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300 flex items-center gap-2.5 transition-colors cursor-pointer group"
+                  >
+                    <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 group-hover:scale-105 transition-transform">
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="font-bold">Renomear Pasta</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Alterar o nome desta pasta</div>
+                    </div>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBreadcrumbMenuOpen(false);
+                    handleOpenPermsModal(currentFolder);
+                  }}
+                  className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
+                >
+                  <div className="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 group-hover:scale-105 transition-transform">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <div className="font-bold">Permissões de Acesso</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Definir quem pode acessar</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </nav>
 
@@ -750,9 +871,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
                         {folder.sector}
                       </span>
-                      <span className="text-slate-300 dark:text-slate-600 text-[10px]">•</span>
-                      {isFullAdmin && (
-                        Array.isArray(folder.allowed_user_ids) && folder.allowed_user_ids.length > 0 ? (
+                      {isFullAdmin && Array.isArray(folder.allowed_user_ids) && folder.allowed_user_ids.length > 0 && (
+                        <>
+                          <span className="text-slate-300 dark:text-slate-600 text-[10px]">•</span>
                           <span 
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shrink-0" 
                             title={`${folder.allowed_user_ids.length} colaborador(es) com acesso autorizado`}
@@ -760,49 +881,102 @@ export const FileManager: React.FC<FileManagerProps> = ({
                             <Users className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             <span>{folder.allowed_user_ids.length} acessos</span>
                           </span>
-                        ) : (
-                          <span 
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap shrink-0" 
-                            title="Acesso exclusivo para Administradores e Diretoria"
-                          >
-                            <Lock className="w-3 h-3 text-slate-500 dark:text-slate-400 shrink-0" />
-                            <span>Diretoria</span>
-                          </span>
-                        )
+                        </>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-1 shrink-0 ml-1.5 self-start mt-0.5">
-                  {isFullAdmin && (
-                    <button
-                      type="button"
-                      id={`btn-manage-perms-${folder.id}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenPermsModal(folder);
-                      }}
-                      className="text-slate-400 hover:text-[#1B357B] dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors p-1.5 rounded-lg cursor-pointer"
-                      title="Gerenciar Permissões da Pasta"
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                    </button>
+                <div className="flex items-center space-x-1 shrink-0 ml-1.5 self-start mt-0.5 relative">
+                  {(isFullAdmin || currentUser?.role === 'admin') && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        id={`btn-folder-menu-${folder.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenFolderMenuId(openFolderMenuId === folder.id ? null : folder.id);
+                          setOpenFileMenuId(null);
+                          setIsBreadcrumbMenuOpen(false);
+                        }}
+                        className="text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center"
+                        title="Opções da Pasta"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {openFolderMenuId === folder.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-left"
+                        >
+                          <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1 truncate">
+                            {folder.name}
+                          </div>
+
+                          {onRenameFolder && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenFolderMenuId(null);
+                                setRenamingFolder(folder);
+                                setNewFolderNameInput(folder.name);
+                                setFolderRenameError(null);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300 flex items-center gap-2.5 transition-colors cursor-pointer group"
+                            >
+                              <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 group-hover:scale-105 transition-transform">
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </div>
+                              <div>
+                                <div className="font-bold">Renomear Pasta</div>
+                                <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Alterar o nome da pasta</div>
+                              </div>
+                            </button>
+                          )}
+
+                          {isFullAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenFolderMenuId(null);
+                                handleOpenPermsModal(folder);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
+                            >
+                              <div className="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 group-hover:scale-105 transition-transform">
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                              </div>
+                              <div>
+                                <div className="font-bold">Permissões de Acesso</div>
+                                <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Definir quem pode acessar</div>
+                              </div>
+                            </button>
+                          )}
+
+                          {currentUser.role === 'admin' && onDeleteFolder && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenFolderMenuId(null);
+                                onDeleteFolder(folder.id);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2.5 transition-colors cursor-pointer group mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800"
+                            >
+                              <div className="p-1 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </div>
+                              <div>
+                                <div className="font-bold">Excluir Pasta</div>
+                                <div className="text-[10px] text-rose-400/80 dark:text-rose-500/80 font-normal">Remover esta pasta</div>
+                              </div>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
-                  {currentUser.role === 'admin' && onDeleteFolder && (
-                    <button
-                      type="button"
-                      id={`btn-delete-folder-${folder.id}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteFolder(folder.id);
-                      }}
-                      className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors p-1.5 rounded-lg cursor-pointer"
-                      title="Excluir Pasta (Admin)"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+
                   <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#1B357B] dark:group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" />
                 </div>
               </div>
@@ -880,7 +1054,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               return (
                 <div
                   key={file.id}
-                  className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-2xs hover:border-[#1B357B]/40 dark:hover:border-[#DFB76C]/40 hover:shadow-md hover:-translate-y-0.5 transition-all p-4 sm:p-4.5 flex flex-col justify-between group relative min-w-0 overflow-hidden"
+                  className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-2xs hover:border-[#1B357B]/40 dark:hover:border-[#DFB76C]/40 hover:shadow-md hover:-translate-y-0.5 transition-all p-4 sm:p-4.5 flex flex-col justify-between group relative min-w-0"
                 >
                   <div>
                     {/* Top Bar: File Icon & Status Badge */}
@@ -929,7 +1103,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       >
                         {file.name}
                       </h4>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-3 flex items-center gap-1.5 min-w-0 truncate mt-1">
+                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 min-w-0 truncate mt-1">
                         <FolderIcon className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
                         <span className="truncate">{file.sector}</span>
                         {file.pages_count && file.pages_count > 1 && (
@@ -942,22 +1116,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         )}
                       </div>
                     </div>
-
-                    {/* Size Pill */}
-                    <div className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded-lg w-fit mb-3">
-                      {formatBytes(file.optimized_size || file.original_size)}
-                    </div>
-
-                    {/* Minimalist Tags */}
-                    {file.tags && file.tags.filter(t => !t.startsWith('Ref: ')).length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {file.tags.filter(t => !t.startsWith('Ref: ')).slice(0, 3).map(tag => (
-                          <span key={tag} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-medium px-1.5 py-0.5 rounded-md">
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
                   {/* Footer Actions */}
@@ -966,71 +1124,139 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       {new Date(file.created_at).toLocaleDateString('pt-BR')}
                     </span>
 
-                    <div className="flex items-center space-x-0.5">
+                    <div className="flex items-center space-x-1 relative">
                       <button
                         type="button"
                         onClick={() => onOpenFileViewer(file)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-[#1B357B] dark:hover:text-[#E2C37A] bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
                         title="Visualizar documento"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <span>Visualizar</span>
                       </button>
 
-                      {canShare && (
+                      <div className="relative">
                         <button
                           type="button"
-                          disabled={!!sharingFileId}
-                          onClick={() => handleShareDirectDocument(file)}
-                          className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                            sharingFileId === file.id 
-                              ? 'text-blue-700 bg-slate-100 dark:bg-slate-800' 
-                              : 'text-slate-600 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                          } disabled:opacity-50`}
-                          title="Enviar via WhatsApp ou Partilha Direta"
-                        >
-                          {sharingFileId === file.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Phone className="w-4 h-4" />
-                          )}
-                        </button>
-                      )}
-
-                      {canDownload && (
-                        <button
-                          type="button"
-                          onClick={() => handleDirectDownload(file)}
-                          className="p-2 rounded-lg text-slate-600 hover:text-slate-950 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                          title="Download seguro"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                      )}
-
-                      {(currentUser.role === 'admin' || currentUser.role === 'editor') && onRenameFile && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRenamingFile(file);
-                            setNewNameInput(file.name);
+                          id={`btn-file-menu-${file.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenFileMenuId(openFileMenuId === file.id ? null : file.id);
+                            setOpenFolderMenuId(null);
+                            setIsBreadcrumbMenuOpen(false);
                           }}
-                          className="p-2 rounded-lg text-slate-600 hover:text-slate-950 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                          title="Renomear documento"
+                          className="p-1.5 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center justify-center shadow-2xs"
+                          title="Opções do documento"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <MoreVertical className="w-4 h-4" />
                         </button>
-                      )}
 
-                      {currentUser.role === 'admin' && onDeleteFile && (
-                        <button
-                          type="button"
-                          onClick={() => onDeleteFile(file.id)}
-                          className="p-2 rounded-lg text-slate-600 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                          title="Excluir Arquivo (Admin)"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                        {openFileMenuId === file.id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute right-0 bottom-full mb-1.5 w-60 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-left"
+                          >
+                            <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1 truncate">
+                              {file.name}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenFileMenuId(null);
+                                onOpenFileViewer(file);
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-2.5 transition-colors cursor-pointer group"
+                            >
+                              <div className="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 group-hover:scale-105 transition-transform">
+                                <Eye className="w-3.5 h-3.5" />
+                              </div>
+                              <div>
+                                <div className="font-bold">Visualizar Documento</div>
+                                <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Abrir pré-visualização</div>
+                              </div>
+                            </button>
+
+                            {canShare && (
+                              <button
+                                type="button"
+                                disabled={!!sharingFileId}
+                                onClick={() => {
+                                  setOpenFileMenuId(null);
+                                  handleShareDirectDocument(file);
+                                }}
+                                className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5 disabled:opacity-50"
+                              >
+                                <div className="p-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 group-hover:scale-105 transition-transform">
+                                  {sharingFileId === file.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />}
+                                </div>
+                                <div>
+                                  <div className="font-bold">Enviar via WhatsApp</div>
+                                  <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Partilha e envio direto</div>
+                                </div>
+                              </button>
+                            )}
+
+                            {canDownload && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenFileMenuId(null);
+                                  handleDirectDownload(file);
+                                }}
+                                className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
+                              >
+                                <div className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 group-hover:scale-105 transition-transform">
+                                  <Download className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                  <div className="font-bold">Baixar Arquivo</div>
+                                  <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Download seguro do R2</div>
+                                </div>
+                              </button>
+                            )}
+
+                            {(currentUser.role === 'admin' || currentUser.role === 'editor') && onRenameFile && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenFileMenuId(null);
+                                  setRenamingFile(file);
+                                  setNewNameInput(file.name);
+                                }}
+                                className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
+                              >
+                                <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 group-hover:scale-105 transition-transform">
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                  <div className="font-bold">Renomear Arquivo</div>
+                                  <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Alterar nome do arquivo</div>
+                                </div>
+                              </button>
+                            )}
+
+                            {currentUser.role === 'admin' && onDeleteFile && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenFileMenuId(null);
+                                  onDeleteFile(file.id);
+                                }}
+                                className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2.5 transition-colors cursor-pointer group mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800"
+                              >
+                                <div className="p-1 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                  <div className="font-bold">Excluir Arquivo</div>
+                                  <div className="text-[10px] text-rose-400/80 dark:text-rose-500/80 font-normal">Remover documento</div>
+                                </div>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1110,44 +1336,138 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       </td>
                       <td className="p-3 sm:p-3.5 text-slate-500 dark:text-slate-400 font-normal hidden sm:table-cell">{new Date(file.created_at).toLocaleDateString('pt-BR')}</td>
                       <td className="p-3 sm:p-3.5 text-right shrink-0">
-                        <div className="flex items-center justify-end space-x-1">
+                        <div className="flex items-center justify-end space-x-1 relative">
                           <button
+                            type="button"
                             onClick={() => onOpenFileViewer(file)}
-                            className="p-1.5 text-slate-400 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors"
-                            title="Visualizar"
+                            className="p-1.5 text-slate-500 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors"
+                            title="Visualizar documento"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          {canDownload && (
+
+                          <div className="relative">
                             <button
-                              onClick={() => handleDirectDownload(file)}
-                              className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors"
-                              title="Download Seguro"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                          )}
-                          {(currentUser.role === 'admin' || currentUser.role === 'editor') && onRenameFile && (
-                            <button
-                              onClick={() => {
-                                setRenamingFile(file);
-                                setNewNameInput(file.name);
+                              type="button"
+                              id={`btn-table-file-menu-${file.id}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenFileMenuId(openFileMenuId === file.id ? null : file.id);
+                                setOpenFolderMenuId(null);
+                                setIsBreadcrumbMenuOpen(false);
                               }}
-                              className="p-1.5 text-slate-400 hover:text-[#1B357B] dark:hover:text-[#E2C37A] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors"
-                              title="Renomear"
+                              className="p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors"
+                              title="Opções do arquivo"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <MoreVertical className="w-4 h-4" />
                             </button>
-                          )}
-                          {currentUser.role === 'admin' && (
-                            <button
-                              onClick={() => onDeleteFile(file.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer transition-colors"
-                              title="Excluir"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+
+                            {openFileMenuId === file.id && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute right-0 bottom-full mb-1.5 w-60 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 text-left"
+                              >
+                                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1 truncate">
+                                  {file.name}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenFileMenuId(null);
+                                    onOpenFileViewer(file);
+                                  }}
+                                  className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-2.5 transition-colors cursor-pointer group"
+                                >
+                                  <div className="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 group-hover:scale-105 transition-transform">
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </div>
+                                  <div>
+                                    <div className="font-bold">Visualizar Documento</div>
+                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Abrir pré-visualização</div>
+                                  </div>
+                                </button>
+
+                                {canShare && (
+                                  <button
+                                    type="button"
+                                    disabled={!!sharingFileId}
+                                    onClick={() => {
+                                      setOpenFileMenuId(null);
+                                      handleShareDirectDocument(file);
+                                    }}
+                                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5 disabled:opacity-50"
+                                  >
+                                    <div className="p-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 group-hover:scale-105 transition-transform">
+                                      {sharingFileId === file.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />}
+                                    </div>
+                                    <div>
+                                      <div className="font-bold">Enviar via WhatsApp</div>
+                                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Partilha e envio direto</div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {canDownload && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenFileMenuId(null);
+                                      handleDirectDownload(file);
+                                    }}
+                                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
+                                  >
+                                    <div className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 group-hover:scale-105 transition-transform">
+                                      <Download className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                      <div className="font-bold">Baixar Arquivo</div>
+                                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Download seguro do R2</div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {(currentUser.role === 'admin' || currentUser.role === 'editor') && onRenameFile && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenFileMenuId(null);
+                                      setRenamingFile(file);
+                                      setNewNameInput(file.name);
+                                    }}
+                                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
+                                  >
+                                    <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 group-hover:scale-105 transition-transform">
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                      <div className="font-bold">Renomear Arquivo</div>
+                                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Alterar nome do arquivo</div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {currentUser.role === 'admin' && onDeleteFile && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenFileMenuId(null);
+                                      onDeleteFile(file.id);
+                                    }}
+                                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2.5 transition-colors cursor-pointer group mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800"
+                                  >
+                                    <div className="p-1 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform">
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                      <div className="font-bold">Excluir Arquivo</div>
+                                      <div className="text-[10px] text-rose-400/80 dark:text-rose-500/80 font-normal">Remover permanentemente</div>
+                                    </div>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -1219,6 +1539,136 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs"
               >
                 Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Folder Modal (Administrador) */}
+      {renamingFolder && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSubmittingFolderRename) {
+              setRenamingFolder(null);
+              setFolderRenameError(null);
+            }
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 w-[94%] max-w-md mx-auto rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 text-slate-900 dark:text-slate-100 animate-in zoom-in-95 duration-150"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 flex items-center justify-center border border-amber-200/80 dark:border-amber-800/80 shadow-2xs">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-slate-900 dark:text-slate-100 font-bold text-sm sm:text-base leading-tight">
+                    Editar Nome da Pasta
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+                    Setor: <span className="font-semibold text-slate-700 dark:text-slate-300">{renamingFolder.sector}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isSubmittingFolderRename) {
+                    setRenamingFolder(null);
+                    setFolderRenameError(null);
+                  }
+                }}
+                disabled={isSubmittingFolderRename}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {folderRenameError && (
+              <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-center space-x-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="font-medium">{folderRenameError}</span>
+              </div>
+            )}
+
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nome Atual
+                </label>
+                <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-600 dark:text-slate-400 font-medium truncate flex items-center space-x-2">
+                  <FolderIcon className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span className="truncate">{renamingFolder.name}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Novo Nome da Pasta
+                </label>
+                <input
+                  type="text"
+                  value={newFolderNameInput}
+                  onChange={(e) => {
+                    setNewFolderNameInput(e.target.value);
+                    if (folderRenameError) setFolderRenameError(null);
+                  }}
+                  placeholder="Digite o novo nome da pasta..."
+                  disabled={isSubmittingFolderRename}
+                  className="w-full h-10 px-3 text-xs text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:border-[#1B357B] dark:focus:border-amber-400 focus:ring-2 focus:ring-[#1B357B]/20 outline-none transition-all font-semibold placeholder:text-slate-400"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleConfirmRenameFolder();
+                    } else if (e.key === 'Escape') {
+                      if (!isSubmittingFolderRename) {
+                        setRenamingFolder(null);
+                        setFolderRenameError(null);
+                      }
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end space-x-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isSubmittingFolderRename}
+                onClick={() => {
+                  setRenamingFolder(null);
+                  setFolderRenameError(null);
+                }}
+                className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                id="btn-confirm-rename-folder"
+                disabled={isSubmittingFolderRename || !newFolderNameInput.trim() || newFolderNameInput.trim() === renamingFolder.name}
+                onClick={handleConfirmRenameFolder}
+                className="px-4 py-2 bg-[#1B357B] hover:bg-[#14285D] dark:bg-amber-600 dark:hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs flex items-center space-x-1.5"
+              >
+                {isSubmittingFolderRename ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Salvando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Salvar Alteração</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

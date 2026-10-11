@@ -63,7 +63,7 @@ export async function uploadViaServerDirect(
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/r2/upload-direct', true);
     xhr.setRequestHeader('Content-Type', mimeType);
-    xhr.setRequestHeader('x-storage-key', storageKey);
+    xhr.setRequestHeader('x-storage-key', encodeURIComponent(storageKey));
     xhr.setRequestHeader('x-mime-type', mimeType);
     xhr.setRequestHeader('x-file-name', encodeURIComponent(fileName));
 
@@ -83,7 +83,8 @@ export async function uploadViaServerDirect(
       } else {
         try {
           const errJson = JSON.parse(xhr.responseText);
-          reject(new Error(errJson.error || `Falha no envio pelo servidor: status ${xhr.status}`));
+          const detailMsg = errJson.details ? ` (${errJson.details})` : '';
+          reject(new Error((errJson.error || `Falha no envio pelo servidor: status ${xhr.status}`) + detailMsg));
         } catch {
           reject(new Error(`Falha no envio pelo servidor: status ${xhr.status}`));
         }
@@ -99,9 +100,9 @@ export async function uploadViaServerDirect(
 }
 
 /**
- * Uploads the optimized file to Cloudflare R2 using the Presigned PUT URL.
- * Automatically falls back to resilient server-side upload if the browser's
- * direct request encounters CORS restrictions on the R2 bucket.
+ * Uploads the optimized file to Cloudflare R2.
+ * Uses the resilient backend endpoint with auto-retries and background sync
+ * to completely eliminate browser CORS restrictions and upload drops.
  */
 export async function uploadToPresignedUrl(
   uploadUrl: string,
@@ -111,6 +112,11 @@ export async function uploadToPresignedUrl(
   storageKey?: string,
   fileName?: string
 ): Promise<void> {
+  // Upload direto e resiliente pelo servidor GED se chave e nome estiverem disponíveis
+  if (storageKey && fileName) {
+    return uploadViaServerDirect(fileBlob, storageKey, mimeType, fileName, onProgress);
+  }
+
   return new Promise((resolve, reject) => {
     // If the presigned URL is a relative API mock/local url, handle it directly or via server
     const isExternalR2Url = uploadUrl.startsWith('http://') || uploadUrl.startsWith('https://');
