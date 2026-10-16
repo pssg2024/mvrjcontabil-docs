@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
+import { PortalsDrawer } from './components/PortalsDrawer';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
 import { FileManager } from './components/FileManager';
@@ -17,7 +18,7 @@ import { InvoiceEmissionView } from './components/InvoiceEmissionView';
 import { UserManualModal } from './components/UserManualModal';
 import { SalaryCalculatorModal } from './components/SalaryCalculatorModal';
 import { MvrjAssistantWidget } from './components/MvrjAssistantWidget';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Menu } from 'lucide-react';
 import { 
   UserProfile, 
   UserRole, 
@@ -201,8 +202,16 @@ export default function App() {
   const [isInvoiceEmissionOpen, setIsInvoiceEmissionOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isSalaryCalculatorOpen, setIsSalaryCalculatorOpen] = useState(false);
+  const [isPortalsDrawerOpen, setIsPortalsDrawerOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [driveFilterSearch, setDriveFilterSearch] = useState('');
+
+  const handleNavigateHome = () => {
+    setActiveView('drive');
+    setDriveFilterSearch('');
+    setUploadTargetFolderId(null);
+  };
 
   const handleUpdateFile = async (fileId: string, updates: Partial<DocumentFile>) => {
     // 1. Atualização otimista no estado local
@@ -1280,114 +1289,149 @@ export default function App() {
         />
       )}
 
-      {/* Foreground Content Wrapper - 100% Fluid & Full Width */}
-      <div className="relative z-10 flex flex-col min-h-screen w-full min-w-0 overflow-x-hidden">
-        {/* Top Navigation - Only render when logged in and active */}
-        {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
-          <Navbar
+      {/* SaaS Corporate Dashboard Layout with Fixed Sidebar */}
+      {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') ? (
+        <div className="relative z-10 flex h-screen w-screen overflow-hidden bg-slate-950 font-sans">
+          {/* 1. Sidebar Fixa à Esquerda */}
+          <Sidebar
             currentUser={currentUser}
             activeView={activeView}
-            onNavigate={setActiveView}
-            onOpenSqlModal={() => setIsSqlModalOpen(true)}
-            onOpenProfileModal={handleOpenProfileModal}
-            onOpenLgpdModal={() => setIsLgpdModalOpen(true)}
-            onOpenFirstAccessModal={() => setIsFirstAccessModalOpen(true)}
+            onNavigate={(view, tab) => {
+              setActiveView(view);
+              if (tab) {
+                setTimeout(() => {
+                  const targetTab = document.getElementById(`tab-admin-${tab}`);
+                  if (targetTab) targetTab.click();
+                }, 100);
+              }
+            }}
+            onNavigateHome={handleNavigateHome}
+            onOpenCompanyManager={() => setIsCompanyManagerOpen(true)}
+            onOpenCompanyModal={() => handleOpenCompanyModal()}
+            onOpenSalaryCalculator={() => setIsSalaryCalculatorOpen(true)}
+            onOpenInvoiceEmission={() => setIsInvoiceEmissionOpen(true)}
+            onOpenPortalsDrawer={() => setIsPortalsDrawerOpen(true)}
+            onOpenManualModal={() => setIsManualModalOpen(true)}
             onOpenBackgroundModal={() => {
               setBackgroundModalTab('site-background');
               setIsBackgroundModalOpen(true);
             }}
-            onOpenCompanyModal={() => handleOpenCompanyModal()}
-            onOpenCompanyManager={() => setIsCompanyManagerOpen(true)}
-            onOpenInvoiceEmission={() => setIsInvoiceEmissionOpen(true)}
-            onOpenSalaryCalculator={() => setIsSalaryCalculatorOpen(true)}
-            onOpenManualModal={() => setIsManualModalOpen(true)}
-            onSwitchUser={handleSwitchUser}
+            onOpenSqlModal={() => setIsSqlModalOpen(true)}
+            onOpenProfileModal={handleOpenProfileModal}
             onLogout={handleLogout}
-            allProfiles={profiles}
-            r2Status={r2Status}
+            pendingUsersCount={profiles.filter(p => p.status === 'pending').length}
             storageMetrics={storageMetrics}
             authHeaderConfig={authHeaderConfig}
+            isOpenMobile={isMobileSidebarOpen}
+            onCloseMobile={() => setIsMobileSidebarOpen(false)}
           />
-        )}
 
+          {/* 2. Área de Conteúdo Principal à Direita */}
+          <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-slate-950/95 dark:bg-slate-950 text-slate-100 min-w-0">
+            {/* Header Mobile com botão Hambúrguer */}
+            <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#091124] border-b border-slate-800 shrink-0 sticky top-0 z-30">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  id="mobile-sidebar-toggle-btn"
+                  onClick={() => setIsMobileSidebarOpen(true)}
+                  className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Abrir menu de navegação"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[#E5C378] font-black text-sm tracking-wide">MVRJ CONTÁBIL</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">GED</span>
+                </div>
+              </div>
 
+              <div 
+                onClick={() => handleOpenProfileModal('profile')}
+                className="w-8 h-8 rounded-lg overflow-hidden ring-1.5 ring-emerald-500/80 cursor-pointer shadow-xs"
+              >
+                {currentUser.avatar_url ? (
+                  <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
+                    {currentUser.full_name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </div>
 
-        {/* Main View Area - Fluid Full-Width Container */}
-        <main className="flex-1 w-full max-w-none px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col gap-5 sm:gap-6 min-w-0">
-          {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') ? (
-            activeView === 'drive' ? (
-              <FileManager
-                currentUser={currentUser}
-                folders={folders}
-                files={files}
-                allProfiles={profiles}
-                storageMetrics={storageMetrics}
-                onRefreshStorage={fetchStorageMetrics}
-                onOpenFileViewer={(file) => setViewingFile(file)}
-                onOpenUploadModal={(folderId) => {
-                  setUploadTargetFolderId(folderId || null);
-                  setIsUploadModalOpen(true);
-                }}
-                onCreateFolder={handleCreateFolder}
-                onDeleteFolder={handleDeleteFolder}
-                onRenameFolder={handleRenameFolder}
-                onDeleteFile={handleDeleteFile}
-                onRenameFile={handleRenameFile}
-                onUpdateFolderAllowedUsers={handleUpdateFolderAllowedUsers}
-                hasFolderPermission={checkFolderPermission}
-                onOpenCompanyModal={handleOpenCompanyModal}
-                externalSearchQuery={driveFilterSearch}
-                onClearExternalSearch={() => setDriveFilterSearch('')}
-              />
-            ) : (
-              <AdminPanel
-                currentUser={currentUser}
-                profiles={profiles}
-                folders={folders}
-                folderPermissions={folderPermissions}
-                auditLogs={auditLogs}
-                siteBackgroundConfig={siteBackgroundConfig}
-                authHeaderConfig={authHeaderConfig}
-                onUpdateSiteBackgroundConfig={(newConf) => {
-                  setSiteBackgroundConfig(newConf);
-                }}
-                onUpdateAuthHeaderConfig={(newConf) => {
-                  setAuthHeaderConfig(newConf);
-                }}
-                onAuditLog={(details) => {
-                  logAudit('BACKGROUND_IMAGE_CHANGED', 'SETTINGS', 'site-background', details);
-                }}
-                onApproveUser={handleApproveUser}
-                onRejectUser={handleRejectUser}
-                onDeleteUser={handleDeleteUser}
-                onUpdateUserStatus={handleUpdateUserStatus}
-                onUpdateUserRole={handleUpdateUserRole}
-                onUpdateFolderPermission={handleUpdateFolderPermission}
-                onRenameFolder={handleRenameFolder}
-              />
-            )
-          ) : null}
-        </main>
+            {/* Conteúdo Principal (FileManager ou AdminPanel) */}
+            <main className="flex-1 w-full max-w-none p-4 sm:p-6 lg:p-7 min-w-0 flex flex-col gap-6">
+              {activeView === 'drive' ? (
+                <FileManager
+                  currentUser={currentUser}
+                  folders={folders}
+                  files={files}
+                  allProfiles={profiles}
+                  storageMetrics={storageMetrics}
+                  onRefreshStorage={fetchStorageMetrics}
+                  onOpenFileViewer={(file) => setViewingFile(file)}
+                  onOpenUploadModal={(folderId) => {
+                    setUploadTargetFolderId(folderId || null);
+                    setIsUploadModalOpen(true);
+                  }}
+                  onCreateFolder={handleCreateFolder}
+                  onDeleteFolder={handleDeleteFolder}
+                  onRenameFolder={handleRenameFolder}
+                  onDeleteFile={handleDeleteFile}
+                  onRenameFile={handleRenameFile}
+                  onUpdateFolderAllowedUsers={handleUpdateFolderAllowedUsers}
+                  hasFolderPermission={checkFolderPermission}
+                  onOpenCompanyModal={handleOpenCompanyModal}
+                  externalSearchQuery={driveFilterSearch}
+                  onClearExternalSearch={() => setDriveFilterSearch('')}
+                />
+              ) : (
+                <AdminPanel
+                  currentUser={currentUser}
+                  profiles={profiles}
+                  folders={folders}
+                  folderPermissions={folderPermissions}
+                  auditLogs={auditLogs}
+                  siteBackgroundConfig={siteBackgroundConfig}
+                  authHeaderConfig={authHeaderConfig}
+                  onUpdateSiteBackgroundConfig={(newConf) => {
+                    setSiteBackgroundConfig(newConf);
+                  }}
+                  onUpdateAuthHeaderConfig={(newConf) => {
+                    setAuthHeaderConfig(newConf);
+                  }}
+                  onAuditLog={(details) => {
+                    logAudit('BACKGROUND_IMAGE_CHANGED', 'SETTINGS', 'site-background', details);
+                  }}
+                  onApproveUser={handleApproveUser}
+                  onRejectUser={handleRejectUser}
+                  onDeleteUser={handleDeleteUser}
+                  onUpdateUserStatus={handleUpdateUserStatus}
+                  onUpdateUserRole={handleUpdateUserRole}
+                  onUpdateFolderPermission={handleUpdateFolderPermission}
+                  onRenameFolder={handleRenameFolder}
+                />
+              )}
+            </main>
 
-        {/* Footer - Only render when logged in */}
-        {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved') && (
-          <footer className="w-full max-w-none bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border-t border-slate-200 dark:border-slate-800 pt-3.5 pb-20 sm:pb-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 dark:text-slate-400">
-            <div className="w-full max-w-none flex flex-col sm:flex-row items-center justify-between gap-2.5 pr-14 sm:pr-0">
-              <span>&copy; 2026 MVRJCONTÁBIL Gestão Eletrônica de Documentos. Todos os direitos reservados.</span>
-              <div className="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400">
+            {/* Footer Corporativo Minimalista */}
+            <footer className="w-full border-t border-slate-800/80 bg-[#070e1e]/80 py-3.5 px-4 sm:px-6 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0">
+              <span>&copy; 2026 MVRJ Contábil • Gestão Eletrônica de Documentos. Todos os direitos reservados.</span>
+              <div className="flex items-center space-x-3 text-[11px] text-slate-500">
                 <button
                   onClick={() => setIsLgpdModalOpen(true)}
-                  className="hover:text-amber-600 dark:hover:text-amber-400 underline font-medium transition-colors cursor-pointer"
+                  className="hover:text-amber-400 underline font-medium transition-colors cursor-pointer"
                 >
                   Termos de Acesso & Privacidade (LGPD)
                 </button>
                 <span>•</span>
                 <span>Ambiente Seguro e Monitorado</span>
               </div>
-            </div>
-          </footer>
-        )}
-      </div>
+            </footer>
+          </div>
+        </div>
+      ) : null}
 
       {/* Modals */}
       <AuthModal
@@ -1586,6 +1630,12 @@ export default function App() {
       <SalaryCalculatorModal
         isOpen={isSalaryCalculatorOpen}
         onClose={() => setIsSalaryCalculatorOpen(false)}
+      />
+
+      {/* Portais Fiscais Externos Drawer */}
+      <PortalsDrawer
+        isOpen={isPortalsDrawerOpen}
+        onClose={() => setIsPortalsDrawerOpen(false)}
       />
 
       {/* Assistente Virtual Contábil com Inteligência Artificial */}

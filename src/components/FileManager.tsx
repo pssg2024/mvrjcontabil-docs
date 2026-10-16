@@ -551,10 +551,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
               <span>Drive Corporativo • MVRJ Contábil</span>
             </div>
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-snug">
-              Gestão Eletrônica de Documentos Contábeis
+              Gestão Eletrônica de Documentos
             </h2>
             <p className="text-blue-100/80 text-xs sm:text-sm font-normal leading-relaxed w-full max-w-none">
-              Ambiente seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais com controle de permissões.
+              Drive Corporativo seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais com controle de permissões.
             </p>
           </div>
 
@@ -1054,18 +1054,18 @@ export const FileManager: React.FC<FileManagerProps> = ({
               return (
                 <div
                   key={file.id}
-                  className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-2xs hover:border-[#1B357B]/40 dark:hover:border-[#DFB76C]/40 hover:shadow-md hover:-translate-y-0.5 transition-all p-4 sm:p-4.5 flex flex-col justify-between group relative min-w-0"
+                  className="bg-white dark:bg-[#0c1527] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-4 sm:p-4.5 flex flex-col justify-between group relative min-w-0"
                 >
                   <div>
                     {/* Top Bar: File Icon & Status Badge */}
                     <div className="flex items-start justify-between">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
-                        isPdf ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50' :
-                        isImage ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50' :
-                        (isSpreadsheet || isXml) ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50' :
-                        isPfx ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-900/50' :
-                        isZip ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50' :
-                        'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition-transform duration-200 group-hover:scale-105 ${
+                        isPdf ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20' :
+                        isImage ? 'bg-blue-500/10 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20' :
+                        (isSpreadsheet || isXml) ? 'bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                        isPfx ? 'bg-purple-500/10 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/20' :
+                        isZip ? 'bg-amber-500/10 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                        'bg-slate-500/10 dark:bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-500/20'
                       }`}>
                         {isPdf ? <FileText className="w-5 h-5" /> :
                          isImage ? <ImageIcon className="w-5 h-5" /> :
@@ -1077,18 +1077,18 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       </div>
 
                       {isPfx ? (
-                        <span className="bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/80 text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
+                        <span className="bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60 text-[10px] font-semibold px-2 py-0.5 rounded-lg flex items-center gap-1">
                           <KeyRound className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                           <span>Certificado</span>
                         </span>
                       ) : file.compression_ratio > 0 ? (
-                        <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
-                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 text-[10px] font-semibold px-2 py-0.5 rounded-lg flex items-center gap-1 font-mono">
+                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                           <span>-{file.compression_ratio}%</span>
                         </span>
                       ) : (
-                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
-                          <Check className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                        <span className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60 text-[10px] font-medium px-2 py-0.5 rounded-lg flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-500" />
                           <span>Íntegro</span>
                         </span>
                       )}
@@ -1098,19 +1098,19 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     <div className="min-w-0">
                       <h4 
                         onClick={() => onOpenFileViewer(file)}
-                        className="text-sm font-bold text-slate-900 dark:text-slate-100 break-words group-hover:text-[#1B357B] dark:group-hover:text-[#E2C37A] transition-colors mt-3 cursor-pointer leading-snug line-clamp-2" 
+                        className="text-[13px] font-bold text-slate-900 dark:text-slate-100 break-words group-hover:text-blue-600 dark:group-hover:text-[#E2C37A] transition-colors mt-3 cursor-pointer leading-snug line-clamp-2" 
                         title={file.name}
                       >
                         {file.name}
                       </h4>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 min-w-0 truncate mt-1">
+                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 min-w-0 truncate mt-1.5">
                         <FolderIcon className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
                         <span className="truncate">{file.sector}</span>
                         {file.pages_count && file.pages_count > 1 && (
-                          <span className="text-slate-400 shrink-0">· {file.pages_count} págs</span>
+                          <span className="text-slate-400 dark:text-slate-500 shrink-0">· {file.pages_count} págs</span>
                         )}
                         {file.tags && file.tags.find(t => t.startsWith('Ref: ')) && (
-                          <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] px-1.5 py-0.2 rounded font-mono font-medium border border-slate-200 dark:border-slate-700 ml-1 shrink-0">
+                          <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] px-1.5 py-0.2 rounded font-mono font-medium border border-slate-200 dark:border-slate-700 ml-1 shrink-0">
                             {file.tags.find(t => t.startsWith('Ref: '))}
                           </span>
                         )}
@@ -1119,16 +1119,16 @@ export const FileManager: React.FC<FileManagerProps> = ({
                   </div>
 
                   {/* Footer Actions */}
-                  <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                     <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
                       {new Date(file.created_at).toLocaleDateString('pt-BR')}
                     </span>
 
-                    <div className="flex items-center space-x-1 relative">
+                    <div className="flex items-center space-x-1.5 relative">
                       <button
                         type="button"
                         onClick={() => onOpenFileViewer(file)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-[#1B357B] dark:hover:text-[#E2C37A] bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-[#E2C37A] bg-slate-100/70 dark:bg-slate-800/70 hover:bg-slate-200/70 dark:hover:bg-slate-750 border border-slate-200/80 dark:border-slate-700/80 transition-all cursor-pointer shadow-2xs"
                         title="Visualizar documento"
                       >
                         <Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -1145,7 +1145,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                             setOpenFolderMenuId(null);
                             setIsBreadcrumbMenuOpen(false);
                           }}
-                          className="p-1.5 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer flex items-center justify-center shadow-2xs"
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 bg-slate-100/70 dark:bg-slate-800/70 hover:bg-slate-200/70 dark:hover:bg-slate-750 border border-slate-200/80 dark:border-slate-700/80 transition-all cursor-pointer flex items-center justify-center shadow-2xs"
                           title="Opções do documento"
                         >
                           <MoreVertical className="w-4 h-4" />

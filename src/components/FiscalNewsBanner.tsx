@@ -160,88 +160,79 @@ export const FiscalNewsBanner: React.FC<FiscalNewsBannerProps> = ({
 
   return (
     <div 
-      className={`w-full flex flex-col gap-2.5 sm:gap-2 select-none ${className}`}
+      className={`w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-white select-none ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       role="region"
       aria-label="Plantão de Legislação e Notícias Fiscais"
     >
-      {/* LINHA SUPERIOR: Badges Informativas (Esquerda) + Barra de Controles (Direita) - Linha única sem quebra */}
-      <div className="w-full flex items-center justify-between gap-2 min-w-0">
-        
-        {/* Badges: Plantão Fiscal + Órgão (com truncate seguro) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden">
-          {/* Badge "Plantão Fiscal" com radar pulsante */}
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-400/35 text-amber-200 text-[10px] font-bold font-mono tracking-wider shadow-xs backdrop-blur-md shrink-0">
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400 shadow-xs shadow-amber-300"></span>
-            </span>
-            <span className="shrink-0 whitespace-nowrap">PLANTÃO FISCAL</span>
-          </div>
-
-          {/* Badge do Órgão Formatado (Truncate elegante para nunca quebrar ou desalinhar a linha no celular) */}
-          <span 
-            className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-blue-100 text-[10px] font-semibold font-mono tracking-wide border border-white/15 truncate max-w-[100px] xs:max-w-[130px] sm:max-w-[220px] shrink min-w-0 transition-colors"
-            title={formattedOrgan}
-          >
-            {formattedOrgan}
-          </span>
+      {/* Lado Esquerdo: Badges discretas em fonte Inter + Título da Notícia */}
+      <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
+        {/* Badge: PLANTÃO FISCAL */}
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-semibold tracking-wider font-sans shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
+          <span>PLANTÃO FISCAL</span>
         </div>
 
-        {/* Lado Direito: Navegação entre Notícias (< 1/15 >) - Sempre ancorado à direita, NUNCA quebra linha */}
-        <div className="flex items-center shrink-0 ml-auto">
-          {news.length > 1 && (
-            <div className="inline-flex items-center bg-black/40 hover:bg-black/50 backdrop-blur-md rounded-lg p-0.5 border border-white/15 text-[11px] font-mono shadow-xs transition-colors shrink-0">
-              <button
-                type="button"
-                onClick={handlePrev}
-                className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
-                aria-label="Notícia anterior"
-                title="Aviso/Notícia anterior"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-
-              <span className="px-1.5 sm:px-2 text-[11px] font-mono text-white/95 font-bold tracking-tight select-none whitespace-nowrap">
-                {currentIndex + 1}/{news.length}
-              </span>
-
-              <button
-                type="button"
-                onClick={handleNext}
-                className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
-                aria-label="Próxima notícia"
-                title="Próxima notícia"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+        {/* Badge: Órgão (ex.: RECEITA FEDERAL) */}
+        <div className="px-2 py-0.5 rounded-md bg-white/10 text-blue-100 border border-white/15 text-[10px] font-semibold tracking-wide font-sans shrink-0 truncate max-w-[140px] sm:max-w-[180px]">
+          {formattedOrgan}
         </div>
 
-      </div>
-
-      {/* LINHA INFERIOR: Título Completo da Notícia com Altura Mínima Estável (Elimina solavancos ao trocar notícia) */}
-      <div className="w-full min-h-[38px] sm:min-h-[42px] flex items-center">
+        {/* Título da Notícia Dinâmica (Texto Limpo sem caixote escuro por dentro) */}
         <a
           href={currentItem.linkOficial}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs sm:text-[13px] font-medium text-white/95 hover:text-amber-300 transition-colors leading-snug sm:leading-relaxed tracking-tight group block max-w-full line-clamp-2"
+          className="text-xs font-medium text-slate-100 hover:text-amber-300 transition-colors truncate min-w-0 flex-1 cursor-pointer font-sans"
           title={currentItem.titulo}
         >
-          <span className="group-hover:underline underline-offset-2">
-            {currentItem.titulo}
-          </span>
-          {currentItem.resumo && 
-           !currentItem.titulo.toLowerCase().includes(currentItem.resumo.toLowerCase().slice(0, 20)) &&
-           !currentItem.resumo.toLowerCase().includes(currentItem.titulo.toLowerCase().slice(0, 20)) && (
-            <span className="hidden lg:inline text-blue-200/70 text-[11px] font-normal ml-2">
-              &mdash; {currentItem.resumo}
-            </span>
-          )}
+          <span>{currentItem.titulo}</span>
         </a>
+      </div>
+
+      {/* Lado Direito: Botão 'Fonte Oficial' + Controles de Navegação < > */}
+      <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+        {/* Botão 'Fonte Oficial' */}
+        {currentItem.linkOficial && (
+          <a
+            href={currentItem.linkOficial}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-blue-200 hover:text-white bg-white/10 hover:bg-white/20 border border-white/15 transition-all cursor-pointer font-sans shrink-0"
+            title="Acessar página oficial da notícia"
+          >
+            <span>Fonte Oficial</span>
+            <FileText className="w-3 h-3 text-amber-300" />
+          </a>
+        )}
+
+        {/* Controles de navegação < 1/15 > */}
+        {news.length > 1 && (
+          <div className="inline-flex items-center rounded-lg border border-white/15 bg-white/5 p-0.5 text-xs font-sans shrink-0">
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="p-1 rounded-md text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Notícia anterior"
+              aria-label="Anterior"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <span className="px-2 text-[11px] font-semibold text-slate-200 select-none whitespace-nowrap">
+              {currentIndex + 1}/{news.length}
+            </span>
+            <button
+              type="button"
+              onClick={handleNext}
+              className="p-1 rounded-md text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Próxima notícia"
+              aria-label="Próxima"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
