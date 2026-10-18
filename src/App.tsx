@@ -18,7 +18,7 @@ import { InvoiceEmissionView } from './components/InvoiceEmissionView';
 import { UserManualModal } from './components/UserManualModal';
 import { SalaryCalculatorModal } from './components/SalaryCalculatorModal';
 import { MvrjAssistantWidget } from './components/MvrjAssistantWidget';
-import { ShieldCheck, Menu } from 'lucide-react';
+import { ShieldCheck, Menu, LogOut } from 'lucide-react';
 import { 
   UserProfile, 
   UserRole, 
@@ -1346,17 +1346,33 @@ export default function App() {
                 </div>
               </div>
 
-              <div 
-                onClick={() => handleOpenProfileModal('profile')}
-                className="w-8 h-8 rounded-lg overflow-hidden ring-1.5 ring-emerald-500/80 cursor-pointer shadow-xs"
-              >
-                {currentUser.avatar_url ? (
-                  <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
-                    {currentUser.full_name.charAt(0).toUpperCase()}
-                  </div>
-                )}
+              <div className="flex items-center gap-2">
+                {/* Botão Sair visível diretamente no cabeçalho mobile */}
+                <button
+                  type="button"
+                  id="mobile-header-logout-btn"
+                  onClick={handleLogout}
+                  className="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 active:bg-rose-950/60 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-medium border border-slate-700/60 hover:border-rose-800/60"
+                  title="Encerrar sessão"
+                  aria-label="Sair da conta"
+                >
+                  <LogOut className="w-4 h-4 text-rose-400 shrink-0" strokeWidth={1.75} />
+                  <span>Sair</span>
+                </button>
+
+                <div 
+                  onClick={() => handleOpenProfileModal('profile')}
+                  className="w-8 h-8 rounded-lg overflow-hidden ring-1.5 ring-emerald-500/80 cursor-pointer shadow-xs shrink-0"
+                  title="Meu Perfil"
+                >
+                  {currentUser.avatar_url ? (
+                    <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
+                      {currentUser.full_name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

@@ -70,13 +70,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [registrationSubmitted, setRegistrationSubmitted] = useState<UserProfile | null>(null);
   const [isSubmittingRegister, setIsSubmittingRegister] = useState(false);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (isOpen && videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
-  }, [isOpen]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,8 +221,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
-      {/* Fundo Animado atrás da área de login com o vídeo 204292-923909617_medium.mp4 */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {/* Fundo Animado atrás da área de login em loop suave contínuo (sem paradinha) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
         <video
           autoPlay
           loop
@@ -241,8 +234,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <source src="/images/204292-923909617_medium.mp4" type="video/mp4" />
           <source src="/204292-923909617_medium.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-[2px]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/80" />
+        <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-slate-950/65" />
       </div>
 
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl shadow-black/50 border border-slate-200/80 ring-1 ring-black/5 overflow-hidden animate-in fade-in zoom-in-95 duration-300 relative z-10">
@@ -254,10 +247,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             background: 'linear-gradient(135deg, #101F42 0%, #1B357B 100%)',
           }}
         >
-          {/* Vídeo corporativo animado no fundo deste campo */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {/* Vídeo corporativo animado em loop contínuo com crossfade suave (sem paradinha) */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
             <video
-              ref={videoRef}
               autoPlay
               loop
               muted

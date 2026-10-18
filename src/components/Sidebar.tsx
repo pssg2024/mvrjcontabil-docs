@@ -18,7 +18,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  FolderLock
+  FolderLock,
+  X
 } from 'lucide-react';
 import { UserProfile, StorageMetrics, AuthHeaderConfig } from '../types';
 
@@ -94,13 +95,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Main Sidebar Container */}
       <aside
         id="app-sidebar"
-        className={`fixed lg:static top-0 left-0 z-50 h-screen flex flex-col justify-between bg-[#091124] border-r border-slate-800/80 transition-all duration-300 ease-in-out text-slate-300 select-none ${
+        className={`fixed lg:static top-0 left-0 z-50 h-screen h-[100dvh] max-h-[100dvh] overscroll-contain flex flex-col justify-between bg-[#091124] border-r border-slate-800/80 transition-all duration-300 ease-in-out text-slate-300 select-none ${
           isCollapsed ? 'lg:w-20' : 'lg:w-64'
         } ${
           isOpenMobile ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Top Header: Logo + Brand + Collapse Toggle */}
+        {/* Top Header: Logo + Brand + Collapse Toggle / Mobile Close */}
         <div className="h-16 px-4 flex items-center justify-between border-b border-slate-800/80 shrink-0 bg-[#091124]">
           <div 
             onClick={() => handleLinkClick(onNavigateHome)}
@@ -145,6 +146,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ) : (
               <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-white" strokeWidth={1.75} />
             )}
+          </button>
+
+          {/* Mobile Close Button */}
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="lg:hidden flex w-8 h-8 rounded-lg items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/60 active:bg-slate-800 transition-colors cursor-pointer"
+            title="Fechar menu"
+            aria-label="Fechar menu de navegação"
+          >
+            <X className="w-5 h-5 text-slate-400" strokeWidth={1.75} />
           </button>
         </div>
 
@@ -462,10 +474,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
 
+          {/* Section: Sair do Sistema (Visível no Menu Mobile) */}
+          <div className="pt-2 border-t border-slate-800/80 lg:hidden">
+            <button
+              type="button"
+              id="sidebar-btn-nav-logout-mobile"
+              onClick={onLogout}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 active:bg-rose-950/60 border border-rose-900/40 transition-colors cursor-pointer group text-left"
+              title="Encerrar Sessão"
+            >
+              <LogOut 
+                className="w-4 h-4 text-rose-400 group-hover:text-rose-300 transition-colors shrink-0" 
+                strokeWidth={1.75} 
+              />
+              <span className="truncate">Sair do Sistema</span>
+            </button>
+          </div>
+
         </div>
 
         {/* Bottom Footer: User Profile Card & Logout */}
-        <div className="p-3 border-t border-slate-800/80 bg-[#070e1e] shrink-0">
+        <div className="p-3 pb-6 sm:pb-3 border-t border-slate-800/80 bg-[#070e1e] shrink-0 sticky bottom-0 z-20">
           {!isCollapsed ? (
             <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 shadow-xs">
               {/* User Avatar + Name + Role */}
@@ -505,10 +534,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 type="button"
                 id="sidebar-logout-btn"
                 onClick={onLogout}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors cursor-pointer shrink-0"
+                className="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 active:bg-rose-950/60 border border-slate-700/60 hover:border-rose-900/60 transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 text-xs font-medium"
                 title="Encerrar Sessão"
+                aria-label="Sair da conta"
               >
-                <LogOut className="w-4 h-4" strokeWidth={1.75} />
+                <LogOut className="w-4 h-4 text-rose-400 shrink-0" strokeWidth={1.75} />
+                <span>Sair</span>
               </button>
             </div>
           ) : (
@@ -535,10 +566,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={onLogout}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors cursor-pointer"
+                className="p-2 rounded-lg text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 active:bg-rose-950/60 border border-slate-700/60 hover:border-rose-900/60 transition-colors cursor-pointer"
                 title="Encerrar Sessão"
+                aria-label="Sair da conta"
               >
-                <LogOut className="w-4 h-4" strokeWidth={1.75} />
+                <LogOut className="w-4 h-4 text-rose-400" strokeWidth={1.75} />
               </button>
             </div>
           )}
