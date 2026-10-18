@@ -474,22 +474,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
 
-          {/* Section: Sair do Sistema (Visível no Menu Mobile) */}
-          <div className="pt-2 border-t border-slate-800/80 lg:hidden">
-            <button
-              type="button"
-              id="sidebar-btn-nav-logout-mobile"
-              onClick={onLogout}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 active:bg-rose-950/60 border border-rose-900/40 transition-colors cursor-pointer group text-left"
-              title="Encerrar Sessão"
-            >
-              <LogOut 
-                className="w-4 h-4 text-rose-400 group-hover:text-rose-300 transition-colors shrink-0" 
-                strokeWidth={1.75} 
-              />
-              <span className="truncate">Sair do Sistema</span>
-            </button>
-          </div>
 
         </div>
 
