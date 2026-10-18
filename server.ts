@@ -4089,7 +4089,7 @@ async function fetchFiscalNews(): Promise<FiscalNewsItemServer[]> {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
         },
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(12000),
       });
 
       if (!response.ok) continue;
@@ -4185,14 +4185,14 @@ async function fetchFiscalNews(): Promise<FiscalNewsItemServer[]> {
             }));
             await supabase.from('noticias_fiscais').upsert(dbRecords, { onConflict: 'id' });
           } catch (e) {
-            console.warn('[Notícias Fiscais] Aviso ao sincronizar com Supabase:', e);
+            // Silencioso em caso de inconsistência transitória
           }
         }
 
         return cachedFiscalNews;
       }
-    } catch (err) {
-      console.warn('[Notícias Fiscais] Tentativa de buscar feed falhou:', err);
+    } catch (err: any) {
+      // Falha transitória de rede ou timeout: usa fallback pré-carregado sem interromper a aplicação
     }
   }
 

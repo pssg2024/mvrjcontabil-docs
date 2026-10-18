@@ -228,27 +228,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
-      {/* Imagem de Fundo Restaurada (Escritório Contábil Corporativo) */}
+      {/* Fundo Animado atrás da área de login com o vídeo 204292-923909617_medium.mp4 */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <img
-          src="/images/accounting_office.jpg"
-          alt="Escritório Contábil MVRJ"
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
           className="w-full h-full object-cover select-none"
-        />
+        >
+          <source src="/images/204292-923909617_medium.mp4" type="video/mp4" />
+          <source src="/204292-923909617_medium.mp4" type="video/mp4" />
+        </video>
         <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-[2px]" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/80" />
       </div>
 
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl shadow-black/50 border border-slate-200/80 ring-1 ring-black/5 overflow-hidden animate-in fade-in zoom-in-95 duration-300 relative z-10">
         
-        {/* Header Visual com Fundo Azul Corporativo Animado com o Vídeo Finance Surfer */}
+        {/* Header Visual com Fundo Animado do Vídeo Corporativo */}
         <div 
           className="px-6 py-8 text-white text-center relative overflow-hidden flex flex-col justify-center items-center"
           style={{
             background: 'linear-gradient(135deg, #101F42 0%, #1B357B 100%)',
           }}
         >
-          {/* Vídeo Finance Surfer animado no fundo deste campo azul */}
+          {/* Vídeo corporativo animado no fundo deste campo */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <video
               ref={videoRef}
@@ -259,10 +265,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               preload="auto"
               className="w-full h-full object-cover select-none filter contrast-[1.08] saturate-[1.15]"
             >
-              <source src="/finance-surfer.mp4" type="video/mp4" />
-              <source src="/Finance%20Surfer.mp4" type="video/mp4" />
-              <source src="/finance-surfer.webm" type="video/webm" />
-              <source src="/Finance%20Surfer.webm" type="video/webm" />
+              <source src="/images/204292-923909617_medium.mp4" type="video/mp4" />
+              <source src="/204292-923909617_medium.mp4" type="video/mp4" />
             </video>
             {/* Overlay sutil em degradê azul corporativo para harmonizar com a identidade MVRJ e manter legibilidade perfeita */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#091533]/85 via-[#0C1B3E]/50 to-[#091533]/65" />
