@@ -1313,7 +1313,6 @@ export default function App() {
             onOpenPortalsDrawer={() => setIsPortalsDrawerOpen(true)}
             onOpenManualModal={() => setIsManualModalOpen(true)}
             onOpenBackgroundModal={() => {
-              setBackgroundModalTab('site-background');
               setIsBackgroundModalOpen(true);
             }}
             onOpenSqlModal={() => setIsSqlModalOpen(true)}

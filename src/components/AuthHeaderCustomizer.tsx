@@ -330,58 +330,59 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Info Banner */}
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-2xl p-5 shadow-lg border border-blue-800/40 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="space-y-5">
+      {/* Top Action Bar */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 border border-blue-100">
+            <Sparkles className="w-4 h-4 text-blue-600" />
+          </div>
           <div>
-            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-[11px] font-bold mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-blue-300" />
-              <span>Personalização do Cabeçalho de Login</span>
-            </div>
-            <h3 className="text-lg font-black tracking-tight">
-              Cartão de Autenticação & Boas-Vindas da MVRJCONTÁBIL
+            <h3 className="text-sm font-bold text-gray-900 leading-tight">
+              Identidade Visual & Marca
             </h3>
-            <p className="text-xs text-blue-200/90 mt-1 max-w-2xl leading-relaxed">
-              Altere o título, subtítulo institucional, logotipo corporativo, cores de gradiente, ou aplique uma imagem de fundo de alta resolução com sobreposição para o cartão de login visualizado por clientes e colaboradores.
+            <p className="text-xs text-gray-500">
+              Personalize o título, subtítulo, cores e logotipo da tela de login.
             </p>
           </div>
+        </div>
 
-          <div className="flex items-center space-x-2 shrink-0">
-            <button
-              onClick={handleReset}
-              disabled={isSaving}
-              className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 flex items-center space-x-1.5 transition-colors cursor-pointer"
-              title="Restaurar padrão corporativo"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>Restaurar Padrão</span>
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md flex items-center space-x-1.5 transition-all cursor-pointer"
-            >
-              {isSaving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Salvando...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  <span>Salvar Cabeçalho</span>
-                </>
-              )}
-            </button>
-          </div>
+        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={isSaving}
+            className="flex-1 sm:flex-none px-3.5 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+            title="Restaurar padrão corporativo"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Restaurar</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs hover:shadow flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+          >
+            {isSaving ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5" />
+                <span>Salvar Alterações</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
       {/* Feedback Toast */}
       {feedbackMessage && (
         <div
-          className={`p-4 rounded-xl text-xs font-semibold flex items-center space-x-2 animate-in fade-in duration-200 ${
+          className={`p-3.5 rounded-xl text-xs font-semibold flex items-center space-x-2 animate-in fade-in duration-200 ${
             feedbackMessage.type === 'success'
               ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
               : 'bg-red-50 border border-red-200 text-red-800'
@@ -402,39 +403,42 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
         {/* LEFT COLUMN: CONTROLS & TABS (7 COLS) */}
         <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
           {/* Tabs Selector */}
-          <div className="flex border-b border-gray-200 bg-gray-50/70 p-1.5 gap-1 text-xs font-bold">
+          <div className="flex border-b border-gray-200 bg-gray-50/80 p-1.5 gap-1.5 text-xs font-bold">
             <button
+              type="button"
               onClick={() => setActiveTab('text-brand')}
-              className={`flex-1 py-2.5 px-3 rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+              className={`flex-1 py-2.5 px-2 sm:px-3 rounded-xl flex items-center justify-center space-x-1.5 transition-all cursor-pointer ${
                 activeTab === 'text-brand'
                   ? 'bg-white text-blue-700 shadow-xs border border-gray-200/80 font-black'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
-              <Type className="w-4 h-4 text-blue-600" />
-              <span>Textos & Marca</span>
+              <Type className="w-4 h-4 text-blue-600 shrink-0" />
+              <span className="truncate">Textos & Marca</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('colors-gradient')}
-              className={`flex-1 py-2.5 px-3 rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+              className={`flex-1 py-2.5 px-2 sm:px-3 rounded-xl flex items-center justify-center space-x-1.5 transition-all cursor-pointer ${
                 activeTab === 'colors-gradient'
                   ? 'bg-white text-blue-700 shadow-xs border border-gray-200/80 font-black'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
-              <Palette className="w-4 h-4 text-purple-600" />
-              <span>Cores & Gradientes</span>
+              <Palette className="w-4 h-4 text-purple-600 shrink-0" />
+              <span className="truncate">Cores & Gradientes</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('background-image')}
-              className={`flex-1 py-2.5 px-3 rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+              className={`flex-1 py-2.5 px-2 sm:px-3 rounded-xl flex items-center justify-center space-x-1.5 transition-all cursor-pointer ${
                 activeTab === 'background-image'
                   ? 'bg-white text-blue-700 shadow-xs border border-gray-200/80 font-black'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
-              <ImageIcon className="w-4 h-4 text-emerald-600" />
-              <span>Imagem de Fundo</span>
+              <ImageIcon className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="truncate">Imagem de Fundo</span>
             </button>
           </div>
 

@@ -430,7 +430,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           className="w-4 h-4 text-slate-400 group-hover:text-blue-400 transition-colors shrink-0" 
                           strokeWidth={1.75} 
                         />
-                        <span className="truncate">Identidade Visual & Temas</span>
+                        <span className="truncate">Identidade Visual (Login)</span>
                       </button>
                     </div>
                   )}
