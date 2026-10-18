@@ -343,162 +343,171 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const userInitial = (fullName.trim() || 'U').charAt(0).toUpperCase();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
-        className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold shadow-2xs">
-              {activeTab === 'profile' ? <User className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5 text-blue-700" />}
+        {/* Header Corporativo Refinado */}
+        <div className="px-5 sm:px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-900 via-[#101F42] to-[#1B357B] text-white shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md text-[#DFB76C] border border-white/15 flex items-center justify-center font-bold shadow-xs shrink-0">
+              {activeTab === 'profile' ? <User className="w-5 h-5" /> : <KeyRound className="w-5 h-5" />}
             </div>
-            <div>
-              <h2 className="text-base font-bold text-gray-900">Meu Perfil de Acesso</h2>
-              <p className="text-xs text-gray-500">MVRJCONTÁBIL • Gestão Eletrônica de Documentos</p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-white tracking-tight leading-tight truncate">
+                  Meu Perfil de Acesso
+                </h2>
+                <span className="bg-[#C59B4B]/25 text-[#E5C378] border border-[#C59B4B]/40 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0">
+                  {currentUser.role === 'admin' ? 'Administrador' : currentUser.sector || 'Colaborador'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 font-medium truncate mt-0.5">
+                MVRJ CONTÁBIL • Gestão Eletrônica de Documentos
+              </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             disabled={isProcessing}
-            className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+            className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 border border-white/10 disabled:opacity-50"
+            title="Fechar"
+            aria-label="Fechar"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Tab Selector */}
-        <div className="flex border-b border-gray-200 bg-slate-50/80 px-6 pt-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('profile')}
-            className={`pb-2.5 px-4 text-xs font-bold flex items-center space-x-2 border-b-2 transition-all ${
-              activeTab === 'profile'
-                ? 'border-blue-600 text-blue-700 bg-white rounded-t-lg shadow-2xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <User className="w-3.5 h-3.5" />
-            <span>Dados do Perfil & Foto</span>
-          </button>
+        {/* Tab Selector (Segmented Pill Bar Moderno) */}
+        <div className="p-3 bg-slate-50/90 border-b border-slate-200/80 shrink-0">
+          <div className="flex bg-slate-200/70 p-1 rounded-2xl gap-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('profile')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'profile'
+                  ? 'bg-white text-[#1B357B] shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <User className="w-3.5 h-3.5 text-blue-600" />
+              <span>Dados do Perfil & Foto</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('security')}
-            className={`pb-2.5 px-4 text-xs font-bold flex items-center space-x-2 border-b-2 transition-all ${
-              activeTab === 'security'
-                ? 'border-blue-600 text-blue-700 bg-white rounded-t-lg shadow-2xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <KeyRound className="w-3.5 h-3.5 text-amber-500" />
-            <span>Segurança & Senha</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-semibold ml-1">
-              Opcional
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('security')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'security'
+                  ? 'bg-white text-[#1B357B] shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+              <span>Segurança & Senha</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab 1: Profile & Avatar */}
         {activeTab === 'profile' && (
-          <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
+          <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-6 overflow-y-auto flex-1">
             {/* Alertas de Notificação */}
             {errorMsg && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center space-x-2 animate-in fade-in duration-150">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-2xl flex items-center space-x-2 animate-in fade-in duration-150">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
             {successMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center space-x-2 animate-in fade-in duration-150">
+              <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-2xl flex items-center space-x-2 animate-in fade-in duration-150">
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
                 <span>{successMsg}</span>
               </div>
             )}
 
-            {/* Seção do Avatar de Alta Definição (Design Executivo) */}
-            <div className="flex flex-col items-center pb-6 border-b border-slate-100 space-y-4">
-              <div className="text-center">
-                {/* Avatar com aro duplo requintado */}
-                <div className="relative group shrink-0 inline-block">
-                  <div 
-                    onDragOver={(e) => { e.preventDefault(); if (!isProcessing) setIsDragging(true); }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleDrop}
-                    onClick={() => !isProcessing && fileInputRef.current?.click()}
-                    className={`relative w-24 h-24 mx-auto rounded-full ring-4 ring-slate-100 shadow-md overflow-hidden border-2 border-white cursor-pointer transition-all flex items-center justify-center bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-500 text-white select-none ${
-                      isDragging 
-                        ? 'ring-blue-100 scale-105 border-blue-500' 
-                        : 'hover:ring-blue-200'
-                    } ${isProcessing ? 'cursor-wait opacity-80' : ''}`}
-                    title="Clique ou arraste para alterar foto de perfil"
-                  >
-                    {/* Fallback de Visualização */}
-                    {avatarUrl && !imgError ? (
-                      <img 
-                        src={avatarUrl} 
-                        alt={fullName}
-                        referrerPolicy="no-referrer"
-                        onError={() => setImgError(true)}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-2xl font-extrabold tracking-tight text-white drop-shadow-xs">
-                        {userInitial}
-                      </span>
-                    )}
+            {/* Card Executivo da Foto de Perfil */}
+            <div className="bg-gradient-to-b from-slate-50 to-slate-100/60 border border-slate-200/80 rounded-2xl p-5 flex flex-col items-center space-y-4 shadow-xs">
+              
+              {/* Avatar com Aro Triplo e Status Online */}
+              <div className="relative group shrink-0 inline-block">
+                <div 
+                  onDragOver={(e) => { e.preventDefault(); if (!isProcessing) setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  onClick={() => !isProcessing && fileInputRef.current?.click()}
+                  className={`relative w-28 h-28 mx-auto rounded-full ring-4 ring-white shadow-xl overflow-hidden border-2 border-slate-200/60 cursor-pointer transition-all flex items-center justify-center bg-gradient-to-br from-[#101F42] via-[#1B357B] to-blue-600 text-white select-none ${
+                    isDragging 
+                      ? 'ring-blue-400 scale-105 border-blue-500' 
+                      : 'hover:scale-102 hover:shadow-2xl'
+                  } ${isProcessing ? 'cursor-wait opacity-80' : ''}`}
+                  title="Clique ou arraste para alterar foto de perfil"
+                >
+                  {/* Visualização da Imagem */}
+                  {avatarUrl && !imgError ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt={fullName}
+                      referrerPolicy="no-referrer"
+                      onError={() => setImgError(true)}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-3xl font-black tracking-tight text-white drop-shadow-md">
+                      {userInitial}
+                    </span>
+                  )}
 
-                    {/* Overlay de Hover e Estado de Carregamento */}
-                    {isProcessing ? (
-                      <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-[11px] font-medium p-1 text-center">
-                        <Loader2 className="w-5 h-5 animate-spin mb-0.5 text-blue-300" />
-                        <span className="text-[9px] leading-tight">Enviando...</span>
-                      </div>
-                    ) : (
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-semibold">
-                        <Camera className="w-4 h-4 mb-0.5" />
-                        <span>Alterar</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Botão de lixeira flutuante no canto do avatar com tom mais subtil */}
-                  {avatarUrl && !isProcessing && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemovePhoto();
-                      }}
-                      title="Remover foto do perfil"
-                      className="absolute top-0 right-0 p-1 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-full border border-slate-200/60 shadow-2xs transition-colors active:scale-95 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                  {/* Overlay de Hover e Estado de Carregamento */}
+                  {isProcessing ? (
+                    <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white text-[11px] font-semibold p-1 text-center">
+                      <Loader2 className="w-6 h-6 animate-spin mb-1 text-blue-300" />
+                      <span className="text-[10px] leading-tight">Enviando foto...</span>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[11px] font-bold backdrop-blur-[1px]">
+                      <Camera className="w-5 h-5 mb-1 text-amber-300" />
+                      <span>Alterar Foto</span>
+                    </div>
                   )}
                 </div>
-                
-                {/* Texto auxiliar com formatação específica */}
-                <p className="text-[11px] text-slate-400 text-center mt-1.5">
-                  Formatos suportados: PNG, JPG ou WEBP (redimensionamento automático)
-                </p>
+
+                {/* Ponto indicador de status ativo */}
+                <span 
+                  className="w-4 h-4 rounded-full bg-emerald-500 border-2 border-white shadow-sm absolute bottom-1 right-2"
+                  title="Usuário ativo"
+                />
               </div>
 
-              {/* Progresso e botões de ação estruturados */}
-              <div className="w-full flex flex-col items-center space-y-3.5">
-                {/* Barra de progresso durante envio */}
+              {/* Botões de Ação da Foto */}
+              <div className="flex flex-col items-center space-y-3 w-full">
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  accept="image/*"
+                  disabled={isProcessing}
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleProcessAndUpload(e.target.files[0]);
+                    }
+                  }}
+                />
+
+                {/* Barra de progresso */}
                 {isProcessing && (
-                  <div className="w-full max-w-sm space-y-1.5 p-2.5 bg-blue-50/80 rounded-xl border border-blue-100">
-                    <div className="flex items-center justify-between text-[11px] text-blue-900 font-medium">
+                  <div className="w-full max-w-xs space-y-1.5 p-2 bg-white rounded-xl border border-blue-200 shadow-xs">
+                    <div className="flex items-center justify-between text-[11px] text-blue-900 font-bold">
                       <span className="flex items-center">
                         <Loader2 className="w-3 h-3 animate-spin mr-1.5 text-blue-600" />
                         {statusText || 'Processando envio...'}
                       </span>
                       <span>{uploadProgress}%</span>
                     </div>
-                    <div className="w-full bg-blue-200/60 rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-blue-100 rounded-full h-1.5 overflow-hidden">
                       <div 
                         className="bg-blue-600 h-1.5 rounded-full transition-all duration-300 ease-out" 
                         style={{ width: `${uploadProgress}%` }}
@@ -507,28 +516,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
                 )}
 
-                {/* Botões de Seleção e Remoção alinhados lado a lado com estilo limpo */}
                 <div className="flex items-center justify-center gap-2">
-                  <input 
-                    type="file" 
-                    ref={fileInputRef}
-                    accept="image/*"
-                    disabled={isProcessing}
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        handleProcessAndUpload(e.target.files[0]);
-                      }
-                    }}
-                  />
-                  
                   <button
                     type="button"
                     disabled={isProcessing}
                     onClick={() => fileInputRef.current?.click()}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                    className="bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition-all disabled:opacity-50 cursor-pointer"
                   >
-                    <Upload className="w-3.5 h-3.5 text-slate-500" />
+                    <Upload className="w-3.5 h-3.5 text-blue-600" />
                     <span>Selecionar Foto</span>
                   </button>
 
@@ -537,20 +532,21 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       type="button"
                       disabled={isProcessing}
                       onClick={handleRemovePhoto}
-                      className="text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+                      className="bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+                      title="Remover foto atual"
                     >
-                      <Trash2 className="w-3.5 h-3.5 inline mr-1" />
-                      <span>Remover Foto</span>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Remover</span>
                     </button>
                   )}
                 </div>
 
-                {/* Presets de avatares rápidos horizontais discretos com efeito hover */}
-                <div className="text-center">
-                  <span className="text-[11px] font-semibold text-gray-400 block mb-1.5">
-                    Ou selecione um avatar rápido:
+                {/* Avatares Rápidos */}
+                <div className="pt-2 border-t border-slate-200/60 w-full flex flex-col items-center">
+                  <span className="text-[11px] font-bold text-slate-500 block mb-2">
+                    Ou escolha uma foto corporativa pré-definida:
                   </span>
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center justify-center gap-2.5">
                     {DEFAULT_AVATARS.map((url, idx) => (
                       <button
                         key={idx}
@@ -558,10 +554,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         disabled={isProcessing}
                         onClick={() => handleSelectPresetAvatar(url)}
                         title="Aplicar avatar predefinido"
-                        className={`w-8 h-8 rounded-full overflow-hidden border-2 transition-all disabled:opacity-50 cursor-pointer ${
+                        className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-all disabled:opacity-50 cursor-pointer shadow-xs ${
                           avatarUrl === url 
-                            ? 'border-[#C59B4B] ring-2 ring-[#C59B4B]/30 scale-110' 
-                            : 'border-transparent ring-2 ring-transparent hover:ring-[#C59B4B] opacity-80 hover:opacity-100'
+                            ? 'border-[#C59B4B] ring-2 ring-[#C59B4B]/40 scale-110 shadow-md' 
+                            : 'border-white opacity-85 hover:opacity-100 hover:scale-105'
                         }`}
                       >
                         <img 
@@ -577,12 +573,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             </div>
 
-            {/* Dados Cadastrais / Informações Pessoais */}
+            {/* Informações Cadastrais com Estilo Executivo */}
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  Nome de Exibição
+                <label className="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Nome de Exibição</span>
                 </label>
                 <input
                   type="text"
@@ -590,49 +586,57 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   disabled={isProcessing}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200/90 bg-slate-50/60 focus:bg-white focus:border-[#1B357B] text-xs font-semibold text-slate-800 shadow-sm transition-all outline-hidden disabled:bg-slate-100 disabled:text-slate-400"
+                  className="w-full h-11 px-4 rounded-xl border border-slate-300 bg-white focus:bg-white focus:border-[#1B357B] focus:ring-3 focus:ring-blue-100 text-xs font-bold text-slate-900 shadow-2xs transition-all outline-hidden disabled:bg-slate-100 disabled:text-slate-400"
                   placeholder="Seu nome completo"
                 />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Nome oficial exibido no cabeçalho, relatórios fiscais e auditorias.
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                     <Mail className="w-3.5 h-3.5 text-slate-400" />
-                    E-mail Corporativo
+                    <span>E-mail Corporativo</span>
                   </label>
-                  <input
-                    type="email"
-                    disabled
-                    value={currentUser.email}
-                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200/90 bg-slate-100/60 text-slate-500 text-xs font-semibold shadow-sm transition-all cursor-not-allowed"
-                  />
+                  <div className="relative">
+                    <input
+                      type="email"
+                      disabled
+                      value={currentUser.email}
+                      className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-100/80 text-slate-600 text-xs font-semibold shadow-2xs transition-all cursor-not-allowed select-none"
+                    />
+                    <span className="absolute right-2.5 top-2.5 px-2 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[10px] font-bold">
+                      Bloqueado
+                    </span>
+                  </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                    Setor & Papel (RBAC)
+                    <span>Setor & Permissões</span>
                   </label>
-                  <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-3 h-11 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 font-semibold text-slate-700">
-                      <span>{currentUser.sector}</span>
-                    </div>
-                    <span className="bg-[#C59B4B]/15 text-[#9A7528] border border-[#C59B4B]/30 font-bold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider">
-                      {currentUser.role}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 h-11 flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-800 truncate">
+                      {currentUser.sector || 'Administração'}
+                    </span>
+                    <span className="bg-[#C59B4B]/20 text-[#8F6C22] border border-[#C59B4B]/35 font-extrabold px-2 py-0.5 rounded-md text-[10px] uppercase tracking-wider shrink-0">
+                      {currentUser.role === 'admin' ? 'ADMIN' : currentUser.role}
                     </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Rodapé e Ações Finais com Design Executivo */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+            {/* Rodapé e Ações Finais */}
+            <div className="pt-4 pb-4 border-t border-slate-100 flex items-center justify-end space-x-3">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isProcessing}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Cancelar
               </button>
@@ -640,16 +644,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <button
                 type="submit"
                 disabled={isProcessing}
-                className="bg-gradient-to-r from-[#C59B4B] to-[#B38739] hover:brightness-105 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="bg-gradient-to-r from-[#101F42] via-[#1B357B] to-[#2445A2] hover:brightness-110 active:scale-98 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isProcessing ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
                     <span>Salvando...</span>
                   </>
                 ) : (
                   <>
-                    <Check className="w-4 h-4" />
+                    <Check className="w-4 h-4 text-emerald-300 stroke-3" />
                     <span>Salvar Alterações</span>
                   </>
                 )}

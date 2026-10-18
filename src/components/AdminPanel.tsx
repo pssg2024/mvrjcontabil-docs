@@ -34,7 +34,6 @@ import {
   SiteBackgroundConfig,
   AuthHeaderConfig
 } from '../types';
-import { BackgroundCustomizer } from './BackgroundCustomizer';
 import { AuthHeaderCustomizer } from './AuthHeaderCustomizer';
 import { DEFAULT_AUTH_HEADER_CONFIG } from '../lib/storage-service';
 
@@ -80,7 +79,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onAuditLog,
 }) => {
   const [activeTab, setActiveTab] = useState<'pending' | 'matrix' | 'users' | 'audit' | 'appearance'>(initialTab);
-  const [appearanceSubTab, setAppearanceSubTab] = useState<'site-bg' | 'auth-header'>('site-bg');
   const [selectedRoleForApproval, setSelectedRoleForApproval] = useState<Record<string, UserRole>>({});
   const [selectedSectorForApproval, setSelectedSectorForApproval] = useState<Record<string, Sector>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -281,10 +279,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           }`}
         >
           <Palette className={`w-4 h-4 ${activeTab === 'appearance' ? 'text-[#DFB76C] dark:text-slate-950' : 'text-slate-400'}`} />
-          <span>Personalização</span>
-          {siteBackgroundConfig?.enabled && (
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-xs" title="Fundo personalizado ativo" />
-          )}
+          <span>Identidade Visual & Login</span>
         </button>
       </div>
 
@@ -740,71 +735,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {/* TAB 5: SITE BACKGROUND & VISUAL APPEARANCE */}
+      {/* TAB 5: VISUAL IDENTITY & LOGIN CUSTOMIZATION */}
       {activeTab === 'appearance' && (
         <div className="space-y-6">
-          {/* Sub-tabs for Appearance */}
-          <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl w-fit border border-slate-200 dark:border-slate-800">
-            <button
-              id="subtab-site-bg"
-              type="button"
-              onClick={() => setAppearanceSubTab('site-bg')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer ${
-                appearanceSubTab === 'site-bg'
-                  ? 'bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-300 shadow-xs border border-slate-200 dark:border-slate-700 font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Palette className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              <span>Fundo Geral do Site</span>
-            </button>
-            <button
-              id="subtab-auth-header"
-              type="button"
-              onClick={() => setAppearanceSubTab('auth-header')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer ${
-                appearanceSubTab === 'auth-header'
-                  ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 shadow-xs border border-slate-200 dark:border-slate-700 font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Lock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span>Cabeçalho de Login & Boas-Vindas</span>
-            </button>
-          </div>
-
-          {appearanceSubTab === 'site-bg' ? (
-            <BackgroundCustomizer
-              currentUser={currentUser}
-              currentConfig={siteBackgroundConfig || {
-                enabled: false,
-                imageUrl: '',
-                presetId: 'none',
-                opacity: 25,
-                blur: 0,
-                overlayType: 'light',
-                overlayOpacity: 40,
-                position: 'cover',
-              }}
-              onConfigChange={(newConf) => {
-                if (onUpdateSiteBackgroundConfig) {
-                  onUpdateSiteBackgroundConfig(newConf);
-                }
-              }}
-              onAuditLog={onAuditLog}
-            />
-          ) : (
-            <AuthHeaderCustomizer
-              currentUser={currentUser}
-              currentConfig={authHeaderConfig || DEFAULT_AUTH_HEADER_CONFIG}
-              onConfigChange={(newConf) => {
-                if (onUpdateAuthHeaderConfig) {
-                  onUpdateAuthHeaderConfig(newConf);
-                }
-              }}
-              onAuditLog={onAuditLog}
-            />
-          )}
+          <AuthHeaderCustomizer
+            currentUser={currentUser}
+            currentConfig={authHeaderConfig || DEFAULT_AUTH_HEADER_CONFIG}
+            onConfigChange={(newConf) => {
+              if (onUpdateAuthHeaderConfig) {
+                onUpdateAuthHeaderConfig(newConf);
+              }
+            }}
+            onAuditLog={onAuditLog}
+          />
         </div>
       )}
 

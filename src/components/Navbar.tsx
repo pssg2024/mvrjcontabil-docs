@@ -449,7 +449,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </div>
                         <div className="min-w-0">
                           <p className="font-bold text-xs text-slate-100 group-hover:text-amber-400 transition-colors">Identidade Visual</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">Logo, papéis de parede e temas</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Cabeçalho de login, logo e temas</p>
                         </div>
                       </button>
                     )}

@@ -211,17 +211,17 @@ export function MvrjAssistantWidget() {
 
   return (
     <>
-      {/* Floating Action Button - Consultoria Contábil */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Floating Action Button - Consultoria Contábil (Item 7: Canto inferior esquerdo no mobile, 48px) */}
+      <div className="fixed bottom-5 left-5 z-30 sm:bottom-6 sm:right-6 sm:left-auto">
         <motion.button
           onClick={() => setIsOpen(!isOpen)}
-          className="relative group flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-blue-700 via-indigo-600 to-blue-600 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-400/50 cursor-pointer"
+          className="relative group flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-slate-900 text-white shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-[#DFB76C]/30 cursor-pointer border-2 border-[#DFB76C]"
           aria-label="Falar com MVRJ Contábil"
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.95 }}
         >
-          {/* Foto Circular da Consultora Contábil */}
-          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/95 shadow-inner bg-slate-100 flex items-center justify-center">
+          {/* Foto Circular da Consultora Contábil (48px no mobile) */}
+          <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center">
             <img
               src="/images/accounting_consultant.jpg"
               alt="Consultoria MVRJ Contábil"
@@ -230,11 +230,11 @@ export function MvrjAssistantWidget() {
             />
           </div>
 
-          {/* Indicador de Status Online no Topo Direito (igual à imagem de referência) */}
-          <span className="absolute top-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-md animate-pulse z-10" />
+          {/* Indicador de Status Online no Topo Direito */}
+          <span className="absolute top-0 right-0 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-emerald-500 border-2 border-slate-950 rounded-full shadow-md animate-pulse z-10" />
 
           {/* Tooltip on hover */}
-          <span className="absolute right-full top-1/2 -translate-y-1/2 mr-3 px-3 py-1.5 bg-slate-900/95 text-white text-xs font-medium rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-white/10">
+          <span className="hidden sm:block absolute right-full top-1/2 -translate-y-1/2 mr-3 px-3 py-1.5 bg-slate-900/95 text-white text-xs font-medium rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-white/10">
             Falar com MVRJ Contábil 💬
           </span>
         </motion.button>
@@ -248,7 +248,7 @@ export function MvrjAssistantWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-w-[500px] h-[600px] max-h-[85vh] bg-white rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden font-sans overscroll-contain"
+            className="fixed bottom-20 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-24 z-50 w-auto sm:w-[420px] max-w-[500px] h-[560px] max-h-[82vh] bg-white rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden font-sans overscroll-contain"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 text-white px-4 py-3.5 flex items-center justify-between shadow-md border-b border-white/10">

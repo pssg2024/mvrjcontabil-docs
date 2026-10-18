@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ChevronLeft, 
-  ChevronRight,
-  Radio,
-  FileText
+  ChevronRight, 
+  Radio, 
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import { FiscalNewsItem } from '../types';
 
 interface FiscalNewsBannerProps {
   className?: string;
   embedded?: boolean;
+  variant?: 'ticker' | 'chips-section' | 'responsive';
 }
 
 /**
@@ -60,7 +62,6 @@ export const formatOrganName = (raw?: string): string => {
   if (clean.includes('bahia') || clean.includes('sefaz.ba')) return 'SEFAZ-BA';
   if (clean.includes('goiás') || clean.includes('goias') || clean.includes('sefaz.go')) return 'SEFAZ-GO';
 
-  // Tratar hostnames genéricos ou títulos longos
   let stripped = raw
     .replace(/^https?:\/\//i, '')
     .replace(/^www\./i, '')
@@ -81,7 +82,8 @@ export const formatOrganName = (raw?: string): string => {
 
 export const FiscalNewsBanner: React.FC<FiscalNewsBannerProps> = ({ 
   className = '',
-  embedded = false 
+  embedded = false,
+  variant = 'responsive'
 }) => {
   const [news, setNews] = useState<FiscalNewsItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -116,7 +118,7 @@ export const FiscalNewsBanner: React.FC<FiscalNewsBannerProps> = ({
     fetchNews();
   }, []);
 
-  // Rotação suave a cada 7 segundos
+  // Rotação suave a cada 7 segundos (apenas se não estiver pausado)
   useEffect(() => {
     if (news.length <= 1 || isPaused) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -146,8 +148,8 @@ export const FiscalNewsBanner: React.FC<FiscalNewsBannerProps> = ({
     return (
       <div className={`w-full flex items-center justify-between text-xs text-blue-200/70 py-1.5 ${className}`}>
         <div className="flex items-center space-x-2">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-          <span className="text-[11px] font-medium tracking-wide">Sincronizando plantão de legislação e notícias fiscais em tempo real...</span>
+          <span className="w-2 h-2 rounded-full bg-[#DFB76C] animate-ping"></span>
+          <span className="text-[11px] font-medium tracking-wide">Sincronizando plantão fiscal em tempo real...</span>
         </div>
       </div>
     );
@@ -158,42 +160,140 @@ export const FiscalNewsBanner: React.FC<FiscalNewsBannerProps> = ({
   const currentItem = news[currentIndex] || news[0];
   const formattedOrgan = formatOrganName(currentItem.orgao);
 
-  return (
+  // Lista única de órgãos para os chips horizontais
+  const distinctOrgans = Array.from(
+    new Set(news.map(n => formatOrganName(n.orgao)))
+  ).slice(0, 6);
+
+  // Renderização 1: Seção com Chips em Rolagem Horizontal (Item 4 para Mobile)
+  const renderChipsSection = () => (
+    <section className="space-y-2.5 w-full">
+      {/* Título pequeno da seção */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <Radio className="w-3.5 h-3.5 text-[#DFB76C] animate-pulse" />
+          <span>PLANTÃO FISCAL</span>
+        </div>
+
+        {news.length > 1 && (
+          <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+            <span>{currentIndex + 1} de {news.length}</span>
+            <div className="flex items-center gap-0.5 ml-1">
+              <button
+                type="button"
+                onClick={handlePrev}
+                className="w-8 h-8 rounded-lg text-slate-300 hover:text-white bg-slate-900 border border-slate-800 flex items-center justify-center cursor-pointer"
+                title="Notícia anterior"
+                aria-label="Anterior"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                className="w-8 h-8 rounded-lg text-slate-300 hover:text-white bg-slate-900 border border-slate-800 flex items-center justify-center cursor-pointer"
+                title="Próxima notícia"
+                aria-label="Próxima"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Linha que rola na horizontal com chips (sem texto cortado, chip ativo dourado) */}
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1 -mx-5 px-5 sm:mx-0 sm:px-0">
+        {/* Chip do Órgão Ativo (Dourado se for o ativo) */}
+        {distinctOrgans.map((organ) => {
+          const isActive = formatOrganName(currentItem.orgao) === organ;
+          return (
+            <button
+              key={organ}
+              type="button"
+              onClick={() => {
+                const targetIdx = news.findIndex(n => formatOrganName(n.orgao) === organ);
+                if (targetIdx >= 0) setCurrentIndex(targetIdx);
+              }}
+              className={`min-h-[44px] px-4 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center justify-center shrink-0 border ${
+                isActive
+                  ? 'bg-[#DFB76C] text-slate-950 border-[#DFB76C] shadow-sm font-extrabold'
+                  : 'bg-[#091124] text-slate-300 hover:text-white border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <span>{organ}</span>
+            </button>
+          );
+        })}
+
+        {/* Chip 'Fonte Oficial' com link direto */}
+        {currentItem.linkOficial && (
+          <a
+            href={currentItem.linkOficial}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-h-[44px] px-4 rounded-xl text-xs font-bold whitespace-nowrap bg-[#091124] text-blue-300 hover:text-white border border-slate-800 hover:border-blue-700 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+            title="Acessar página oficial da notícia"
+          >
+            <span>Fonte Oficial</span>
+            <ExternalLink className="w-3.5 h-3.5 text-[#DFB76C]" />
+          </a>
+        )}
+      </div>
+
+      {/* Card da Notícia Ativa (sem texto cortado, título legível) */}
+      <div className="bg-[#091124] border border-slate-800 rounded-2xl p-4 text-slate-100 shadow-xs flex flex-col gap-1.5">
+        <a
+          href={currentItem.linkOficial}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs sm:text-sm font-semibold text-slate-200 hover:text-[#DFB76C] leading-snug transition-colors cursor-pointer"
+          title={currentItem.titulo}
+        >
+          {currentItem.titulo}
+        </a>
+        {currentItem.resumo && (
+          <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+            {currentItem.resumo}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+
+  // Renderização 2: Ticker Tradicional para Desktop
+  const renderTicker = () => (
     <div 
-      className={`w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-white select-none ${className}`}
+      className={`w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 text-white select-none ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       role="region"
       aria-label="Plantão de Legislação e Notícias Fiscais"
     >
-      {/* Lado Esquerdo: Badges discretas em fonte Inter + Título da Notícia */}
-      <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
-        {/* Badge: PLANTÃO FISCAL */}
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-semibold tracking-wider font-sans shrink-0">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
-          <span>PLANTÃO FISCAL</span>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-bold tracking-wider font-sans shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
+            <span>PLANTÃO FISCAL</span>
+          </div>
+
+          <div className="px-2 py-0.5 rounded-md bg-white/10 text-blue-100 border border-white/15 text-[10px] font-semibold tracking-wide font-sans shrink-0 truncate max-w-[130px] sm:max-w-[180px]">
+            {formattedOrgan}
+          </div>
         </div>
 
-        {/* Badge: Órgão (ex.: RECEITA FEDERAL) */}
-        <div className="px-2 py-0.5 rounded-md bg-white/10 text-blue-100 border border-white/15 text-[10px] font-semibold tracking-wide font-sans shrink-0 truncate max-w-[140px] sm:max-w-[180px]">
-          {formattedOrgan}
-        </div>
-
-        {/* Título da Notícia Dinâmica (Texto Limpo sem caixote escuro por dentro) */}
         <a
           href={currentItem.linkOficial}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs font-medium text-slate-100 hover:text-amber-300 transition-colors truncate min-w-0 flex-1 cursor-pointer font-sans"
+          className="text-xs font-medium text-slate-100 hover:text-amber-300 transition-colors line-clamp-2 sm:truncate min-w-0 flex-1 cursor-pointer font-sans leading-snug"
           title={currentItem.titulo}
         >
           <span>{currentItem.titulo}</span>
         </a>
       </div>
 
-      {/* Lado Direito: Botão 'Fonte Oficial' + Controles de Navegação < > */}
       <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-        {/* Botão 'Fonte Oficial' */}
         {currentItem.linkOficial && (
           <a
             href={currentItem.linkOficial}
@@ -207,7 +307,6 @@ export const FiscalNewsBanner: React.FC<FiscalNewsBannerProps> = ({
           </a>
         )}
 
-        {/* Controles de navegação < 1/15 > */}
         {news.length > 1 && (
           <div className="inline-flex items-center rounded-lg border border-white/15 bg-white/5 p-0.5 text-xs font-sans shrink-0">
             <button
@@ -235,5 +334,20 @@ export const FiscalNewsBanner: React.FC<FiscalNewsBannerProps> = ({
         )}
       </div>
     </div>
+  );
+
+  if (variant === 'chips-section') {
+    return renderChipsSection();
+  }
+
+  if (variant === 'ticker') {
+    return renderTicker();
+  }
+
+  return (
+    <>
+      <div className="block lg:hidden w-full">{renderChipsSection()}</div>
+      <div className="hidden lg:block w-full">{renderTicker()}</div>
+    </>
   );
 };

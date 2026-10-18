@@ -1327,38 +1327,47 @@ export default function App() {
 
           {/* 2. Área de Conteúdo Principal à Direita */}
           <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-slate-950/95 dark:bg-slate-950 text-slate-100 min-w-0">
-            {/* Header Mobile com botão Hambúrguer */}
-            <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#091124] border-b border-slate-800 shrink-0 sticky top-0 z-30">
-              <div className="flex items-center gap-3">
+            {/* Header Mobile Refinado - Item 1 */}
+            <div className="lg:hidden flex items-center justify-between px-5 py-3 bg-[#091124] border-b border-slate-800 shrink-0 sticky top-0 z-30">
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   id="mobile-sidebar-toggle-btn"
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 active:bg-slate-700 transition-colors cursor-pointer flex items-center justify-center -ml-2"
                   title="Abrir menu de navegação"
+                  aria-label="Abrir menu"
                 >
-                  <Menu className="w-5 h-5" />
+                  <Menu className="w-5 h-5 text-slate-200" />
                 </button>
-                <div className="flex items-center gap-2">
-                  <span className="text-[#E5C378] font-black text-sm tracking-wide">MVRJ CONTÁBIL</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">GED</span>
+                <div className="flex flex-col justify-center">
+                  <span className="text-[#DFB76C] font-black text-sm tracking-wide leading-tight">
+                    MVRJ CONTÁBIL
+                  </span>
+                  <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider leading-tight mt-0.5">
+                    GESTÃO ELETRÔNICA DE DOCUMENTOS
+                  </span>
                 </div>
               </div>
 
-              {/* Foto de perfil no cabeçalho mobile (sem botão de sair ao lado, como estava antes) */}
-              <div 
+              {/* Avatar do usuário à direita (área de toque >= 44px) */}
+              <button
+                type="button"
                 onClick={() => handleOpenProfileModal('profile')}
-                className="w-8 h-8 rounded-lg overflow-hidden ring-1.5 ring-emerald-500/80 cursor-pointer shadow-xs shrink-0"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer -mr-1"
                 title="Meu Perfil"
+                aria-label="Meu Perfil"
               >
-                {currentUser.avatar_url ? (
-                  <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
-                    {currentUser.full_name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
+                <div className="w-9 h-9 rounded-xl overflow-hidden ring-1.5 ring-emerald-500/80 shadow-xs shrink-0 flex items-center justify-center bg-[#1B357B]">
+                  {currentUser.avatar_url ? (
+                    <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-white font-bold text-xs">
+                      {currentUser.full_name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </button>
             </div>
 
             {/* Header Desktop - Exibido apenas no modo Computador (hidden lg:flex) */}
@@ -1395,8 +1404,8 @@ export default function App() {
               </div>
             </header>
 
-            {/* Conteúdo Principal (FileManager ou AdminPanel) */}
-            <main className="flex-1 w-full max-w-none p-4 sm:p-6 lg:p-7 min-w-0 flex flex-col gap-6">
+            {/* Conteúdo Principal (FileManager ou AdminPanel) com margem lateral de 20px (px-5) no mobile e padding inferior para não cobrir nenhum card com botões flutuantes */}
+            <main className="flex-1 w-full max-w-none px-5 py-4 pb-28 sm:pb-8 sm:p-6 lg:p-7 min-w-0 flex flex-col gap-4 sm:gap-6">
               {activeView === 'drive' ? (
                 <FileManager
                   currentUser={currentUser}

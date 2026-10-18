@@ -49,7 +49,8 @@ import {
   UserX,
   Info,
   MoreVertical,
-  MoreHorizontal
+  MoreHorizontal,
+  Plus
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -121,6 +122,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const [isSubmittingFolder, setIsSubmittingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [sharingFileId, setSharingFileId] = useState<string | null>(null);
+  const [isFabOpen, setIsFabOpen] = useState(false);
 
   // Estados dos menus suspensos de opções descritas (substituindo botões soltos)
   const [openFolderMenuId, setOpenFolderMenuId] = useState<string | null>(null);
@@ -534,64 +536,111 @@ export const FileManager: React.FC<FileManagerProps> = ({
   return (
     <div className="w-full space-y-4 sm:space-y-6 overflow-x-hidden">
       
-      {/* Top Storage, Documents & Real-Time Fiscal News Unified Banner (Corporate Deep Blue Theme) */}
-      <div className="bg-gradient-to-r from-[#0B1736] via-[#142654] to-[#1B357B] rounded-2xl p-5 sm:p-6 lg:p-7 shadow-lg relative flex flex-col gap-5 text-white w-full border border-blue-900/40">
-        {/* Subtle decorative ambient glow contained */}
-        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-          <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl" />
-        </div>
-
-        {/* Linha Principal: Títulos à esquerda / Mural de Avisos à direita */}
-        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 sm:gap-6 w-full">
-          {/* Lado Esquerdo (Títulos e Descrição) */}
-          <div className="space-y-2 flex-1 min-w-0 pr-0 lg:pr-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs border border-white/15 text-blue-100 text-xs font-semibold tracking-wide">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#DFB76C]" />
-              <span>Drive Corporativo • MVRJ Contábil</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-snug">
-              Gestão Eletrônica de Documentos
-            </h2>
-            <p className="text-blue-100/80 text-xs sm:text-sm font-normal leading-relaxed w-full max-w-none">
-              Drive Corporativo seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais com controle de permissões.
-            </p>
-            {/* Saudação personalizada exibida somente no modo Computador */}
-            <div className="hidden lg:flex items-center gap-2 pt-1">
-              <span className="text-xs font-semibold text-[#DFB76C] bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">
-                Seja bem-vindo(a), {currentUser.full_name}!
-              </span>
-            </div>
+      {/* ========================================================= */}
+      {/* LAYOUT MOBILE (Itens 2, 3 e 4 da especificação do usuário) */}
+      {/* ========================================================= */}
+      <div className="lg:hidden flex flex-col gap-3.5 w-full">
+        {/* Item 2: BUSCA - Linha com 'Buscar documento ou empresa' ocupando o espaço todo e botão de filtro CNPJ ao lado (não empilhados) */}
+        <div className="flex items-center gap-2 w-full min-w-0">
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              id="search-docs-input-mobile"
+              type="text"
+              placeholder="Buscar documento ou empresa"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 min-h-[44px] rounded-2xl border border-slate-800 bg-[#091124] pl-10 pr-9 text-xs sm:text-sm font-medium focus:bg-[#0B1736] focus:border-[#DFB76C] focus:ring-1 focus:ring-[#DFB76C]/40 outline-none transition-all shadow-xs placeholder:text-slate-400 text-slate-100"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  if (onClearExternalSearch) onClearExternalSearch();
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1.5 rounded-md cursor-pointer transition-colors"
+                title="Limpar busca"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* Lado Direito (Mural de Avisos e Comunicados Internos em Tempo Real) */}
-          <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0">
-            <WidgetAvisos currentUser={currentUser} isAdmin={isFullAdmin} />
-          </div>
+          {/* Botão de filtro CNPJ ao lado (não empilhado, >= 44px) */}
+          {onOpenCompanyModal && (
+            <button
+              id="lookup-company-btn-mobile"
+              type="button"
+              onClick={() => onOpenCompanyModal(searchQuery)}
+              className="h-11 min-h-[44px] px-3.5 rounded-2xl border border-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 bg-[#091124] hover:bg-slate-800 text-slate-200 transition-all shadow-xs shrink-0 cursor-pointer active:scale-98"
+              title="Consultar Situação Cadastral de Empresa na Receita Federal"
+            >
+              <Building2 className="w-4 h-4 text-[#DFB76C] shrink-0" />
+              <span className="whitespace-nowrap">Filtro CNPJ</span>
+            </button>
+          )}
         </div>
 
-        {/* Linha Inferior Interna: Ticker/Barra de Plantão Fiscal Integrada Diretamente no Banner */}
-        <div className="relative z-10 pt-3.5 border-t border-white/10 w-full">
-          <FiscalNewsBanner embedded={true} />
-        </div>
+        {/* Item 3: COMUNICADOS - Faixa fina de uma linha, com ponto azul, rótulo COMUNICADO, título cortado com reticências e link 'Ver mais' em dourado */}
+        <WidgetAvisos currentUser={currentUser} isAdmin={isFullAdmin} variant="slim-bar" />
 
+        {/* Item 4: PLANTÃO FISCAL - Seção própria com título pequeno e chips em rolagem horizontal (sem texto cortado, chip ativo dourado) */}
+        <FiscalNewsBanner variant="chips-section" />
       </div>
 
-      {/* Control Toolbar (Search, Quick Actions, View Toggle) */}
-      <div className="w-full max-w-none overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-3">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          
-          {/* Row 1: Instant Search Bar & Compact CNPJ Company Lookup */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 min-w-0">
+      {/* ========================================================= */}
+      {/* LAYOUT DESKTOP (Exibido somente em telas grandes: hidden lg:flex) */}
+      {/* ========================================================= */}
+      <div className="hidden lg:flex flex-col gap-5 w-full">
+        {/* Banner Superior Desktop (Tema Azul Marinho Corporativo) */}
+        <div className="bg-gradient-to-r from-[#0B1736] via-[#142654] to-[#1B357B] rounded-2xl p-6 lg:p-7 shadow-lg relative flex flex-col gap-5 text-white w-full border border-blue-900/40">
+          <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+            <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl" />
+            <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl" />
+          </div>
+
+          <div className="relative z-10 flex items-center justify-between gap-6 w-full">
+            <div className="space-y-2 flex-1 min-w-0 pr-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs border border-white/15 text-blue-100 text-xs font-semibold tracking-wide">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#DFB76C]" />
+                <span>Drive Corporativo • MVRJ Contábil</span>
+              </div>
+              <h2 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-snug">
+                Gestão Eletrônica de Documentos
+              </h2>
+              <p className="text-blue-100/80 text-xs sm:text-sm font-normal leading-relaxed">
+                Drive Corporativo seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais com controle de permissões.
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-xs font-semibold text-[#DFB76C] bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">
+                  Seja bem-vindo(a), {currentUser.full_name}!
+                </span>
+              </div>
+            </div>
+
+            <div className="w-[380px] xl:w-[420px] shrink-0">
+              <WidgetAvisos currentUser={currentUser} isAdmin={isFullAdmin} variant="card" />
+            </div>
+          </div>
+
+          <div className="relative z-10 pt-3.5 border-t border-white/10 w-full">
+            <FiscalNewsBanner embedded={true} variant="ticker" />
+          </div>
+        </div>
+
+        {/* Toolbar Desktop com Ações */}
+        <div className="w-full p-4 rounded-2xl bg-[#091124] border border-slate-800 shadow-2xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="relative flex-1 min-w-0">
-              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
-                id="search-docs-input"
+                id="search-docs-input-desktop"
                 type="text"
-                placeholder="Buscar por documento, CNPJ ou empresa..."
+                placeholder="Buscar documento ou empresa..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 sm:h-11 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 pl-10 pr-9 text-xs sm:text-sm font-medium focus:bg-white dark:focus:bg-slate-900 focus:border-[#1B357B] dark:focus:border-[#DFB76C] focus:ring-2 focus:ring-[#1B357B]/15 outline-hidden transition-all shadow-xs placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
+                className="w-full h-11 rounded-xl border border-slate-800 bg-[#0B1736] pl-10 pr-9 text-xs sm:text-sm font-medium focus:border-[#DFB76C] focus:ring-1 focus:ring-[#DFB76C]/40 outline-none transition-all shadow-xs placeholder:text-slate-400 text-slate-100"
               />
               {searchQuery && (
                 <button
@@ -600,7 +649,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     setSearchQuery('');
                     if (onClearExternalSearch) onClearExternalSearch();
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-md cursor-pointer transition-colors"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1.5 rounded-md cursor-pointer transition-colors"
                   title="Limpar busca"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -608,95 +657,70 @@ export const FileManager: React.FC<FileManagerProps> = ({
               )}
             </div>
 
-            {/* Quick CNPJ consultation button */}
             {onOpenCompanyModal && (
               <button
-                id="lookup-company-btn"
+                id="lookup-company-btn-desktop"
                 type="button"
                 onClick={() => onOpenCompanyModal(searchQuery)}
-                className="h-10 sm:h-11 px-3 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 transition-all shadow-xs shrink-0 cursor-pointer active:scale-98"
-                title="Consultar Situação Cadastral de Empresa na Receita Federal (BrasilAPI)"
+                className="h-11 px-4 rounded-xl border border-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 bg-[#0B1736] hover:bg-slate-800 text-slate-200 transition-all shadow-xs shrink-0 cursor-pointer active:scale-98"
+                title="Consultar Situação Cadastral de Empresa na Receita Federal"
               >
-                <Building2 className="w-4 h-4 text-[#1B357B] dark:text-[#DFB76C] shrink-0" />
-                <span className="hidden sm:inline">Consultar CNPJ</span>
-                <span className="sm:hidden">CNPJ</span>
+                <Building2 className="w-4 h-4 text-[#DFB76C] shrink-0" />
+                <span>Filtro CNPJ</span>
               </button>
             )}
           </div>
 
-          {/* Row 2: Action Buttons: New Folder, Upload & View Mode Toggle */}
-          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full lg:w-auto shrink-0">
-            <div className="flex flex-wrap items-center gap-2 flex-1 sm:flex-initial">
-              {canCreateSubfolder && (
-                <button
-                  id="create-folder-btn"
-                  onClick={() => setIsCreatingFolder(true)}
-                  className="flex-1 sm:flex-initial h-10 sm:h-11 px-3 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/90 font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 transition-all cursor-pointer active:scale-98"
-                >
-                  <FolderPlus className="w-4 h-4 text-[#1B357B] dark:text-[#DFB76C] shrink-0" />
-                  <span className="whitespace-nowrap">Nova Pasta</span>
-                </button>
-              )}
-
-              {canUpload ? (
-                <button
-                  id="upload-doc-btn"
-                  onClick={() => onOpenUploadModal(currentFolderId)}
-                  className="flex-1 sm:flex-initial h-10 sm:h-11 px-3.5 sm:px-5 rounded-xl bg-gradient-to-r from-[#1B357B] to-[#122452] hover:brightness-110 dark:from-[#DFB76C] dark:via-[#E8C785] dark:to-[#D4A755] dark:text-slate-950 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-950/20 dark:shadow-amber-950/20 transition-all cursor-pointer active:scale-98"
-                >
-                  <UploadCloud className="w-4 h-4 shrink-0" />
-                  <span className="whitespace-nowrap sm:hidden">Upload</span>
-                  <span className="whitespace-nowrap hidden sm:inline">Upload de Documento</span>
-                </button>
-              ) : (
-                <div className="flex-1 sm:flex-initial h-10 sm:h-11 px-3 sm:px-4 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center gap-1.5" title="Apenas usuários com papel Editor ou Admin nesta pasta podem fazer upload.">
-                  <Lock className="w-3.5 h-3.5 shrink-0" />
-                  <span className="whitespace-nowrap sm:hidden">Bloqueado</span>
-                  <span className="whitespace-nowrap hidden sm:inline">Upload Bloqueado</span>
-                </div>
-              )}
-            </div>
-
-            {/* View Mode Toggle */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl h-10 sm:h-11 gap-0.5 shrink-0 border border-slate-200 dark:border-slate-800 shadow-2xs ml-auto sm:ml-0">
+          <div className="flex items-center gap-2 shrink-0">
+            {canCreateSubfolder && (
               <button
-                onClick={() => setViewMode('grid')}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#DFB76C] font-bold shadow-xs border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}
-                title="Visualização em Grade"
+                id="create-folder-btn-desktop"
+                onClick={() => setIsCreatingFolder(true)}
+                className="h-11 px-4 rounded-xl border border-slate-800 bg-[#0B1736] font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs text-slate-200 hover:bg-slate-800 transition-all cursor-pointer active:scale-98"
               >
-                <Grid className="w-4 h-4" />
+                <FolderPlus className="w-4 h-4 text-[#DFB76C] shrink-0" />
+                <span>Nova Pasta</span>
               </button>
+            )}
+
+            {canUpload ? (
               <button
-                onClick={() => setViewMode('list')}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 text-[#1B357B] dark:text-[#DFB76C] font-bold shadow-xs border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}
-                title="Visualização em Lista"
+                id="upload-doc-btn-desktop"
+                onClick={() => onOpenUploadModal(currentFolderId)}
+                className="h-11 px-5 rounded-xl bg-gradient-to-r from-[#DFB76C] to-[#C59B4B] text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md hover:brightness-105 transition-all cursor-pointer active:scale-98"
               >
-                <List className="w-4 h-4" />
+                <UploadCloud className="w-4 h-4 shrink-0" />
+                <span>Upload de Documento</span>
               </button>
-            </div>
+            ) : (
+              <div className="h-11 px-4 text-xs font-bold text-slate-500 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center gap-1.5" title="Apenas usuários com permissão podem fazer upload.">
+                <Lock className="w-3.5 h-3.5 shrink-0" />
+                <span>Upload Bloqueado</span>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Active Search Badge */}
-        {searchQuery && (
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200 text-xs font-bold text-slate-900">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-100 text-blue-950 border border-blue-300 text-xs font-bold shrink-0">
-              <Building2 className="w-3.5 h-3.5 text-blue-700 flex-shrink-0" />
-              <span className="truncate max-w-[160px] sm:max-w-xs">Filtro: {searchQuery}</span>
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  if (onClearExternalSearch) onClearExternalSearch();
-                }}
-                className="p-0.5 hover:bg-blue-200 rounded-md text-blue-800 cursor-pointer"
-                title="Remover filtro"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Active Search Badge */}
+      {searchQuery && (
+        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-bold text-slate-100">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#091124] text-slate-200 border border-slate-800 text-xs font-bold shrink-0">
+            <Building2 className="w-3.5 h-3.5 text-[#DFB76C] flex-shrink-0" />
+            <span className="truncate max-w-[160px] sm:max-w-xs">Filtro: {searchQuery}</span>
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                if (onClearExternalSearch) onClearExternalSearch();
+              }}
+              className="p-0.5 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white cursor-pointer"
+              title="Remover filtro"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Inline Create Folder Input */}
       {isCreatingFolder && (
@@ -838,156 +862,204 @@ export const FileManager: React.FC<FileManagerProps> = ({
         )}
       </nav>
 
-      {/* FOLDERS SECTION */}
+      {/* FOLDERS SECTION (Item 5: Título 'Pastas' à esquerda, alternador grade/lista sempre visível à direita, 2 colunas no mobile, ícone dourado, nome e quantidade de arquivos) */}
       {!searchQuery && visibleFolders.length > 0 && (
         <section className="space-y-3 w-full">
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
-              <FolderIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                Pastas no Nível Atual
+              <FolderIcon className="w-5 h-5 text-[#DFB76C]" />
+              <h3 className="text-base font-extrabold text-white tracking-tight">
+                Pastas
               </h3>
-              <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-mono font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-mono font-bold">
                 {visibleFolders.length}
               </span>
             </div>
+
+            {/* Alternador grade/lista SEMPRE VISÍVEL (Item 5) */}
+            <div className="flex items-center bg-[#091124] p-0.5 rounded-xl h-10 gap-0.5 shrink-0 border border-slate-800 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`min-h-[36px] min-w-[36px] px-2.5 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-[#DFB76C] text-slate-950 font-bold shadow-xs' : 'text-slate-400 hover:text-white'}`}
+                title="Visualização em Grade"
+                aria-label="Grade"
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`min-h-[36px] min-w-[36px] px-2.5 flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'list' ? 'bg-[#DFB76C] text-slate-950 font-bold shadow-xs' : 'text-slate-400 hover:text-white'}`}
+                title="Visualização em Lista"
+                aria-label="Lista"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3.5 sm:gap-4 w-full">
-            {visibleFolders.map(folder => (
-              <div
-                key={folder.id}
-                onClick={() => setCurrentFolderId(folder.id)}
-                className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800/90 text-slate-900 dark:text-slate-100 hover:border-[#1B357B]/40 dark:hover:border-[#DFB76C]/40 rounded-2xl p-3.5 sm:p-4 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all flex items-start justify-between group cursor-pointer min-w-0"
-              >
-                <div className="flex items-start space-x-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 text-[#1B357B] dark:text-[#E2C37A] border border-blue-100 dark:border-slate-700 group-hover:bg-[#1B357B] group-hover:text-white dark:group-hover:bg-[#C59B4B] dark:group-hover:text-slate-950 transition-all flex items-center justify-center font-bold shrink-0 shadow-2xs mt-0.5">
-                    <FolderIcon className="w-5 h-5 transition-transform group-hover:scale-105" />
-                  </div>
-                  
-                  <div className="min-w-0 flex-1 pr-1">
-                    <h4 
-                      className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#1B357B] dark:group-hover:text-amber-400 transition-colors break-words whitespace-normal leading-snug"
-                      title={folder.name}
-                    >
-                      {folder.name}
-                    </h4>
-                    
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                        {folder.sector}
-                      </span>
-                      {isFullAdmin && Array.isArray(folder.allowed_user_ids) && folder.allowed_user_ids.length > 0 && (
-                        <>
-                          <span className="text-slate-300 dark:text-slate-600 text-[10px]">•</span>
-                          <span 
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shrink-0" 
-                            title={`${folder.allowed_user_ids.length} colaborador(es) com acesso autorizado`}
-                          >
-                            <Users className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            <span>{folder.allowed_user_ids.length} acessos</span>
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
+          {viewMode === 'grid' ? (
+            /* Cards em 2 colunas no mobile (Item 5) */
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 w-full">
+              {visibleFolders.map(folder => {
+                const folderFilesCount = files.filter(f => f.folder_id === folder.id).length;
+                return (
+                  <div
+                    key={folder.id}
+                    onClick={() => setCurrentFolderId(folder.id)}
+                    className="bg-[#091124] border border-slate-800 hover:border-[#DFB76C]/60 text-slate-100 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer min-w-0 gap-2.5 relative min-h-[110px]"
+                  >
+                    <div className="flex items-start justify-between gap-1.5 w-full">
+                      {/* Ícone de pasta dourado (Item 5) */}
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#DFB76C]/15 text-[#DFB76C] border border-[#DFB76C]/25 group-hover:bg-[#DFB76C] group-hover:text-slate-950 transition-all flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                        <FolderIcon className="w-5 h-5 text-[#DFB76C] group-hover:text-slate-950 transition-colors" />
+                      </div>
 
-                <div className="flex items-center space-x-1 shrink-0 ml-1.5 self-start mt-0.5 relative">
-                  {(isFullAdmin || currentUser?.role === 'admin') && (
-                    <div className="relative">
-                      <button
-                        type="button"
-                        id={`btn-folder-menu-${folder.id}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenFolderMenuId(openFolderMenuId === folder.id ? null : folder.id);
-                          setOpenFileMenuId(null);
-                          setIsBreadcrumbMenuOpen(false);
-                        }}
-                        className="text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center"
-                        title="Opções da Pasta"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                      {/* Menu de Opções da Pasta */}
+                      <div className="flex items-center space-x-1 shrink-0 relative">
+                        {(isFullAdmin || currentUser?.role === 'admin') && (
+                          <div className="relative">
+                            <button
+                              type="button"
+                              id={`btn-folder-menu-${folder.id}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenFolderMenuId(openFolderMenuId === folder.id ? null : folder.id);
+                                setOpenFileMenuId(null);
+                                setIsBreadcrumbMenuOpen(false);
+                              }}
+                              className="text-slate-400 hover:text-white hover:bg-slate-800 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center min-h-[36px] min-w-[36px]"
+                              title="Opções da Pasta"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
 
-                      {openFolderMenuId === folder.id && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-left"
-                        >
-                          <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1 truncate">
-                            {folder.name}
+                            {openFolderMenuId === folder.id && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute right-0 top-full mt-1.5 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-left"
+                              >
+                                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 mb-1 truncate">
+                                  {folder.name}
+                                </div>
+
+                                {onRenameFolder && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenFolderMenuId(null);
+                                      setRenamingFolder(folder);
+                                      setNewFolderNameInput(folder.name);
+                                      setFolderRenameError(null);
+                                    }}
+                                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-amber-950/40 hover:text-amber-300 flex items-center gap-2.5 transition-colors cursor-pointer group"
+                                  >
+                                    <div className="p-1 rounded-lg bg-amber-900/50 text-amber-300 group-hover:scale-105 transition-transform">
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                      <div className="font-bold">Renomear Pasta</div>
+                                      <div className="text-[10px] text-slate-400 font-normal">Alterar o nome da pasta</div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {isFullAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenFolderMenuId(null);
+                                      handleOpenPermsModal(folder);
+                                    }}
+                                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-blue-950/40 hover:text-blue-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
+                                  >
+                                    <div className="p-1 rounded-lg bg-blue-900/50 text-blue-300 group-hover:scale-105 transition-transform">
+                                      <ShieldCheck className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                      <div className="font-bold">Permissões de Acesso</div>
+                                      <div className="text-[10px] text-slate-400 font-normal">Definir quem pode acessar</div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {currentUser.role === 'admin' && onDeleteFolder && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenFolderMenuId(null);
+                                      onDeleteFolder(folder.id);
+                                    }}
+                                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-950/40 flex items-center gap-2.5 transition-colors cursor-pointer group mt-1 pt-1.5 border-t border-slate-800"
+                                  >
+                                    <div className="p-1 rounded-lg bg-rose-900/50 text-rose-400 group-hover:scale-105 transition-transform">
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                      <div className="font-bold">Excluir Pasta</div>
+                                      <div className="text-[10px] text-rose-400/80 font-normal">Remover esta pasta</div>
+                                    </div>
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
+                        )}
 
-                          {onRenameFolder && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenFolderMenuId(null);
-                                setRenamingFolder(folder);
-                                setNewFolderNameInput(folder.name);
-                                setFolderRenameError(null);
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300 flex items-center gap-2.5 transition-colors cursor-pointer group"
-                            >
-                              <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 group-hover:scale-105 transition-transform">
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </div>
-                              <div>
-                                <div className="font-bold">Renomear Pasta</div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Alterar o nome da pasta</div>
-                              </div>
-                            </button>
-                          )}
-
-                          {isFullAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenFolderMenuId(null);
-                                handleOpenPermsModal(folder);
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
-                            >
-                              <div className="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 group-hover:scale-105 transition-transform">
-                                <ShieldCheck className="w-3.5 h-3.5" />
-                              </div>
-                              <div>
-                                <div className="font-bold">Permissões de Acesso</div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Definir quem pode acessar</div>
-                              </div>
-                            </button>
-                          )}
-
-                          {currentUser.role === 'admin' && onDeleteFolder && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenFolderMenuId(null);
-                                onDeleteFolder(folder.id);
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2.5 transition-colors cursor-pointer group mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800"
-                            >
-                              <div className="p-1 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </div>
-                              <div>
-                                <div className="font-bold">Excluir Pasta</div>
-                                <div className="text-[10px] text-rose-400/80 dark:text-rose-500/80 font-normal">Remover esta pasta</div>
-                              </div>
-                            </button>
-                          )}
-                        </div>
-                      )}
+                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#DFB76C] group-hover:translate-x-0.5 transition-all" />
+                      </div>
                     </div>
-                  )}
 
-                  <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#1B357B] dark:group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" />
-                </div>
-              </div>
-            ))}
-          </div>
+                    {/* Nome da pasta e Quantidade de arquivos (Item 5) */}
+                    <div className="min-w-0 w-full mt-auto">
+                      <h4 
+                        className="text-xs sm:text-sm font-bold text-slate-100 group-hover:text-[#DFB76C] transition-colors break-words line-clamp-2 leading-snug"
+                        title={folder.name}
+                      >
+                        {folder.name}
+                      </h4>
+                      <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
+                        {folderFilesCount === 1 ? '1 arquivo' : `${folderFilesCount} arquivos`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* Modo Lista */
+            <div className="flex flex-col gap-2 w-full">
+              {visibleFolders.map(folder => {
+                const folderFilesCount = files.filter(f => f.folder_id === folder.id).length;
+                return (
+                  <div
+                    key={folder.id}
+                    onClick={() => setCurrentFolderId(folder.id)}
+                    className="bg-[#091124] border border-slate-800 hover:border-[#DFB76C]/60 text-slate-100 rounded-2xl p-3 sm:p-4 shadow-xs hover:shadow-md transition-all flex items-center justify-between group cursor-pointer min-w-0 gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#DFB76C]/15 text-[#DFB76C] border border-[#DFB76C]/25 group-hover:bg-[#DFB76C] group-hover:text-slate-950 transition-all flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                        <FolderIcon className="w-5 h-5 text-[#DFB76C] group-hover:text-slate-950 transition-colors" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-100 group-hover:text-[#DFB76C] transition-colors truncate">
+                          {folder.name}
+                        </h4>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {folderFilesCount === 1 ? '1 arquivo' : `${folderFilesCount} arquivos`} • {folder.sector}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#DFB76C] group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
 
@@ -1906,6 +1978,73 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
         </div>
       )}
+      {/* 6. BOTÃO DE AÇÃO FLUTUANTE DOURADO MOBILE (Item 6) */}
+      <div className="lg:hidden">
+        {/* Backdrop suave para fechar ao tocar fora */}
+        {isFabOpen && (
+          <div 
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-2xs z-35 animate-in fade-in duration-150"
+            onClick={() => setIsFabOpen(false)}
+          />
+        )}
+
+        <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5">
+          {/* Pílulas empilhadas acima do botão */}
+          {isFabOpen && (
+            <div className="flex flex-col items-end gap-2.5 animate-in slide-in-from-bottom-3 duration-200">
+              {/* Opção Upload */}
+              {canUpload && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFabOpen(false);
+                    onOpenUploadModal(currentFolderId);
+                  }}
+                  className="min-h-[44px] px-4 py-2.5 rounded-full bg-[#091124] border border-[#DFB76C]/60 text-white font-bold text-xs shadow-2xl flex items-center gap-2.5 hover:bg-[#1B357B] active:scale-95 transition-all cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-full bg-[#DFB76C] text-slate-950 flex items-center justify-center font-bold">
+                    <UploadCloud className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </div>
+                  <span className="whitespace-nowrap">Upload de Documento</span>
+                </button>
+              )}
+
+              {/* Opção Nova Pasta */}
+              {canCreateSubfolder && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFabOpen(false);
+                    setIsCreatingFolder(true);
+                  }}
+                  className="min-h-[44px] px-4 py-2.5 rounded-full bg-[#091124] border border-[#DFB76C]/60 text-white font-bold text-xs shadow-2xl flex items-center gap-2.5 hover:bg-[#1B357B] active:scale-95 transition-all cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-full bg-[#DFB76C] text-slate-950 flex items-center justify-center font-bold">
+                    <FolderPlus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </div>
+                  <span className="whitespace-nowrap">Nova Pasta</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Botão Dourado Principal + que vira × */}
+          <button
+            type="button"
+            id="mobile-fab-action-btn"
+            onClick={() => setIsFabOpen(!isFabOpen)}
+            className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-full bg-gradient-to-r from-[#DFB76C] to-[#C59B4B] text-slate-950 shadow-2xl flex items-center justify-center font-black cursor-pointer active:scale-95 transition-all border-2 border-amber-300"
+            title="Ações (Nova Pasta, Upload)"
+            aria-label="Ações rápidas"
+          >
+            {isFabOpen ? (
+              <X className="w-6 h-6 stroke-[2.5]" />
+            ) : (
+              <Plus className="w-6 h-6 stroke-[3]" />
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

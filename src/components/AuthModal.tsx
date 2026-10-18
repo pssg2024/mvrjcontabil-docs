@@ -305,14 +305,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               )}
 
-              {/* Title & Subtitle */}
-              <h2 className="text-[18px] font-bold tracking-tight text-white leading-tight">
-                MVRJ <span className="text-[#C59B4B] font-black">CONTÁBIL</span>
-              </h2>
+              {/* Title */}
+              {(authHeaderConfig?.showTitle ?? true) && (
+                <h2 className="text-[18px] font-bold tracking-tight text-white leading-tight">
+                  {authHeaderConfig?.title ? (
+                    authHeaderConfig.title.toUpperCase().includes('MVRJ') ? (
+                      <>
+                        {authHeaderConfig.title.split(' ')[0]}{' '}
+                        <span className="text-[#C59B4B] font-black">
+                          {authHeaderConfig.title.split(' ').slice(1).join(' ') || 'CONTÁBIL'}
+                        </span>
+                      </>
+                    ) : (
+                      authHeaderConfig.title
+                    )
+                  ) : (
+                    <>
+                      MVRJ <span className="text-[#C59B4B] font-black">CONTÁBIL</span>
+                    </>
+                  )}
+                </h2>
+              )}
               
-              <p className="text-xs text-slate-300 mt-1 tracking-normal font-medium">
-                Gestão Eletrônica Contábil
-              </p>
+              {/* Subtitle */}
+              {(authHeaderConfig?.showSubtitle ?? true) && (
+                <p className="text-xs text-slate-300 mt-1 tracking-normal font-medium">
+                  {authHeaderConfig?.subtitle || 'Gestão Eletrônica Contábil'}
+                </p>
+              )}
+
+              {/* Badge */}
+              {authHeaderConfig?.showBadge && authHeaderConfig?.badgeText && (
+                <div className="inline-flex items-center space-x-1.5 mt-2 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-[11px] font-semibold text-blue-200 border border-blue-400/30 backdrop-blur-xs">
+                  <ShieldAlert className="w-3 h-3 text-blue-300 shrink-0" />
+                  <span>{authHeaderConfig.badgeText}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
