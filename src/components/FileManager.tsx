@@ -556,6 +556,12 @@ export const FileManager: React.FC<FileManagerProps> = ({
             <p className="text-blue-100/80 text-xs sm:text-sm font-normal leading-relaxed w-full max-w-none">
               Drive Corporativo seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais com controle de permissões.
             </p>
+            {/* Saudação personalizada exibida somente no modo Computador */}
+            <div className="hidden lg:flex items-center gap-2 pt-1">
+              <span className="text-xs font-semibold text-[#DFB76C] bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">
+                Seja bem-vindo(a), {currentUser.full_name}!
+              </span>
+            </div>
           </div>
 
           {/* Lado Direito (Mural de Avisos e Comunicados Internos em Tempo Real) */}

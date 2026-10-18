@@ -18,7 +18,7 @@ import { InvoiceEmissionView } from './components/InvoiceEmissionView';
 import { UserManualModal } from './components/UserManualModal';
 import { SalaryCalculatorModal } from './components/SalaryCalculatorModal';
 import { MvrjAssistantWidget } from './components/MvrjAssistantWidget';
-import { ShieldCheck, Menu, LogOut } from 'lucide-react';
+import { ShieldCheck, Menu } from 'lucide-react';
 import { 
   UserProfile, 
   UserRole, 
@@ -1346,35 +1346,55 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {/* Botão Sair visível diretamente no cabeçalho mobile */}
-                <button
-                  type="button"
-                  id="mobile-header-logout-btn"
-                  onClick={handleLogout}
-                  className="px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 active:bg-rose-950/60 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-medium border border-slate-700/60 hover:border-rose-800/60"
-                  title="Encerrar sessão"
-                  aria-label="Sair da conta"
-                >
-                  <LogOut className="w-4 h-4 text-rose-400 shrink-0" strokeWidth={1.75} />
-                  <span>Sair</span>
-                </button>
-
-                <div 
-                  onClick={() => handleOpenProfileModal('profile')}
-                  className="w-8 h-8 rounded-lg overflow-hidden ring-1.5 ring-emerald-500/80 cursor-pointer shadow-xs shrink-0"
-                  title="Meu Perfil"
-                >
-                  {currentUser.avatar_url ? (
-                    <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
-                      {currentUser.full_name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
+              {/* Foto de perfil no cabeçalho mobile (sem botão de sair ao lado, como estava antes) */}
+              <div 
+                onClick={() => handleOpenProfileModal('profile')}
+                className="w-8 h-8 rounded-lg overflow-hidden ring-1.5 ring-emerald-500/80 cursor-pointer shadow-xs shrink-0"
+                title="Meu Perfil"
+              >
+                {currentUser.avatar_url ? (
+                  <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
+                    {currentUser.full_name.charAt(0).toUpperCase()}
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Header Desktop - Exibido apenas no modo Computador (hidden lg:flex) */}
+            <header className="hidden lg:flex items-center justify-between px-6 lg:px-8 py-3.5 bg-[#091124] border-b border-slate-800/80 shrink-0 sticky top-0 z-20">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                <span className="text-sm font-normal text-slate-300 truncate">
+                  Seja bem-vindo(a), <strong className="text-white font-bold">{currentUser.full_name}</strong>!
+                </span>
+                <span className="hidden xl:inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-[#DFB76C] bg-[#DFB76C]/10 border border-[#DFB76C]/30 px-2 py-0.5 rounded-full shrink-0">
+                  {currentUser.role === 'admin' ? 'Administrador Geral' : currentUser.sector || 'Colaborador'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <div 
+                  onClick={() => handleOpenProfileModal('profile')}
+                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group shadow-xs"
+                  title="Meu Perfil & Configurações"
+                >
+                  <div className="w-7 h-7 rounded-lg overflow-hidden ring-1 ring-emerald-500/80 shrink-0">
+                    {currentUser.avatar_url ? (
+                      <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
+                        {currentUser.full_name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[140px]">
+                    {currentUser.full_name}
+                  </span>
+                </div>
+              </div>
+            </header>
 
             {/* Conteúdo Principal (FileManager ou AdminPanel) */}
             <main className="flex-1 w-full max-w-none p-4 sm:p-6 lg:p-7 min-w-0 flex flex-col gap-6">

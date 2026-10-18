@@ -229,6 +229,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           muted
           playsInline
           preload="auto"
+          poster="/images/login-video-poster.jpg"
+          onCanPlay={(e) => {
+            e.currentTarget.play().catch(() => {});
+          }}
           className="w-full h-full object-cover select-none"
         >
           <source src="/images/204292-923909617_medium.mp4" type="video/mp4" />
@@ -255,6 +259,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               muted
               playsInline
               preload="auto"
+              poster="/images/login-video-poster.jpg"
+              onCanPlay={(e) => {
+                e.currentTarget.play().catch(() => {});
+              }}
               className="w-full h-full object-cover select-none filter contrast-[1.08] saturate-[1.15]"
             >
               <source src="/images/204292-923909617_medium.mp4" type="video/mp4" />
