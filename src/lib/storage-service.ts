@@ -559,8 +559,8 @@ export async function resetSiteBackground(
 export const DEFAULT_AUTH_HEADER_CONFIG: AuthHeaderConfig = {
   title: 'MVRJ CONTÁBIL',
   subtitle: 'Gestão Eletrônica Contábil',
-  badgeText: 'MVRJ Contábil Corporativo',
-  showBadge: true,
+  badgeText: '',
+  showBadge: false,
   showTitle: true,
   showSubtitle: true,
   showIcon: true,

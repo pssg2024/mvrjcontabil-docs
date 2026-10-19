@@ -4,7 +4,6 @@ import {
   UserCheck, 
   Clock, 
   AlertCircle, 
-  ShieldAlert, 
   ArrowRight, 
   CheckCircle2, 
   Building2, 
@@ -16,7 +15,8 @@ import {
   FileText,
   Palette,
   Eye,
-  EyeOff
+  EyeOff,
+  UserPlus
 } from 'lucide-react';
 import { Sector, UserProfile, AuthHeaderConfig } from '../types';
 
@@ -25,6 +25,7 @@ interface AuthModalProps {
   onLoginSuccess: (user: UserProfile) => void;
   onRequestAccessSuccess: (newUser: UserProfile) => void;
   allProfiles: UserProfile[];
+  deletedEmails?: string[];
   authHeaderConfig?: AuthHeaderConfig;
   onOpenHeaderCustomizer?: () => void;
   isAdmin?: boolean;
@@ -45,6 +46,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onLoginSuccess,
   onRequestAccessSuccess,
   allProfiles,
+  deletedEmails = [],
   authHeaderConfig,
   onOpenHeaderCustomizer,
   isAdmin,
@@ -59,6 +61,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     type: 'pending' | 'blocked' | 'error' | 'success';
     text: string;
     user?: UserProfile;
+    canReapply?: boolean;
+    suggestedEmail?: string;
   } | null>(null);
 
   // Registration form state
@@ -75,12 +79,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     e.preventDefault();
     setLoginStatusMessage(null);
 
-    const user = allProfiles.find(p => p.email.toLowerCase() === loginEmail.trim().toLowerCase());
+    const emailTrimmed = loginEmail.trim().toLowerCase();
+    const user = allProfiles.find(p => p.email.toLowerCase() === emailTrimmed);
 
     if (!user) {
+      const isKnownDeleted = deletedEmails?.some(e => e.toLowerCase() === emailTrimmed);
       setLoginStatusMessage({
         type: 'error',
-        text: 'Usuário não encontrado. Verifique o e-mail ou envie uma Solicitação de Acesso.',
+        text: isKnownDeleted
+          ? 'Acesso Revogado: Este perfil foi excluído pelo administrador e não possui mais acesso ao sistema. Se você deseja ter acesso novamente (mesmo utilizando o mesmo e-mail), envie uma nova solicitação de acesso e aguarde a autorização da Diretoria.'
+          : 'Usuário não encontrado ou perfil excluído. Usuários excluídos pelo administrador não têm mais acesso ao sistema. Para ter acesso novamente, envie uma nova solicitação e aguarde a autorização do administrador.',
+        canReapply: true,
+        suggestedEmail: loginEmail.trim(),
       });
       return;
     }
@@ -88,7 +98,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (user.status === 'pending') {
       setLoginStatusMessage({
         type: 'pending',
-        text: 'Cadastro realizado com sucesso! Aguarde a aprovação do Administrador para acessar os documentos contábeis.',
+        text: 'Sua solicitação de acesso está aguardando homologação do Administrador. Por favor, aguarde a liberação da administração para acessar seu perfil e os documentos.',
         user,
       });
       return;
@@ -97,7 +107,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (user.status === 'blocked') {
       setLoginStatusMessage({
         type: 'blocked',
-        text: 'Acesso Bloqueado: Seu perfil está temporariamente desativado no sistema. Entre em contato com a administração.',
+        text: 'Acesso Bloqueado: Seu perfil foi desativado pelo administrador e não possui acesso ao sistema. Entre em contato com a administração.',
         user,
       });
       return;
@@ -106,8 +116,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (user.status === 'rejected') {
       setLoginStatusMessage({
         type: 'error',
-        text: 'Acesso Recusado: Sua solicitação de cadastro não foi autorizada pela Diretoria.',
+        text: 'Acesso Recusado: Sua solicitação de cadastro não foi autorizada pela Diretoria. Para tentar novamente, você pode fazer uma nova solicitação de acesso.',
         user,
+        canReapply: true,
+        suggestedEmail: user.email,
       });
       return;
     }
@@ -334,13 +346,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </p>
               )}
 
-              {/* Badge */}
-              {authHeaderConfig?.showBadge && authHeaderConfig?.badgeText && (
-                <div className="inline-flex items-center space-x-1.5 mt-2 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-[11px] font-semibold text-blue-200 border border-blue-400/30 backdrop-blur-xs">
-                  <ShieldAlert className="w-3 h-3 text-blue-300 shrink-0" />
-                  <span>{authHeaderConfig.badgeText}</span>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -396,15 +401,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     ) : (
                       <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                     )}
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-bold text-sm mb-1">
-                        {loginStatusMessage.type === 'pending' ? 'Cadastro em Homologação' : 'Acesso Restrito'}
+                        {loginStatusMessage.type === 'pending' ? 'Cadastro em Homologação' : 'Acesso Restrito / Revogado'}
                       </h4>
                       <p>{loginStatusMessage.text}</p>
                       {loginStatusMessage.user && (
                         <div className="mt-2.5 pt-2 border-t border-amber-200/60 text-[11px] font-medium text-amber-800 flex justify-between">
                           <span>Setor: {loginStatusMessage.user.sector}</span>
                           <span className="uppercase tracking-wider font-bold">Status: {loginStatusMessage.user.status}</span>
+                        </div>
+                      )}
+
+                      {loginStatusMessage.canReapply && (
+                        <div className="mt-3 pt-2.5 border-t border-rose-200/80">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveTab('register');
+                              if (loginStatusMessage.suggestedEmail) {
+                                setRegEmail(loginStatusMessage.suggestedEmail);
+                              }
+                              setLoginStatusMessage(null);
+                            }}
+                            className="w-full py-2 px-3 rounded-xl bg-[#1B357B] hover:bg-[#122557] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                          >
+                            <UserPlus className="w-3.5 h-3.5 text-[#DFB76C]" />
+                            <span>Solicitar Novo Acesso (Pode usar este mesmo e-mail)</span>
+                          </button>
+                          <p className="text-[10px] text-slate-500 mt-1.5 text-center font-normal">
+                            Após enviar a solicitação, aguarde a autorização do Administrador para liberar seu acesso.
+                          </p>
                         </div>
                       )}
                     </div>

@@ -92,7 +92,7 @@ export default function App() {
     
     loaded = loaded.map(p => {
       const email = p.email.toLowerCase();
-      if (email === 'evandro230655@gmail.com') {
+      if (email === 'evandro230655@gmail.com' || email === 'evandro132213@gmail.com') {
         return { ...p, role: 'admin', status: 'active' };
       }
       return p;
@@ -101,26 +101,36 @@ export default function App() {
     return loaded;
   });
 
+  const [deletedEmails, setDeletedEmails] = useState<string[]>([]);
+
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     try {
       const sessionToken = sessionStorage.getItem('mvrj_session_token') || localStorage.getItem('mvrj_session_token');
       const savedUserStr = sessionStorage.getItem('mvrj_session_user') || localStorage.getItem('mvrj_session_user');
       if (sessionToken && savedUserStr) {
         const parsed = JSON.parse(savedUserStr) as UserProfile;
+        const isMaster = parsed && (parsed.email.toLowerCase() === 'evandro230655@gmail.com' || parsed.email.toLowerCase() === 'evandro132213@gmail.com');
+
         // Check if user is active (not pending or blocked or rejected)
-        if (parsed && (parsed.status === 'active' || parsed.status === 'approved')) {
-          if (!parsed.avatar_url) {
-            try {
-              const savedProfiles = localStorage.getItem('mvrj_profiles');
-              if (savedProfiles) {
-                const plist = JSON.parse(savedProfiles) as UserProfile[];
-                const match = plist.find(p => p.id === parsed.id || p.email.toLowerCase() === parsed.email.toLowerCase());
-                if (match && match.avatar_url) {
-                  parsed.avatar_url = match.avatar_url;
-                }
+        if (parsed && (parsed.status === 'active' || parsed.status === 'approved' || isMaster)) {
+          try {
+            const savedProfiles = localStorage.getItem('mvrj_profiles');
+            if (savedProfiles) {
+              const plist = JSON.parse(savedProfiles) as UserProfile[];
+              const match = plist.find(p => p.id === parsed.id || p.email.toLowerCase() === parsed.email.toLowerCase());
+              // Se o perfil foi excluído da lista de perfis salvos, não restaurar sessão
+              if (!match && !isMaster) {
+                sessionStorage.removeItem('mvrj_session_user');
+                sessionStorage.removeItem('mvrj_session_token');
+                localStorage.removeItem('mvrj_session_user');
+                localStorage.removeItem('mvrj_session_token');
+                return null;
               }
-            } catch {}
-          }
+              if (match && match.avatar_url) {
+                parsed.avatar_url = match.avatar_url;
+              }
+            }
+          } catch {}
           return parsed;
         }
       }
@@ -131,7 +141,8 @@ export default function App() {
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(() => {
     const sessionToken = sessionStorage.getItem('mvrj_session_token') || localStorage.getItem('mvrj_session_token');
-    return !sessionToken;
+    const savedUserStr = sessionStorage.getItem('mvrj_session_user') || localStorage.getItem('mvrj_session_user');
+    return !sessionToken || !savedUserStr;
   });
 
   const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null);
@@ -467,9 +478,37 @@ export default function App() {
       if (typeof BroadcastChannel !== 'undefined') {
         bc = new BroadcastChannel('mvrj_realtime_sync');
         bc.onmessage = (event) => {
-          if (event.data?.type === 'SYNC_ALL' || event.data?.type === 'SYNC_FILES') {
+          if (event.data?.type === 'USER_DELETED') {
+            const { userId, email } = event.data;
+            setCurrentUser(prevUser => {
+              if (prevUser && (prevUser.id === userId || (email && prevUser.email.toLowerCase() === email.toLowerCase()))) {
+                const isMaster = prevUser.email.toLowerCase() === 'evandro230655@gmail.com' || prevUser.email.toLowerCase() === 'evandro132213@gmail.com';
+                if (!isMaster) {
+                  try {
+                    sessionStorage.removeItem('mvrj_session_user');
+                    sessionStorage.removeItem('mvrj_session_token');
+                    localStorage.removeItem('mvrj_session_user');
+                    localStorage.removeItem('mvrj_session_token');
+                  } catch {}
+                  setIsProfileModalOpen(false);
+                  setIsFirstAccessModalOpen(false);
+                  setIsUploadModalOpen(false);
+                  setIsBackgroundModalOpen(false);
+                  setIsCompanyModalOpen(false);
+                  setIsCompanyManagerOpen(false);
+                  setIsInvoiceEmissionOpen(false);
+                  setIsManualModalOpen(false);
+                  setIsAuthModalOpen(true);
+                  return null;
+                }
+              }
+              return prevUser;
+            });
+            syncProfiles();
+          } else if (event.data?.type === 'SYNC_ALL' || event.data?.type === 'SYNC_FILES') {
             syncData();
             fetchStorageMetrics();
+            syncProfiles();
           }
         };
       }
@@ -486,57 +525,100 @@ export default function App() {
         const data = await res.json();
         if (data && Array.isArray(data.profiles)) {
           setProfiles(data.profiles);
+          try {
+            localStorage.setItem('mvrj_profiles', JSON.stringify(data.profiles));
+          } catch {}
+
+          if (Array.isArray(data.deletedEmails)) {
+            setDeletedEmails(data.deletedEmails);
+          }
 
           setCurrentUser(prevUser => {
             if (!prevUser) return prevUser;
+            const isMaster = prevUser.email.toLowerCase() === 'evandro230655@gmail.com' || prevUser.email.toLowerCase() === 'evandro132213@gmail.com';
+
             const match = data.profiles.find((p: UserProfile) => 
               p.email.toLowerCase() === prevUser.email.toLowerCase() || p.id === prevUser.id
             );
-            if (match) {
-              // Se o status do usuário não for 'active' ou 'approved', bloquear acesso imediatamente
-              if (match.status !== 'active' && match.status !== 'approved') {
+
+            // 1. Se o usuário NÃO for encontrado na lista de perfis do servidor:
+            // Isso indica que o usuário foi EXCLUÍDO pelo administrador!
+            if (!match) {
+              if (!isMaster) {
+                console.warn(`[Acesso Revogado] Usuário ${prevUser.email} foi excluído pelo administrador. Revogando sessão e acesso ao perfil imediatamente.`);
                 try {
                   sessionStorage.removeItem('mvrj_session_user');
                   sessionStorage.removeItem('mvrj_session_token');
                   localStorage.removeItem('mvrj_session_user');
                   localStorage.removeItem('mvrj_session_token');
                 } catch {}
+                setIsProfileModalOpen(false);
+                setIsFirstAccessModalOpen(false);
+                setIsUploadModalOpen(false);
+                setIsBackgroundModalOpen(false);
+                setIsCompanyModalOpen(false);
+                setIsCompanyManagerOpen(false);
+                setIsInvoiceEmissionOpen(false);
+                setIsManualModalOpen(false);
                 setIsAuthModalOpen(true);
                 return null;
               }
-
-              const resolvedAvatar = match.avatar_url || prevUser.avatar_url;
-
-              // Se nenhum atributo relevante mudou, manter a mesma referência para evitar re-renderizações desnecessárias
-              if (
-                match.id === prevUser.id &&
-                match.full_name === prevUser.full_name &&
-                match.role === prevUser.role &&
-                match.status === prevUser.status &&
-                match.sector === prevUser.sector &&
-                resolvedAvatar === prevUser.avatar_url
-              ) {
-                return prevUser;
-              }
-
-              const updated: UserProfile = {
-                ...prevUser,
-                id: match.id || prevUser.id,
-                full_name: match.full_name || prevUser.full_name,
-                role: match.role || prevUser.role,
-                status: match.status || prevUser.status,
-                sector: match.sector || prevUser.sector,
-                avatar_url: resolvedAvatar,
-              };
-              if (resolvedAvatar !== prevUser.avatar_url || match.full_name !== prevUser.full_name || match.role !== prevUser.role) {
-                try {
-                  sessionStorage.setItem('mvrj_session_user', JSON.stringify(updated));
-                  localStorage.setItem('mvrj_session_user', JSON.stringify(updated));
-                } catch {}
-              }
-              return updated;
+              return prevUser;
             }
-            return prevUser;
+
+            // 2. Se o status do usuário não for 'active' ou 'approved', bloquear acesso imediatamente
+            if (match.status !== 'active' && match.status !== 'approved') {
+              if (!isMaster) {
+                console.warn(`[Acesso Restrito] Usuário ${prevUser.email} com status '${match.status}'. Revogando sessão e acesso.`);
+                try {
+                  sessionStorage.removeItem('mvrj_session_user');
+                  sessionStorage.removeItem('mvrj_session_token');
+                  localStorage.removeItem('mvrj_session_user');
+                  localStorage.removeItem('mvrj_session_token');
+                } catch {}
+                setIsProfileModalOpen(false);
+                setIsFirstAccessModalOpen(false);
+                setIsUploadModalOpen(false);
+                setIsBackgroundModalOpen(false);
+                setIsCompanyModalOpen(false);
+                setIsCompanyManagerOpen(false);
+                setIsInvoiceEmissionOpen(false);
+                setIsManualModalOpen(false);
+                setIsAuthModalOpen(true);
+                return null;
+              }
+            }
+
+            const resolvedAvatar = match.avatar_url || prevUser.avatar_url;
+
+            // Se nenhum atributo relevante mudou, manter a mesma referência para evitar re-renderizações desnecessárias
+            if (
+              match.id === prevUser.id &&
+              match.full_name === prevUser.full_name &&
+              match.role === prevUser.role &&
+              match.status === prevUser.status &&
+              match.sector === prevUser.sector &&
+              resolvedAvatar === prevUser.avatar_url
+            ) {
+              return prevUser;
+            }
+
+            const updated: UserProfile = {
+              ...prevUser,
+              id: match.id || prevUser.id,
+              full_name: match.full_name || prevUser.full_name,
+              role: match.role || prevUser.role,
+              status: match.status || prevUser.status,
+              sector: match.sector || prevUser.sector,
+              avatar_url: resolvedAvatar,
+            };
+            if (resolvedAvatar !== prevUser.avatar_url || match.full_name !== prevUser.full_name || match.role !== prevUser.role) {
+              try {
+                sessionStorage.setItem('mvrj_session_user', JSON.stringify(updated));
+                localStorage.setItem('mvrj_session_user', JSON.stringify(updated));
+              } catch {}
+            }
+            return updated;
           });
         }
       } catch (err) {
@@ -568,15 +650,45 @@ export default function App() {
     fetchStorageMetrics();
     syncProfiles();
 
-    // Intervals otimizados para tempo real (polling de 2.5s garante atualização rápida entre dispositivos)
+    // Intervals otimizados para tempo real (polling de 3s para profiles e 2.5s para pastas/arquivos)
     const syncInterval = setInterval(syncData, 2500);
-    const profilesInterval = setInterval(syncProfiles, 6000);
+    const profilesInterval = setInterval(syncProfiles, 3000);
     const metricsInterval = setInterval(fetchStorageMetrics, 5000);
 
     // Canal global de sincronização do GED
     const supabaseClient = getSupabase();
     const gedSyncChannel = supabaseClient
       ?.channel('ged-database-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        (payload: any) => {
+          if (payload.eventType === 'DELETE') {
+            const delId = payload.old?.id;
+            const delEmail = payload.old?.email?.toLowerCase();
+            setCurrentUser(prevUser => {
+              if (prevUser && (prevUser.id === delId || (delEmail && prevUser.email.toLowerCase() === delEmail))) {
+                const isMaster = prevUser.email.toLowerCase() === 'evandro230655@gmail.com' || prevUser.email.toLowerCase() === 'evandro132213@gmail.com';
+                if (!isMaster) {
+                  try {
+                    sessionStorage.removeItem('mvrj_session_user');
+                    sessionStorage.removeItem('mvrj_session_token');
+                    localStorage.removeItem('mvrj_session_user');
+                    localStorage.removeItem('mvrj_session_token');
+                  } catch {}
+                  setIsProfileModalOpen(false);
+                  setIsFirstAccessModalOpen(false);
+                  setIsUploadModalOpen(false);
+                  setIsAuthModalOpen(true);
+                  return null;
+                }
+              }
+              return prevUser;
+            });
+          }
+          syncProfiles();
+        }
+      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'folders' },
@@ -718,12 +830,47 @@ export default function App() {
   // 1. Recusar: deleta da tabela profiles
   const handleRejectUser = async (userId: string) => {
     const target = profiles.find(p => p.id === userId);
-    setProfiles(prev => prev.filter(p => p.id !== userId));
+    const targetEmail = target?.email;
+
+    setProfiles(prev => {
+      const next = prev.filter(p => p.id !== userId && (!targetEmail || p.email.toLowerCase() !== targetEmail.toLowerCase()));
+      try {
+        localStorage.setItem('mvrj_profiles', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
     logAudit('USER_REJECTED', 'USER', userId, { rejected_name: target?.full_name, rejected_email: target?.email });
+
+    // Revoga imediatamente a sessão se o usuário recusado for o usuário logado nesta janela
+    if (currentUser && (currentUser.id === userId || (targetEmail && currentUser.email.toLowerCase() === targetEmail.toLowerCase()))) {
+      try {
+        sessionStorage.removeItem('mvrj_session_user');
+        sessionStorage.removeItem('mvrj_session_token');
+        localStorage.removeItem('mvrj_session_user');
+        localStorage.removeItem('mvrj_session_token');
+      } catch {}
+      setCurrentUser(null);
+      setIsProfileModalOpen(false);
+      setIsAuthModalOpen(true);
+    }
+
+    // Transmissão instantânea via BroadcastChannel para todas as abas e janelas abertas
     try {
-      await fetch(`/api/profiles/${encodeURIComponent(userId)}`, {
-        method: 'DELETE',
-      });
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('mvrj_realtime_sync');
+        bc.postMessage({
+          type: 'USER_DELETED',
+          userId,
+          email: targetEmail,
+        });
+        bc.close();
+      }
+    } catch {}
+
+    try {
+      const deleteUrl = `/api/profiles/${encodeURIComponent(userId)}${targetEmail ? `?email=${encodeURIComponent(targetEmail)}` : ''}`;
+      await fetch(deleteUrl, { method: 'DELETE' });
     } catch (err) {
       console.warn('Aviso ao excluir perfil recusado do Supabase:', err);
     }
@@ -740,8 +887,46 @@ export default function App() {
       id: userId,
       name: displayName,
       action: async () => {
-        setProfiles(prev => prev.filter(p => p.id !== userId && (!targetEmail || p.email.toLowerCase() !== targetEmail.toLowerCase())));
+        setProfiles(prev => {
+          const next = prev.filter(p => p.id !== userId && (!targetEmail || p.email.toLowerCase() !== targetEmail.toLowerCase()));
+          try {
+            localStorage.setItem('mvrj_profiles', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+
+        if (targetEmail) {
+          setDeletedEmails(prev => Array.from(new Set([...prev, targetEmail.toLowerCase().trim()])));
+        }
+
         logAudit('USER_DELETED', 'USER', userId, { deleted_name: displayName, deleted_email: targetEmail });
+
+        // Revoga imediatamente a sessão se o usuário excluído for o usuário logado nesta janela
+        if (currentUser && (currentUser.id === userId || (targetEmail && currentUser.email.toLowerCase() === targetEmail.toLowerCase()))) {
+          try {
+            sessionStorage.removeItem('mvrj_session_user');
+            sessionStorage.removeItem('mvrj_session_token');
+            localStorage.removeItem('mvrj_session_user');
+            localStorage.removeItem('mvrj_session_token');
+          } catch {}
+          setCurrentUser(null);
+          setIsProfileModalOpen(false);
+          setIsAuthModalOpen(true);
+        }
+
+        // Transmissão instantânea via BroadcastChannel para todas as abas e janelas abertas
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('mvrj_realtime_sync');
+            bc.postMessage({
+              type: 'USER_DELETED',
+              userId,
+              email: targetEmail,
+            });
+            bc.close();
+          }
+        } catch {}
+
         try {
           const deleteUrl = `/api/profiles/${encodeURIComponent(userId)}${targetEmail ? `?email=${encodeURIComponent(targetEmail)}` : ''}`;
           const res = await fetch(deleteUrl, {
@@ -756,6 +941,9 @@ export default function App() {
           const refreshData = await refreshRes.json().catch(() => ({}));
           if (refreshData && Array.isArray(refreshData.profiles)) {
             setProfiles(refreshData.profiles);
+            if (Array.isArray(refreshData.deletedEmails)) {
+              setDeletedEmails(refreshData.deletedEmails);
+            }
           }
         } catch (err: any) {
           console.warn('Erro ao excluir usuário no Supabase:', err);
@@ -1143,6 +1331,22 @@ export default function App() {
 
   const handleSaveProfile = (updatedData: { full_name: string; avatar_url?: string }) => {
     if (!currentUser) return;
+    const isMaster = currentUser.email.toLowerCase() === 'evandro230655@gmail.com' || currentUser.email.toLowerCase() === 'evandro132213@gmail.com';
+    const exists = profiles.some(p => (p.id === currentUser.id || p.email.toLowerCase() === currentUser.email.toLowerCase()) && (p.status === 'active' || p.status === 'approved'));
+
+    if (!exists && !isMaster) {
+      alert('Seu perfil foi excluído pelo administrador. Você não possui mais acesso ao perfil ou ao sistema.');
+      try {
+        sessionStorage.removeItem('mvrj_session_user');
+        sessionStorage.removeItem('mvrj_session_token');
+        localStorage.removeItem('mvrj_session_user');
+        localStorage.removeItem('mvrj_session_token');
+      } catch {}
+      setCurrentUser(null);
+      setIsProfileModalOpen(false);
+      setIsAuthModalOpen(true);
+      return;
+    }
     
     const updatedUser: UserProfile = {
       ...currentUser,
@@ -1176,6 +1380,22 @@ export default function App() {
 
   const handlePasswordChange = (newPassword: string) => {
     if (!currentUser || !currentUser.email) return;
+    const isMaster = currentUser.email.toLowerCase() === 'evandro230655@gmail.com' || currentUser.email.toLowerCase() === 'evandro132213@gmail.com';
+    const exists = profiles.some(p => (p.id === currentUser.id || p.email.toLowerCase() === currentUser.email.toLowerCase()) && (p.status === 'active' || p.status === 'approved'));
+
+    if (!exists && !isMaster) {
+      alert('Seu perfil foi excluído pelo administrador. Você não possui mais acesso ao perfil.');
+      try {
+        sessionStorage.removeItem('mvrj_session_user');
+        sessionStorage.removeItem('mvrj_session_token');
+        localStorage.removeItem('mvrj_session_user');
+        localStorage.removeItem('mvrj_session_token');
+      } catch {}
+      setCurrentUser(null);
+      setIsProfileModalOpen(false);
+      setIsAuthModalOpen(true);
+      return;
+    }
 
     try {
       const stored = JSON.parse(localStorage.getItem('mvrj_passwords') || '{}');
@@ -1327,47 +1547,38 @@ export default function App() {
 
           {/* 2. Área de Conteúdo Principal à Direita */}
           <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-slate-950/95 dark:bg-slate-950 text-slate-100 min-w-0">
-            {/* Header Mobile Refinado - Item 1 */}
-            <div className="lg:hidden flex items-center justify-between px-5 py-3 bg-[#091124] border-b border-slate-800 shrink-0 sticky top-0 z-30">
-              <div className="flex items-center gap-2.5">
+            {/* Header Mobile com botão Hambúrguer */}
+            <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#091124] border-b border-slate-800 shrink-0 sticky top-0 z-30">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   id="mobile-sidebar-toggle-btn"
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 active:bg-slate-700 transition-colors cursor-pointer flex items-center justify-center -ml-2"
+                  className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
                   title="Abrir menu de navegação"
-                  aria-label="Abrir menu"
                 >
-                  <Menu className="w-5 h-5 text-slate-200" />
+                  <Menu className="w-5 h-5" />
                 </button>
-                <div className="flex flex-col justify-center">
-                  <span className="text-[#DFB76C] font-black text-sm tracking-wide leading-tight">
-                    MVRJ CONTÁBIL
-                  </span>
-                  <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider leading-tight mt-0.5">
-                    GESTÃO ELETRÔNICA DE DOCUMENTOS
-                  </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[#E5C378] font-black text-sm tracking-wide">MVRJ CONTÁBIL</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">GED</span>
                 </div>
               </div>
 
-              {/* Avatar do usuário à direita (área de toque >= 44px) */}
-              <button
-                type="button"
+              {/* Foto de perfil no cabeçalho mobile (sem botão de sair ao lado, como estava antes) */}
+              <div 
                 onClick={() => handleOpenProfileModal('profile')}
-                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer -mr-1"
+                className="w-8 h-8 rounded-lg overflow-hidden ring-1.5 ring-emerald-500/80 cursor-pointer shadow-xs shrink-0"
                 title="Meu Perfil"
-                aria-label="Meu Perfil"
               >
-                <div className="w-9 h-9 rounded-xl overflow-hidden ring-1.5 ring-emerald-500/80 shadow-xs shrink-0 flex items-center justify-center bg-[#1B357B]">
-                  {currentUser.avatar_url ? (
-                    <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-white font-bold text-xs">
-                      {currentUser.full_name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-              </button>
+                {currentUser.avatar_url ? (
+                  <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
+                    {currentUser.full_name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Header Desktop - Exibido apenas no modo Computador (hidden lg:flex) */}
@@ -1404,8 +1615,8 @@ export default function App() {
               </div>
             </header>
 
-            {/* Conteúdo Principal (FileManager ou AdminPanel) com margem lateral de 20px (px-5) no mobile e padding inferior para não cobrir nenhum card com botões flutuantes */}
-            <main className="flex-1 w-full max-w-none px-5 py-4 pb-28 sm:pb-8 sm:p-6 lg:p-7 min-w-0 flex flex-col gap-4 sm:gap-6">
+            {/* Conteúdo Principal (FileManager ou AdminPanel) */}
+            <main className="flex-1 w-full max-w-none p-4 sm:p-6 lg:p-7 min-w-0 flex flex-col gap-6">
               {activeView === 'drive' ? (
                 <FileManager
                   currentUser={currentUser}
@@ -1512,6 +1723,7 @@ export default function App() {
           }).catch(err => console.warn('Aviso ao sincronizar novo perfil no backend:', err));
         }}
         allProfiles={profiles}
+        deletedEmails={deletedEmails}
       />
 
       <FileUploadModal
@@ -1559,7 +1771,7 @@ export default function App() {
         onClose={() => setIsSqlModalOpen(false)}
       />
 
-      {currentUser && (
+      {currentUser && (currentUser.status === 'active' || currentUser.status === 'approved' || currentUser.email.toLowerCase() === 'evandro230655@gmail.com' || currentUser.email.toLowerCase() === 'evandro132213@gmail.com') && (
         <ProfileModal
           isOpen={isProfileModalOpen}
           onClose={() => setIsProfileModalOpen(false)}

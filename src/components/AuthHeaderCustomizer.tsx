@@ -577,7 +577,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                           setConfig(updated);
                           onConfigChange(updated);
                         }}
-                        placeholder="Ex: Supabase RLS & Cloudflare R2"
+                        placeholder="Ex: Ambiente Seguro & Homologado"
                         maxLength={50}
                         className="w-full h-10 px-3.5 rounded-xl border border-slate-300 bg-white focus:border-[#1B357B] focus:ring-3 focus:ring-blue-100 text-xs font-semibold text-slate-900 shadow-2xs transition-all outline-hidden"
                       />
@@ -589,7 +589,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                       </span>
                       <div className="flex flex-wrap gap-1.5">
                         {[
-                          'Supabase RLS & Cloudflare R2',
+                          'Ambiente Seguro & Homologado',
                           'Criptografia SSL de Ponta a Ponta',
                           'Conformidade LGPD 13.709',
                           'GED Seguro • MVRJCONTÁBIL',
@@ -1497,7 +1497,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                     {(config.showBadge ?? true) && (
                       <div className="inline-flex items-center space-x-1.5 mt-2 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-[11px] font-semibold text-blue-200 border border-blue-400/30 backdrop-blur-xs">
                         <ShieldAlert className="w-3 h-3 text-blue-300 shrink-0" />
-                        <span>{config.badgeText || 'Supabase RLS & Cloudflare R2'}</span>
+                        <span>{config.badgeText || 'Ambiente Seguro Corporativo'}</span>
                       </div>
                     )}
                   </div>

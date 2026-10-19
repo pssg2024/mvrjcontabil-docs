@@ -1180,10 +1180,91 @@ async function saveR2Profiles(profiles: StoredProfile[]) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Deleted Users Registry (Guarantees deleted users cannot access or resurrect)
+// -----------------------------------------------------------------------------
+interface DeletedUserRecord {
+  id: string;
+  email: string;
+  deleted_at: string;
+}
+
+const DELETED_USERS_FILE = path.join(process.cwd(), 'storage', 'deleted_users.json');
+const R2_DELETED_USERS_KEY = 'system/deleted_users.json';
+let persistedDeletedUsers: DeletedUserRecord[] = [];
+
+function loadPersistedDeletedUsers() {
+  try {
+    if (fs.existsSync(DELETED_USERS_FILE)) {
+      const data = fs.readFileSync(DELETED_USERS_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        persistedDeletedUsers = parsed;
+        console.log(`[DeletedUsers] ${persistedDeletedUsers.length} registros de exclusão carregados do disco`);
+      }
+    }
+  } catch (e) {
+    console.warn('[DeletedUsers] Aviso ao carregar registros de exclusão:', e);
+  }
+}
+
+function savePersistedDeletedUsers() {
+  try {
+    const dir = path.dirname(DELETED_USERS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(DELETED_USERS_FILE, JSON.stringify(persistedDeletedUsers, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[DeletedUsers] Erro ao persistir registros de exclusão:', e);
+  }
+}
+
+loadPersistedDeletedUsers();
+
+async function fetchR2DeletedUsers(): Promise<DeletedUserRecord[]> {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return [];
+  try {
+    const res = await client.send(new GetObjectCommand({
+      Bucket: bucketName,
+      Key: R2_DELETED_USERS_KEY,
+    }));
+    if (res.Body) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as any) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {}
+  return [];
+}
+
+async function saveR2DeletedUsers(records: DeletedUserRecord[]) {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return;
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: R2_DELETED_USERS_KEY,
+      Body: Buffer.from(JSON.stringify(records, null, 2), 'utf-8'),
+      ContentType: 'application/json',
+      Metadata: {
+        'system-sync': 'deleted-users',
+        'updated-at': new Date().toISOString(),
+      },
+    }));
+  } catch (err: any) {
+    console.warn('[R2 Deleted Users Save Aviso]', err.message);
+  }
+}
+
 // Cache in-memory for unified profiles to make GET /api/profiles respond in <1ms
 let cachedUnifiedProfiles: StoredProfile[] | null = null;
 let lastUnifiedProfilesFetchTime = 0;
-const PROFILES_CACHE_TTL_MS = 6000; // 6 seconds cache
+const PROFILES_CACHE_TTL_MS = 3000; // 3 seconds cache for real-time reactivity
 
 function invalidateProfilesCache() {
   cachedUnifiedProfiles = null;
@@ -1201,8 +1282,15 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
   const profilesMap = new Map<string, StoredProfile>();
   const isMasterEmail = (email: string) => {
     const e = email.toLowerCase().trim();
-    return e === 'evandro230655@gmail.com';
+    return e === 'evandro230655@gmail.com' || e === 'evandro132213@gmail.com';
   };
+
+  const lastDeletedTimeByEmail = new Map<string, number>();
+  const lastDeletedTimeById = new Map<string, number>();
+  const lastApprovedTimeByEmail = new Map<string, number>();
+  const lastApprovedTimeById = new Map<string, number>();
+  const approvedRolesByEmail = new Map<string, string>();
+  const approvedSectorsByEmail = new Map<string, string>();
 
   // 1. Carregar perfis do Cloudflare R2
   const r2Profiles = await fetchR2Profiles();
@@ -1253,13 +1341,6 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
         .order('created_at', { ascending: true });
 
       if (Array.isArray(auditLogs)) {
-        const lastDeletedTimeByEmail = new Map<string, number>();
-        const lastDeletedTimeById = new Map<string, number>();
-        const lastApprovedTimeByEmail = new Map<string, number>();
-        const lastApprovedTimeById = new Map<string, number>();
-        const approvedRolesByEmail = new Map<string, string>();
-        const approvedSectorsByEmail = new Map<string, string>();
-
         for (const log of auditLogs) {
           const logTime = new Date(log.created_at || 0).getTime();
           if (log.action === 'USER_REJECTED' || log.action === 'USER_DELETED') {
@@ -1325,29 +1406,64 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
             }
           }
         }
-
-        // Limpeza de perfis excluídos
-        for (const [key, p] of Array.from(profilesMap.entries())) {
-          if (isMasterEmail(p.email)) continue;
-          const pEmail = p.email.toLowerCase().trim();
-          const pId = p.id?.toLowerCase().trim();
-          const delTime = Math.max(
-            lastDeletedTimeByEmail.get(pEmail) || 0,
-            pId ? (lastDeletedTimeById.get(pId) || 0) : 0
-          );
-          const pTime = new Date(p.created_at || p.updated_at || 0).getTime();
-          if (delTime > 0 && delTime >= pTime) {
-            profilesMap.delete(key);
-          }
-        }
       }
     } catch (auditErr: any) {
       console.warn('[Audit Logs Sync Aviso]', auditErr.message);
     }
   }
 
+  // 5. PURGA RIGOROSA DE USUÁRIOS EXCLUÍDOS (Anti-Ressurreição de Acesso)
+  // Regra Mandatória: Usuários excluídos NÃO podem ter acesso ao sistema até solicitarem nova conta e serem aprovados!
+  try {
+    const r2Deleted = await fetchR2DeletedUsers().catch(() => []);
+    const allDeletedRecords = [...persistedDeletedUsers, ...r2Deleted];
+
+    for (const rec of allDeletedRecords) {
+      const t = new Date(rec.deleted_at || 0).getTime();
+      if (rec.email) {
+        const e = rec.email.toLowerCase().trim();
+        lastDeletedTimeByEmail.set(e, Math.max(t, lastDeletedTimeByEmail.get(e) || 0));
+      }
+      if (rec.id) {
+        const i = rec.id.toLowerCase().trim();
+        lastDeletedTimeById.set(i, Math.max(t, lastDeletedTimeById.get(i) || 0));
+      }
+    }
+
+    for (const [key, p] of Array.from(profilesMap.entries())) {
+      if (isMasterEmail(p.email)) continue;
+      const pEmail = p.email.toLowerCase().trim();
+      const pId = p.id?.toLowerCase().trim();
+      const delTime = Math.max(
+        lastDeletedTimeByEmail.get(pEmail) || 0,
+        pId ? (lastDeletedTimeById.get(pId) || 0) : 0
+      );
+
+      if (delTime > 0) {
+        // Usuário possui registro formal de exclusão
+        const reqTime = new Date(p.created_at || 0).getTime();
+        if (reqTime <= delTime) {
+          // NÃO solicitou nova conta após a exclusão -> REMOVIDO TOTALMENTE
+          profilesMap.delete(key);
+        } else {
+          // Solicitou nova conta após a exclusão!
+          // Como foi uma nova conta, ele PRECISA aguardar autorização do administrador (status 'pending')
+          const appTime = Math.max(
+            lastApprovedTimeByEmail.get(pEmail) || 0,
+            pId ? (lastApprovedTimeById.get(pId) || 0) : 0
+          );
+          if (appTime <= reqTime) {
+            p.status = 'pending';
+          }
+        }
+      }
+    }
+  } catch (purgeErr: any) {
+    console.warn('[Deleted Users Purge Aviso]', purgeErr.message);
+  }
+
   // Assegurar Administrador Master (Evandro)
-  const masterEmails = ['evandro230655@gmail.com'];
+  const masterEmails = ['evandro230655@gmail.com', 'evandro132213@gmail.com'];
   masterEmails.forEach((masterEmail) => {
     if (profilesMap.has(masterEmail)) {
       const admin = profilesMap.get(masterEmail)!;
@@ -1355,7 +1471,7 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
       admin.status = 'active';
     } else {
       profilesMap.set(masterEmail, {
-        id: '57e1d483-669b-4791-b09e-7496570e63ea',
+        id: masterEmail === 'evandro132213@gmail.com' ? 'usr-evandro-132213' : '57e1d483-669b-4791-b09e-7496570e63ea',
         email: masterEmail,
         full_name: 'Evandro (Administrador)',
         sector: 'Diretoria',
@@ -1392,13 +1508,24 @@ app.post('/api/profiles', async (req: Request, res: Response) => {
           ? persistedProfiles[existingIndex].id 
           : crypto.randomUUID());
 
+    const isMaster = cleanEmail === 'evandro230655@gmail.com' || cleanEmail === 'evandro132213@gmail.com';
+    const finalStatus = isMaster ? 'active' : 'pending';
+    const finalRole = isMaster ? 'admin' : ((role === 'User' || role === 'viewer') ? 'viewer' : (role || 'viewer'));
+
+    // Remove do mapa de exclusões ativas para permitir a nova solicitação limpa (reingresso após exclusão)
+    persistedDeletedUsers = persistedDeletedUsers.filter(d => 
+      (!cleanEmail || d.email.toLowerCase() !== cleanEmail) && (!resolvedId || d.id !== resolvedId)
+    );
+    savePersistedDeletedUsers();
+    saveR2DeletedUsers(persistedDeletedUsers).catch(() => {});
+
     const newProfile: StoredProfile = {
       id: resolvedId,
       email: cleanEmail,
       full_name: full_name?.trim() || email.split('@')[0],
       sector: sector || 'Fiscal',
-      role: (role === 'User' || role === 'viewer') ? 'viewer' : (role || 'viewer'),
-      status: status || 'pending',
+      role: finalRole,
+      status: finalStatus,
       avatar_url: avatar_url || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -1596,15 +1723,26 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
 
     // Localiza email antes de remover para logar e sincronizar
     const foundProfile = persistedProfiles.find(p => p.id === userId || (email && p.email.toLowerCase() === email));
-    const targetEmail = email || foundProfile?.email || '';
+    const targetEmail = (email || foundProfile?.email || '').trim().toLowerCase();
+    const nowIso = new Date().toISOString();
 
-    // Remove da memória e disco local
+    // 1. Registra no mapa persistente de exclusões (disco e Cloudflare R2)
+    if (targetEmail || userId) {
+      persistedDeletedUsers = [
+        ...persistedDeletedUsers.filter(d => (!targetEmail || d.email.toLowerCase() !== targetEmail) && (!userId || d.id !== userId)),
+        { id: userId, email: targetEmail, deleted_at: nowIso }
+      ];
+      savePersistedDeletedUsers();
+      saveR2DeletedUsers(persistedDeletedUsers).catch(() => {});
+    }
+
+    // 2. Remove da memória e disco local
     persistedProfiles = persistedProfiles.filter(p => p.id !== userId && (!targetEmail || p.email.toLowerCase() !== targetEmail));
     savePersistedProfiles();
     await saveR2Profiles(persistedProfiles).catch(() => {});
     invalidateProfilesCache();
 
-    // Deleta do Supabase e registra no audit_logs
+    // 3. Deleta do Supabase e registra no audit_logs
     const supabase = getSupabaseServerClient();
     if (supabase) {
       try {
@@ -1618,7 +1756,7 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
             deleted_email: targetEmail,
             rejected_email: targetEmail,
             user_id: userId,
-            deleted_at: new Date().toISOString(),
+            deleted_at: nowIso,
           },
         });
       } catch (auditErr: any) {
@@ -1640,7 +1778,18 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
         if (targetEmail) {
           await supabase.from('profiles').delete().eq('email', targetEmail);
         }
+      } catch (dbErr: any) {
+        console.warn('[Supabase Profiles Delete]', dbErr.message);
+        // Se a exclusão física falhar por restrição de integridade, marca status 'rejected'
+        try {
+          await supabase.from('profiles').update({ status: 'rejected' }).eq('id', userId);
+          if (targetEmail) {
+            await supabase.from('profiles').update({ status: 'rejected' }).eq('email', targetEmail);
+          }
+        } catch {}
+      }
 
+      try {
         // Limpa registros anteriores de ACCESS_REQUEST do mesmo email no audit_logs para permitir nova solicitação limpa
         if (targetEmail) {
           await supabase.from('audit_logs').delete().eq('action', 'ACCESS_REQUEST').ilike('details->>email', targetEmail);
@@ -1653,8 +1802,8 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
             // Silencioso se não houver auth.users
           }
         }
-      } catch (dbErr: any) {
-        console.warn('[Supabase Profiles] Erro ao excluir no banco:', dbErr.message);
+      } catch (err: any) {
+        console.warn('[Supabase Clean on Delete]', err.message);
       }
     }
 
@@ -1668,7 +1817,8 @@ app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
 app.get('/api/profiles', async (req: Request, res: Response) => {
   try {
     const unifiedList = await getAllUnifiedProfiles();
-    return res.status(200).json({ profiles: unifiedList, source: 'unified' });
+    const deletedEmails = Array.from(new Set(persistedDeletedUsers.map(d => d.email?.toLowerCase().trim()).filter(Boolean)));
+    return res.status(200).json({ profiles: unifiedList, deletedEmails, source: 'unified' });
   } catch (error: any) {
     res.status(500).json({ error: 'Erro ao listar perfis', details: error.message });
   }
@@ -4853,8 +5003,8 @@ interface ServerAuthHeaderConfig {
 let authHeaderConfig: ServerAuthHeaderConfig = {
   title: 'MVRJ CONTÁBIL',
   subtitle: 'Gestão Eletrônica Contábil',
-  badgeText: 'MVRJ Contábil Corporativo',
-  showBadge: true,
+  badgeText: '',
+  showBadge: false,
   bgType: 'gradient',
   gradientPreset: 'slate-indigo-blue',
   bgImageUrl: '',
@@ -5273,8 +5423,8 @@ app.delete('/api/settings/auth-header', async (req: Request, res: Response) => {
     authHeaderConfig = {
       title: 'MVRJ CONTÁBIL',
       subtitle: 'Gestão Eletrônica de Documentos Segura',
-      badgeText: 'Supabase RLS & Cloudflare R2',
-      showBadge: true,
+      badgeText: '',
+      showBadge: false,
       bgType: 'gradient',
       gradientPreset: 'slate-indigo-blue',
       bgImageUrl: '',

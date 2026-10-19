@@ -113,6 +113,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }
   }, [isOpen, initialTab]);
 
+  // Se o usuário foi excluído ou seu status não for mais ativo/aprovado, fechar o perfil imediatamente
+  useEffect(() => {
+    if (isOpen) {
+      const isMaster = currentUser.email.toLowerCase() === 'evandro230655@gmail.com' || currentUser.email.toLowerCase() === 'evandro132213@gmail.com';
+      if (!isMaster && currentUser.status !== 'active' && currentUser.status !== 'approved') {
+        onClose();
+      }
+    }
+  }, [isOpen, currentUser, onClose]);
+
   if (!isOpen) return null;
 
   // Critérios de força da nova senha (flexível: min 4 caracteres, com qualquer combinação de letras, números e símbolos)
