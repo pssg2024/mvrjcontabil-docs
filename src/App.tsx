@@ -17,6 +17,7 @@ import { CompanyManagerModal } from './components/CompanyManagerModal';
 import { InvoiceEmissionView } from './components/InvoiceEmissionView';
 import { UserManualModal } from './components/UserManualModal';
 import { SalaryCalculatorModal } from './components/SalaryCalculatorModal';
+import { SpedImporterModal } from './components/SpedImporterModal';
 import { MvrjAssistantWidget } from './components/MvrjAssistantWidget';
 import { ShieldCheck, Menu } from 'lucide-react';
 import { 
@@ -213,6 +214,7 @@ export default function App() {
   const [isInvoiceEmissionOpen, setIsInvoiceEmissionOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isSalaryCalculatorOpen, setIsSalaryCalculatorOpen] = useState(false);
+  const [isSpedImporterOpen, setIsSpedImporterOpen] = useState(false);
   const [isPortalsDrawerOpen, setIsPortalsDrawerOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
@@ -1531,6 +1533,7 @@ export default function App() {
             onOpenSalaryCalculator={() => setIsSalaryCalculatorOpen(true)}
             onOpenInvoiceEmission={() => setIsInvoiceEmissionOpen(true)}
             onOpenPortalsDrawer={() => setIsPortalsDrawerOpen(true)}
+            onOpenSpedImporter={() => setIsSpedImporterOpen(true)}
             onOpenManualModal={() => setIsManualModalOpen(true)}
             onOpenBackgroundModal={() => {
               setIsBackgroundModalOpen(true);
@@ -1630,6 +1633,7 @@ export default function App() {
                     setUploadTargetFolderId(folderId || null);
                     setIsUploadModalOpen(true);
                   }}
+                  onOpenSpedImporter={() => setIsSpedImporterOpen(true)}
                   onCreateFolder={handleCreateFolder}
                   onDeleteFolder={handleDeleteFolder}
                   onRenameFolder={handleRenameFolder}
@@ -1750,6 +1754,21 @@ export default function App() {
         storageMetrics={storageMetrics}
       />
 
+      <SpedImporterModal
+        isOpen={isSpedImporterOpen}
+        onClose={() => setIsSpedImporterOpen(false)}
+        allFolders={folders}
+        currentUser={currentUser || profiles[0]}
+        onUploadSuccess={(newDoc) => {
+          handleUploadSuccess(newDoc);
+        }}
+        onOpenFileViewer={(file) => setViewingFile(file)}
+        onNavigateToFolder={(folderId) => {
+          setActiveView('drive');
+          setUploadTargetFolderId(folderId);
+        }}
+      />
+
       <PdfViewerModal
         isOpen={Boolean(viewingFile)}
         onClose={() => setViewingFile(null)}
@@ -1862,11 +1881,15 @@ export default function App() {
         onClose={() => setIsCompanyManagerOpen(false)}
       />
 
-      {/* Emissão de Notas Fiscais View/Modal */}
+      {/* Central de Notas Fiscais (Entradas, Saídas e SEFAZ) View/Modal */}
       <InvoiceEmissionView
         isOpen={isInvoiceEmissionOpen}
         onClose={() => setIsInvoiceEmissionOpen(false)}
         folders={folders}
+        onOpenCompanyManager={() => {
+          setIsInvoiceEmissionOpen(false);
+          setIsCompanyManagerOpen(true);
+        }}
         onInvoiceCreated={() => {
           fetchFilesFromApi().then(apiFiles => {
             if (apiFiles && Array.isArray(apiFiles)) {

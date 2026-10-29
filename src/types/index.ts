@@ -245,6 +245,10 @@ export interface Invoice {
   cfop: string;
   serie: string;
   numero: string;
+  chave_acesso?: string;
+  emit_razao_social?: string;
+  emit_cnpj_cpf?: string;
+  emit_inscricao_estadual?: string;
   dest_razao_social: string;
   dest_cnpj_cpf: string;
   dest_inscricao_estadual?: string;

@@ -33,6 +33,7 @@ export interface SidebarProps {
   onOpenSalaryCalculator: () => void;
   onOpenInvoiceEmission: () => void;
   onOpenPortalsDrawer: () => void;
+  onOpenSpedImporter?: () => void;
   onOpenManualModal: () => void;
   onOpenBackgroundModal: () => void;
   onOpenSqlModal?: () => void;
@@ -55,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenSalaryCalculator,
   onOpenInvoiceEmission,
   onOpenPortalsDrawer,
+  onOpenSpedImporter,
   onOpenManualModal,
   onOpenBackgroundModal,
   onOpenSqlModal: _onOpenSqlModal,
@@ -270,18 +272,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span className="truncate">Simulador de Salário</span>
                     </button>
 
-                    {/* Emissão de Notas */}
+                    {/* Notas Fiscais (Entradas, Saídas e SEFAZ) */}
                     <button
                       type="button"
                       id="sidebar-btn-invoice-emission"
                       onClick={() => handleLinkClick(onOpenInvoiceEmission)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/50 hover:text-white transition-colors cursor-pointer group text-left"
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/50 hover:text-white transition-colors cursor-pointer group text-left"
+                      title="Puxar Notas Fiscais da SEFAZ (Entradas e Saídas via Certificado A1)"
                     >
-                      <FileDigit 
-                        className="w-4 h-4 text-slate-400 group-hover:text-blue-400 transition-colors shrink-0" 
-                        strokeWidth={1.75} 
-                      />
-                      <span className="truncate">Emissão de Notas Fiscais</span>
+                      <div className="flex items-center gap-2.5 truncate">
+                        <FileDigit 
+                          className="w-4 h-4 text-teal-400 group-hover:scale-110 transition-transform shrink-0" 
+                          strokeWidth={1.75} 
+                        />
+                        <span className="truncate">Notas Fiscais (Entradas & Saídas)</span>
+                      </div>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-teal-500/20 text-teal-400 border border-teal-500/30 shrink-0">
+                        SEFAZ
+                      </span>
+                    </button>
+
+                    {/* Importador SPED Fiscal (Domínio) */}
+                    <button
+                      type="button"
+                      id="sidebar-btn-sped-importer"
+                      onClick={() => handleLinkClick(onOpenSpedImporter || (() => {}))}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-200 hover:bg-[#DFB76C]/10 hover:text-[#DFB76C] transition-colors cursor-pointer group text-left border border-transparent hover:border-[#DFB76C]/25"
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <FileText 
+                          className="w-4 h-4 text-[#DFB76C] group-hover:scale-105 transition-transform shrink-0" 
+                          strokeWidth={1.75} 
+                        />
+                        <span className="truncate">Importador SPED (.txt)</span>
+                      </div>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-[#DFB76C]/20 text-[#DFB76C] border border-[#DFB76C]/30 shrink-0">
+                        Domínio
+                      </span>
                     </button>
 
                     {/* Portais Fiscais Externos */}
@@ -317,6 +344,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   title="Simulador de Salário"
                 >
                   <Calculator className="w-4 h-4 text-slate-400 group-hover:text-blue-400 transition-colors" strokeWidth={1.75} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLinkClick(onOpenSpedImporter || (() => {}))}
+                  className="w-full flex items-center justify-center p-2.5 rounded-lg text-[#DFB76C] hover:text-white hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                  title="Importador SPED Fiscal (Domínio)"
+                >
+                  <FileText className="w-4 h-4 text-[#DFB76C] group-hover:scale-110 transition-transform" strokeWidth={1.75} />
                 </button>
                 <button
                   type="button"

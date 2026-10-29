@@ -1,0 +1,14 @@
+[
+  {
+    "id": "comp-1",
+    "razao_social": "MVRJ Serviços de Assessoria Contábil Ltda",
+    "nome_fantasia": "MVRJ Contábil",
+    "cnpj": "12.345.678/0001-90",
+    "inscricao_estadual": "123.456.789",
+    "regime_tributario": "Simples Nacional",
+    "created_at": "2026-10-29T20:30:33.321Z",
+    "updated_at": "2026-10-29T21:45:19.480Z",
+    "certificate_password": "senha_teste_123",
+    "certificate_filename": "certificado_cliente_a1.pfx"
+  }
+]

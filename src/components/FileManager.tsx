@@ -75,6 +75,7 @@ interface FileManagerProps {
   onUpdateFolderAllowedUsers?: (folderId: string, allowedUserIds: string[]) => Promise<void> | void;
   hasFolderPermission: (folderId: string, minLevel: PermissionLevel) => boolean;
   onOpenCompanyModal?: (initialQuery?: string) => void;
+  onOpenSpedImporter?: () => void;
   externalSearchQuery?: string;
   onClearExternalSearch?: () => void;
 }
@@ -88,6 +89,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   onRefreshStorage,
   onOpenFileViewer,
   onOpenUploadModal,
+  onOpenSpedImporter,
   onCreateFolder,
   onDeleteFolder,
   onDeleteFile,
@@ -126,8 +128,34 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
   // Estados dos menus suspensos de opções descritas (substituindo botões soltos)
   const [openFolderMenuId, setOpenFolderMenuId] = useState<string | null>(null);
+  const [folderMenuAlign, setFolderMenuAlign] = useState<'left' | 'right'>('right');
   const [openFileMenuId, setOpenFileMenuId] = useState<string | null>(null);
+  const [fileMenuAlign, setFileMenuAlign] = useState<'left' | 'right'>('right');
   const [isBreadcrumbMenuOpen, setIsBreadcrumbMenuOpen] = useState(false);
+
+  // Calcula dinamicamente se o menu deve abrir alinhado à esquerda ou à direita
+  // para evitar corte na barra lateral ou borda da tela
+  const getDropdownAlignment = (btnElement: HTMLElement): 'left' | 'right' => {
+    try {
+      const rect = btnElement.getBoundingClientRect();
+      const mainEl = document.querySelector('main') || document.body;
+      const mainRect = mainEl.getBoundingClientRect();
+      const spaceLeft = rect.right - mainRect.left;
+      const spaceRight = mainRect.right - rect.left;
+      
+      // Se não houver espaço suficiente à esquerda (< 240px) para acomodar a largura do menu (224px / w-56),
+      // abre alinhado à esquerda para expandir à direita e não cortar na borda da barra lateral
+      if (spaceLeft < 240) {
+        return 'left';
+      }
+      if (spaceRight < 240) {
+        return 'right';
+      }
+      return 'right';
+    } catch {
+      return 'right';
+    }
+  };
 
   // Fecha menus ao clicar fora ou apertar Escape
   useEffect(() => {
@@ -683,6 +711,19 @@ export const FileManager: React.FC<FileManagerProps> = ({
               </button>
             )}
 
+            {canUpload && onOpenSpedImporter && (
+              <button
+                id="import-sped-btn-desktop"
+                type="button"
+                onClick={onOpenSpedImporter}
+                className="h-11 px-4 rounded-xl border border-[#DFB76C]/40 bg-[#DFB76C]/10 hover:bg-[#DFB76C]/20 text-[#DFB76C] hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-98"
+                title="Assistente Web de Importação SPED Fiscal (.txt) do Domínio"
+              >
+                <FileText className="w-4 h-4 text-[#DFB76C] shrink-0" />
+                <span>Importar SPED (.txt)</span>
+              </button>
+            )}
+
             {canUpload ? (
               <button
                 id="upload-doc-btn-desktop"
@@ -925,9 +966,14 @@ export const FileManager: React.FC<FileManagerProps> = ({
                               id={`btn-folder-menu-${folder.id}`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenFolderMenuId(openFolderMenuId === folder.id ? null : folder.id);
-                                setOpenFileMenuId(null);
-                                setIsBreadcrumbMenuOpen(false);
+                                if (openFolderMenuId === folder.id) {
+                                  setOpenFolderMenuId(null);
+                                } else {
+                                  setFolderMenuAlign(getDropdownAlignment(e.currentTarget));
+                                  setOpenFolderMenuId(folder.id);
+                                  setOpenFileMenuId(null);
+                                  setIsBreadcrumbMenuOpen(false);
+                                }
                               }}
                               className="text-slate-400 hover:text-white hover:bg-slate-800 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center min-h-[36px] min-w-[36px]"
                               title="Opções da Pasta"
@@ -938,7 +984,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
                             {openFolderMenuId === folder.id && (
                               <div
                                 onClick={(e) => e.stopPropagation()}
-                                className="absolute right-0 top-full mt-1.5 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-left"
+                                className={`absolute top-full mt-1.5 w-56 max-w-[calc(100vw-2.5rem)] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 text-left ${
+                                  folderMenuAlign === 'left' ? 'left-0' : 'right-0'
+                                }`}
                               >
                                 <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 mb-1 truncate">
                                   {folder.name}
@@ -1052,7 +1100,103 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0 relative">
+                      {(isFullAdmin || currentUser?.role === 'admin') && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            id={`btn-list-folder-menu-${folder.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (openFolderMenuId === folder.id) {
+                                setOpenFolderMenuId(null);
+                              } else {
+                                setFolderMenuAlign(getDropdownAlignment(e.currentTarget));
+                                setOpenFolderMenuId(folder.id);
+                                setOpenFileMenuId(null);
+                                setIsBreadcrumbMenuOpen(false);
+                              }
+                            }}
+                            className="text-slate-400 hover:text-white hover:bg-slate-800 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center min-h-[36px] min-w-[36px]"
+                            title="Opções da Pasta"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+
+                          {openFolderMenuId === folder.id && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className={`absolute top-full mt-1.5 w-56 max-w-[calc(100vw-2.5rem)] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 text-left ${
+                                folderMenuAlign === 'left' ? 'left-0' : 'right-0'
+                              }`}
+                            >
+                              <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 mb-1 truncate">
+                                {folder.name}
+                              </div>
+
+                              {onRenameFolder && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenFolderMenuId(null);
+                                    setRenamingFolder(folder);
+                                    setNewFolderNameInput(folder.name);
+                                    setFolderRenameError(null);
+                                  }}
+                                  className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-amber-950/40 hover:text-amber-300 flex items-center gap-2.5 transition-colors cursor-pointer group"
+                                >
+                                  <div className="p-1 rounded-lg bg-amber-900/50 text-amber-300 group-hover:scale-105 transition-transform">
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </div>
+                                  <div>
+                                    <div className="font-bold">Renomear Pasta</div>
+                                    <div className="text-[10px] text-slate-400 font-normal">Alterar o nome da pasta</div>
+                                  </div>
+                                </button>
+                              )}
+
+                              {isFullAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenFolderMenuId(null);
+                                    handleOpenPermsModal(folder);
+                                  }}
+                                  className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-blue-950/40 hover:text-blue-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
+                                >
+                                  <div className="p-1 rounded-lg bg-blue-900/50 text-blue-300 group-hover:scale-105 transition-transform">
+                                    <ShieldCheck className="w-3.5 h-3.5" />
+                                  </div>
+                                  <div>
+                                    <div className="font-bold">Permissões de Acesso</div>
+                                    <div className="text-[10px] text-slate-400 font-normal">Definir quem pode acessar</div>
+                                  </div>
+                                </button>
+                              )}
+
+                              {currentUser.role === 'admin' && onDeleteFolder && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenFolderMenuId(null);
+                                    onDeleteFolder(folder.id);
+                                  }}
+                                  className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-950/40 flex items-center gap-2.5 transition-colors cursor-pointer group mt-1 pt-1.5 border-t border-slate-800"
+                                >
+                                  <div className="p-1 rounded-lg bg-rose-900/50 text-rose-400 group-hover:scale-105 transition-transform">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </div>
+                                  <div>
+                                    <div className="font-bold">Excluir Pasta</div>
+                                    <div className="text-[10px] text-rose-400/80 font-normal">Remover esta pasta</div>
+                                  </div>
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#DFB76C] group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </div>
@@ -1219,9 +1363,14 @@ export const FileManager: React.FC<FileManagerProps> = ({
                           id={`btn-file-menu-${file.id}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenFileMenuId(openFileMenuId === file.id ? null : file.id);
-                            setOpenFolderMenuId(null);
-                            setIsBreadcrumbMenuOpen(false);
+                            if (openFileMenuId === file.id) {
+                              setOpenFileMenuId(null);
+                            } else {
+                              setFileMenuAlign(getDropdownAlignment(e.currentTarget));
+                              setOpenFileMenuId(file.id);
+                              setOpenFolderMenuId(null);
+                              setIsBreadcrumbMenuOpen(false);
+                            }
                           }}
                           className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 bg-slate-100/70 dark:bg-slate-800/70 hover:bg-slate-200/70 dark:hover:bg-slate-750 border border-slate-200/80 dark:border-slate-700/80 transition-all cursor-pointer flex items-center justify-center shadow-2xs"
                           title="Opções do documento"
@@ -1232,7 +1381,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                         {openFileMenuId === file.id && (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="absolute right-0 bottom-full mb-1.5 w-60 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-left"
+                            className={`absolute ${fileMenuAlign === 'left' ? 'left-0' : 'right-0'} bottom-full mb-1.5 w-60 max-w-[calc(100vw-2.5rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 text-left`}
                           >
                             <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1 truncate">
                               {file.name}
