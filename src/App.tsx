@@ -15,9 +15,11 @@ import { PasswordConfirmModal } from './components/PasswordConfirmModal';
 import { CompanyConsultModal } from './components/CompanyConsultModal';
 import { CompanyManagerModal } from './components/CompanyManagerModal';
 import { InvoiceEmissionView } from './components/InvoiceEmissionView';
+import { SefazWebServiceModule } from './components/SefazWebServiceModule';
 import { UserManualModal } from './components/UserManualModal';
 import { SalaryCalculatorModal } from './components/SalaryCalculatorModal';
 import { SpedImporterModal } from './components/SpedImporterModal';
+import { RecycleBinModal } from './components/RecycleBinModal';
 import { MvrjAssistantWidget } from './components/MvrjAssistantWidget';
 import { ShieldCheck, Menu } from 'lucide-react';
 import { 
@@ -47,6 +49,7 @@ import {
   DEFAULT_AUTH_HEADER_CONFIG,
   fetchFoldersFromApi,
   fetchFilesFromApi,
+  fetchTrashItemsFromApi,
   fetchAuditLogsFromApi,
   fetchFolderPermissionsFromApi,
   createFolderInApi,
@@ -212,13 +215,24 @@ export default function App() {
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [isCompanyManagerOpen, setIsCompanyManagerOpen] = useState(false);
   const [isInvoiceEmissionOpen, setIsInvoiceEmissionOpen] = useState(false);
+  const [isSefazModuleOpen, setIsSefazModuleOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isSalaryCalculatorOpen, setIsSalaryCalculatorOpen] = useState(false);
   const [isSpedImporterOpen, setIsSpedImporterOpen] = useState(false);
+  const [isRecycleBinOpen, setIsRecycleBinOpen] = useState(false);
+  const [trashCount, setTrashCount] = useState(0);
   const [isPortalsDrawerOpen, setIsPortalsDrawerOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [driveFilterSearch, setDriveFilterSearch] = useState('');
+
+  const refreshTrashCount = useCallback(() => {
+    fetchTrashItemsFromApi().then(items => {
+      if (Array.isArray(items)) {
+        setTrashCount(items.length);
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleNavigateHome = () => {
     setActiveView('drive');
@@ -469,6 +483,11 @@ export default function App() {
             localStorage.setItem('mvrj_files', JSON.stringify(apiFiles));
           } catch {}
         }
+
+        // Sincronizar contador da lixeira (backup de recuperação)
+        fetchTrashItemsFromApi().then(items => {
+          if (Array.isArray(items)) setTrashCount(items.length);
+        }).catch(() => {});
       } finally {
         isSyncing = false;
       }
@@ -651,6 +670,7 @@ export default function App() {
 
     fetchStorageMetrics();
     syncProfiles();
+    refreshTrashCount();
 
     // Intervals otimizados para tempo real (polling de 3s para profiles e 2.5s para pastas/arquivos)
     const syncInterval = setInterval(syncData, 2500);
@@ -1171,6 +1191,7 @@ export default function App() {
         try {
           await deleteFileInApi(fileId);
           fetchStorageMetrics();
+          refreshTrashCount();
           notifyBroadcastSync();
         } catch (err) {
           console.warn('Erro ao excluir no Supabase/R2:', err);
@@ -1281,6 +1302,7 @@ export default function App() {
           await deleteFolderInApi(folderId);
           
           fetchStorageMetrics();
+          refreshTrashCount();
           notifyBroadcastSync();
 
           const [updatedFolders, updatedFiles] = await Promise.all([
@@ -1532,6 +1554,7 @@ export default function App() {
             onOpenCompanyModal={() => handleOpenCompanyModal()}
             onOpenSalaryCalculator={() => setIsSalaryCalculatorOpen(true)}
             onOpenInvoiceEmission={() => setIsInvoiceEmissionOpen(true)}
+            onOpenSefazModule={() => setIsSefazModuleOpen(true)}
             onOpenPortalsDrawer={() => setIsPortalsDrawerOpen(true)}
             onOpenSpedImporter={() => setIsSpedImporterOpen(true)}
             onOpenManualModal={() => setIsManualModalOpen(true)}
@@ -1546,12 +1569,14 @@ export default function App() {
             authHeaderConfig={authHeaderConfig}
             isOpenMobile={isMobileSidebarOpen}
             onCloseMobile={() => setIsMobileSidebarOpen(false)}
+            onOpenRecycleBin={() => setIsRecycleBinOpen(true)}
+            trashCount={trashCount}
           />
 
           {/* 2. Área de Conteúdo Principal à Direita */}
           <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-slate-950/95 dark:bg-slate-950 text-slate-100 min-w-0">
             {/* Header Mobile com botão Hambúrguer */}
-            <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#091124] border-b border-slate-800 shrink-0 sticky top-0 z-30">
+            <div className="lg:hidden flex items-center justify-between px-4 h-16 bg-[#091124] border-b border-slate-800 shrink-0 sticky top-0 z-30">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -1585,7 +1610,7 @@ export default function App() {
             </div>
 
             {/* Header Desktop - Exibido apenas no modo Computador (hidden lg:flex) */}
-            <header className="hidden lg:flex items-center justify-between px-6 lg:px-8 py-3.5 bg-[#091124] border-b border-slate-800/80 shrink-0 sticky top-0 z-20">
+            <header className="hidden lg:flex items-center justify-between px-6 lg:px-8 h-16 bg-[#091124] border-b border-slate-800/80 shrink-0 sticky top-0 z-20">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                 <span className="text-sm font-normal text-slate-300 truncate">
@@ -1634,6 +1659,10 @@ export default function App() {
                     setIsUploadModalOpen(true);
                   }}
                   onOpenSpedImporter={() => setIsSpedImporterOpen(true)}
+                  onOpenInvoiceEmission={() => setIsInvoiceEmissionOpen(true)}
+                  onOpenSefazModule={() => setIsSefazModuleOpen(true)}
+                  onOpenRecycleBin={() => setIsRecycleBinOpen(true)}
+                  trashCount={trashCount}
                   onCreateFolder={handleCreateFolder}
                   onDeleteFolder={handleDeleteFolder}
                   onRenameFolder={handleRenameFolder}
@@ -1851,16 +1880,16 @@ export default function App() {
         currentUser={currentUser}
         actionTitle={
           pendingDeleteAction?.type === 'file'
-            ? 'Confirmar Exclusão de Arquivo'
+            ? 'Mover Arquivo para Lixeira'
             : pendingDeleteAction?.type === 'folder'
-            ? 'Confirmar Exclusão de Pasta'
+            ? 'Mover Pasta para Lixeira'
             : 'Confirmar Exclusão de Usuário'
         }
         itemDescription={
           pendingDeleteAction?.type === 'file'
-            ? `Deseja realmente excluir permanentemente o arquivo "${pendingDeleteAction?.name || ''}"?`
+            ? `Deseja mover o arquivo "${pendingDeleteAction?.name || ''}" para a Lixeira? Ele ficará seguro no Backup de Recuperação e poderá ser restaurado por Administradores a qualquer momento.`
             : pendingDeleteAction?.type === 'folder'
-            ? `Deseja realmente excluir permanentemente a pasta "${pendingDeleteAction?.name || ''}" e todo o seu conteúdo?`
+            ? `Deseja mover a pasta "${pendingDeleteAction?.name || ''}" e seus documentos para a Lixeira? Eles ficarão seguros no Backup de Recuperação e poderão ser restaurados por Administradores a qualquer momento.`
             : `Deseja realmente excluir permanentemente o usuário "${pendingDeleteAction?.name || ''}"?`
         }
       />
@@ -1890,6 +1919,10 @@ export default function App() {
           setIsInvoiceEmissionOpen(false);
           setIsCompanyManagerOpen(true);
         }}
+        onOpenSefazModule={() => {
+          setIsInvoiceEmissionOpen(false);
+          setIsSefazModuleOpen(true);
+        }}
         onInvoiceCreated={() => {
           fetchFilesFromApi().then(apiFiles => {
             if (apiFiles && Array.isArray(apiFiles)) {
@@ -1897,6 +1930,42 @@ export default function App() {
             }
           }).catch(() => {});
         }}
+      />
+
+      {/* Módulo Especialista de Integração Web Services SEFAZ (DF-e, Certificados A1 & GED) */}
+      <SefazWebServiceModule
+        isOpen={isSefazModuleOpen}
+        onClose={() => setIsSefazModuleOpen(false)}
+        folders={folders}
+        onDocumentImported={() => {
+          fetchFilesFromApi().then(apiFiles => {
+            if (apiFiles && Array.isArray(apiFiles)) {
+              setFiles(apiFiles);
+            }
+          }).catch(() => {});
+        }}
+      />
+
+      {/* Lixeira & Backup de Recuperação (Restauração e Exclusão Permanente exclusivas por Administradores) */}
+      <RecycleBinModal
+        isOpen={isRecycleBinOpen}
+        onClose={() => {
+          setIsRecycleBinOpen(false);
+          refreshTrashCount();
+        }}
+        currentUser={currentUser}
+        onItemRestored={() => {
+          fetchFilesFromApi().then(apiFiles => {
+            if (apiFiles && Array.isArray(apiFiles)) setFiles(apiFiles);
+          }).catch(() => {});
+          fetchFoldersFromApi().then(apiFolders => {
+            if (apiFolders && Array.isArray(apiFolders)) setFolders(apiFolders);
+          }).catch(() => {});
+          fetchStorageMetrics();
+          refreshTrashCount();
+          notifyBroadcastSync();
+        }}
+        onPreviewFile={(file) => setViewingFile(file)}
       />
 
       {/* Manual do Usuário e Guia Operacional Modal */}

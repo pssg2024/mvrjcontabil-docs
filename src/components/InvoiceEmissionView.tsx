@@ -42,9 +42,10 @@ interface InvoiceEmissionViewProps {
   folders: Folder[];
   onInvoiceCreated?: () => void;
   onOpenCompanyManager?: () => void;
+  onOpenSefazModule?: () => void;
 }
 
-type TabType = 'sync' | 'list' | 'create';
+type TabType = 'chave' | 'sync' | 'list' | 'create';
 
 export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
   isOpen,
@@ -52,12 +53,20 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
   folders,
   onInvoiceCreated,
   onOpenCompanyManager,
+  onOpenSefazModule,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('sync');
+  const [activeTab, setActiveTab] = useState<TabType>('chave');
   const [companies, setCompanies] = useState<Company[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(false);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
+  
+  // Puxar por Chave de Acesso (44 Dígitos) states
+  const [pullKey, setPullKey] = useState('');
+  const [isPullingByKey, setIsPullingByKey] = useState(false);
+  const [pullKeyError, setPullKeyError] = useState<string | null>(null);
+  const [pullKeySuccess, setPullKeySuccess] = useState<any | null>(null);
+  const [pullKeyFolderId, setPullKeyFolderId] = useState('');
   
   // Selected Company for actions
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
@@ -133,6 +142,7 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
       // Default folder
       if (folders.length > 0) {
         const matched = folders.find(f => 
+          f.name.toLowerCase().includes('renatinho') ||
           f.sector.toLowerCase() === 'fiscal' || 
           f.name.toLowerCase().includes('nota') || 
           f.name.toLowerCase().includes('fiscal')
@@ -140,6 +150,7 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
         const resolvedId = matched?.id || folders[0].id;
         setSyncFolderId(resolvedId);
         setCreateFolderId(resolvedId);
+        setPullKeyFolderId(resolvedId);
       }
       setNumero(Math.floor(1000 + Math.random() * 9000).toString());
     }
@@ -153,8 +164,14 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
       if (response.ok && data.companies && data.companies.length > 0) {
         setCompanies(data.companies);
         if (!selectedCompanyId) {
-          setSelectedCompanyId(data.companies[0].id);
-          setCreateCompanyId(data.companies[0].id);
+          const renatinho = data.companies.find((c: any) => 
+            c.id === 'comp-renatinho' || 
+            c.cnpj?.includes('59143345') || 
+            c.razao_social?.toLowerCase().includes('renatinho')
+          );
+          const defaultComp = renatinho || data.companies[0];
+          setSelectedCompanyId(defaultComp.id);
+          setCreateCompanyId(defaultComp.id);
         }
       }
     } catch (err) {
@@ -281,6 +298,76 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
     navigator.clipboard.writeText(key);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2500);
+  };
+
+  // Real-time key decoder and validator
+  const decodedKey = React.useMemo(() => {
+    const clean = pullKey.replace(/\D/g, '');
+    if (clean.length < 2) return null;
+    const cUf = clean.slice(0, 2);
+    const anoMes = clean.slice(2, 6);
+    const cnpjEmit = clean.slice(6, 20);
+    const modelo = clean.slice(20, 22);
+    const serie = clean.slice(22, 25);
+    const numero = clean.slice(25, 34);
+
+    const ufNames: Record<string, string> = {
+      '11': 'RO', '12': 'AC', '13': 'AM', '14': 'RR', '15': 'PA', '16': 'AP', '17': 'TO',
+      '21': 'MA', '22': 'PI', '23': 'CE', '24': 'RN', '25': 'PB', '26': 'PE', '27': 'AL',
+      '28': 'SE', '29': 'BA', '31': 'MG', '32': 'ES', '33': 'RJ', '35': 'SP', '41': 'PR',
+      '42': 'SC', '43': 'RS', '50': 'MS', '51': 'MT', '52': 'GO', '53': 'DF'
+    };
+
+    return {
+      clean,
+      validLength: clean.length === 44,
+      digitsCount: clean.length,
+      uf: ufNames[cUf] || `UF ${cUf}`,
+      anoMes: anoMes.length === 4 ? `${anoMes.slice(2, 4)}/20${anoMes.slice(0, 2)}` : '',
+      cnpjEmitente: cnpjEmit.length === 14 ? cleanCnpj(cnpjEmit) : cnpjEmit,
+      modelo: modelo === '55' ? 'NF-e (Mod. 55)' : (modelo === '65' ? 'NFC-e (Mod. 65)' : modelo),
+      serie: serie ? String(parseInt(serie, 10)) : '',
+      numero: numero ? String(parseInt(numero, 10)) : '',
+    };
+  }, [pullKey]);
+
+  // Handler to pull real invoice by 44-digit key
+  const handlePullByKey = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setPullKeyError(null);
+    setPullKeySuccess(null);
+
+    const clean = pullKey.replace(/\D/g, '').trim();
+    if (clean.length !== 44) {
+      setPullKeyError(`A Chave de Acesso deve conter exatamente 44 dígitos numéricos (atualmente possui ${clean.length} dígitos).`);
+      return;
+    }
+
+    setIsPullingByKey(true);
+    try {
+      const res = await fetch('/api/invoices/pull-by-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chave_acesso: clean,
+          company_id: selectedCompanyId,
+          folder_id: pullKeyFolderId || syncFolderId,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setPullKeySuccess(data);
+        await fetchInvoices();
+        if (onInvoiceCreated) onInvoiceCreated();
+      } else {
+        setPullKeyError(data.error || data.details || 'Falha ao puxar a nota fiscal pela chave de acesso.');
+      }
+    } catch (err: any) {
+      setPullKeyError(`Erro de comunicação com o servidor: ${err.message}`);
+    } finally {
+      setIsPullingByKey(false);
+    }
   };
 
   // Calculated totals for manual form
@@ -431,9 +518,24 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex items-center gap-1.5 p-1 bg-slate-800/80 rounded-xl border border-slate-700/60">
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-800/80 rounded-xl border border-slate-700/60">
               <button
                 type="button"
+                id="tab-btn-chave"
+                onClick={() => setActiveTab('chave')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  activeTab === 'chave'
+                    ? 'bg-gradient-to-r from-[#DFB76C] to-[#B38F46] text-slate-950 font-bold shadow-md'
+                    : 'text-amber-400 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                <KeyRound className="h-4 w-4" />
+                <span>Puxar por Chave (44 Dígitos)</span>
+              </button>
+
+              <button
+                type="button"
+                id="tab-btn-sefaz-sync"
                 onClick={() => setActiveTab('sync')}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   activeTab === 'sync'
@@ -447,6 +549,7 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
 
               <button
                 type="button"
+                id="tab-btn-entradas-saidas"
                 onClick={() => setActiveTab('list')}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   activeTab === 'list'
@@ -463,6 +566,7 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
 
               <button
                 type="button"
+                id="tab-btn-emitir-manual"
                 onClick={() => setActiveTab('create')}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   activeTab === 'create'
@@ -473,6 +577,22 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
                 <Plus className="h-4 w-4" />
                 <span>Emitir Nota Manual</span>
               </button>
+
+              {onOpenSefazModule && (
+                <button
+                  type="button"
+                  id="tab-btn-open-sefaz-module"
+                  onClick={() => {
+                    onClose();
+                    onOpenSefazModule();
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-300 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/25 border border-emerald-500/30 transition cursor-pointer"
+                  title="Abrir Central Web Services SEFAZ Completa (NF-e, CT-e, NFS-e e Gestão de PFX)"
+                >
+                  <CloudDownload className="h-4 w-4 text-emerald-400" />
+                  <span>Web Services SEFAZ (DF-e)</span>
+                </button>
+              )}
             </div>
 
             <button 
@@ -484,6 +604,333 @@ export const InvoiceEmissionView: React.FC<InvoiceEmissionViewProps> = ({
               <X className="h-5 w-5" />
             </button>
           </div>
+
+          {/* TAB 0: PUXAR NOTA FISCAL VERDADEIRA POR CHAVE DE ACESSO (44 DÍGITOS) */}
+          {activeTab === 'chave' && (
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Instructions banner */}
+              <div className="rounded-xl border border-[#DFB76C]/30 bg-[#DFB76C]/10 p-4 flex items-start gap-3">
+                <KeyRound className="h-5 w-5 text-[#DFB76C] shrink-0 mt-0.5" />
+                <div className="text-xs text-slate-200 space-y-1">
+                  <p className="font-bold text-[#DFB76C] text-sm">
+                    Puxar Nota Fiscal Verdadeira através da Chave de Acesso (44 Dígitos)
+                  </p>
+                  <p className="text-slate-300 leading-relaxed">
+                    Insira ou cole a Chave de Acesso da NF-e para puxar diretamente as notas fiscais autênticas do cliente sem precisar ir em outro portal. 
+                    O sistema decodifica instantaneamente os 44 dígitos (UF, período de apuração, CNPJ emitente, modelo, série e número), 
+                    gera o espelho oficial <strong>DANFE em PDF</strong> com código de barras, cria o arquivo <strong>XML</strong> e salva automaticamente no <strong>Cloudflare R2</strong> e <strong>Supabase</strong>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Erro ao puxar chave */}
+              {pullKeyError && (
+                <div className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-4 flex items-start gap-3 text-rose-300 text-xs">
+                  <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <span className="font-bold block">Aviso na Consulta da Chave:</span>
+                    <span>{pullKeyError}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Card de Sucesso ao Puxar */}
+              {pullKeySuccess && (
+                <div className="rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-emerald-950/40 to-slate-900/90 p-6 space-y-4 shadow-xl animate-in zoom-in-95 duration-200">
+                  <div className="flex items-start justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-extrabold text-white">
+                          Nota Fiscal Puxada e Arquivada com Sucesso!
+                        </h4>
+                        <p className="text-xs text-emerald-300">
+                          {pullKeySuccess.message || 'DANFE gerado, salvo no Cloudflare R2 e registrado no Supabase.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        {pullKeySuccess.chave_info?.tipo || (pullKeySuccess.invoice?.type === '0' ? 'Entrada' : 'Saída')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Resumo da Nota Puxada */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-950/60 p-4 rounded-xl border border-slate-800 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Número da NF-e</span>
+                      <span className="text-sm font-black text-white">
+                        Nº {pullKeySuccess.invoice?.numero} (Série {pullKeySuccess.invoice?.serie})
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Valor Total da Nota</span>
+                      <span className="text-sm font-black text-emerald-400">
+                        R$ {Number(pullKeySuccess.invoice?.total_nota || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Emitente</span>
+                      <span className="text-xs font-bold text-slate-200 truncate block" title={pullKeySuccess.invoice?.emit_razao_social}>
+                        {pullKeySuccess.invoice?.emit_razao_social} ({pullKeySuccess.invoice?.emit_cnpj_cpf})
+                      </span>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Destinatário</span>
+                      <span className="text-xs font-bold text-slate-200 truncate block" title={pullKeySuccess.invoice?.dest_razao_social}>
+                        {pullKeySuccess.invoice?.dest_razao_social} ({pullKeySuccess.invoice?.dest_cnpj_cpf})
+                      </span>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Chave de Acesso</span>
+                      <span className="text-xs font-mono font-semibold text-[#DFB76C] truncate block select-all">
+                        {pullKeySuccess.invoice?.chave_acesso}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Botões de Ação */}
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      id="btn-view-danfe-pulled"
+                      onClick={() => setViewingDanfeInvoice(pullKeySuccess.invoice)}
+                      className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-md"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>Visualizar DANFE Oficial</span>
+                    </button>
+
+                    <a
+                      href={pullKeySuccess.xml_url || `/api/invoices/${pullKeySuccess.invoice?.id}/xml`}
+                      download
+                      className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-2 transition cursor-pointer border border-slate-700"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Baixar XML SEFAZ</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPullKey('');
+                        setPullKeySuccess(null);
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white font-medium text-xs transition cursor-pointer border border-slate-800"
+                    >
+                      Puxar Outra Chave
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Formulário de Consulta por Chave */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Coluna Esquerda: Input e Configuração */}
+                <div className="lg:col-span-7 space-y-5">
+                  <form onSubmit={handlePullByKey} className="bg-slate-800/60 rounded-2xl p-5 border border-slate-700/60 space-y-4">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <KeyRound className="h-4 w-4 text-[#DFB76C]" />
+                      Chave de Acesso da NF-e (44 Dígitos)
+                    </h3>
+
+                    {/* Empresa do Cliente */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                        Empresa do Cliente:
+                      </label>
+                      <select
+                        id="select-company-pull-key"
+                        value={selectedCompanyId}
+                        onChange={(e) => setSelectedCompanyId(e.target.value)}
+                        className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:border-[#DFB76C] focus:outline-none focus:ring-1 focus:ring-[#DFB76C] cursor-pointer"
+                      >
+                        {companies.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.razao_social} ({formatCnpj(c.cnpj)}) {c.certificate_filename ? '✓ Certificado A1' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Pasta no GED */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                        Pasta de Destino no GED:
+                      </label>
+                      <select
+                        id="select-folder-pull-key"
+                        value={pullKeyFolderId}
+                        onChange={(e) => setPullKeyFolderId(e.target.value)}
+                        className="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2.5 text-xs text-white focus:border-[#DFB76C] focus:outline-none focus:ring-1 focus:ring-[#DFB76C] cursor-pointer"
+                      >
+                        {folders.map(f => (
+                          <option key={f.id} value={f.id}>
+                            📁 {f.name} ({f.sector})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Campo da Chave de Acesso com contador de dígitos */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label htmlFor="input-chave-acesso" className="text-xs font-bold text-slate-200">
+                          Digite ou Cole a Chave de Acesso:
+                        </label>
+                        <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded ${
+                          decodedKey?.validLength
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {decodedKey?.digitsCount || 0} / 44 dígitos
+                        </span>
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          id="input-chave-acesso"
+                          type="text"
+                          maxLength={55}
+                          value={pullKey}
+                          onChange={(e) => setPullKey(e.target.value)}
+                          placeholder="Ex: 3524 1059 1433 4500 0147 5500 1000 0010 8712 3573 6824"
+                          className="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-xs sm:text-sm font-mono tracking-wider text-[#DFB76C] placeholder:text-slate-600 focus:border-[#DFB76C] focus:outline-none focus:ring-2 focus:ring-[#DFB76C]/20 transition"
+                        />
+                        {pullKey && (
+                          <button
+                            type="button"
+                            onClick={() => setPullKey('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-white"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Chaves de Teste Rápido para Renatinho */}
+                    <div className="pt-1 space-y-2">
+                      <span className="text-[11px] font-semibold text-slate-400 block">
+                        Exemplos para Teste Imediato com Renatinho LTDA (59.143.345/0001-47):
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPullKey('35241059143345000147550010000010871235736824')}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-[11px] font-mono text-slate-300 border border-slate-700 hover:border-[#DFB76C] transition cursor-pointer"
+                        >
+                          🍺 Nota Saída Renatinho (Venda)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPullKey('35241019345892000144550010000045211839201948')}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-[11px] font-mono text-slate-300 border border-slate-700 hover:border-[#DFB76C] transition cursor-pointer"
+                        >
+                          📦 Compra Bebidas (Entrada)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPullKey('33241028109432000118550010000078901928374652')}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-[11px] font-mono text-slate-300 border border-slate-700 hover:border-[#DFB76C] transition cursor-pointer"
+                        >
+                          🏢 Fornecedor Alimentos (Entrada)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Botão de Envio */}
+                    <button
+                      type="submit"
+                      id="btn-pull-real-nfe"
+                      disabled={isPullingByKey || !decodedKey?.validLength}
+                      className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-[#DFB76C] via-[#E8C785] to-[#D4A755] text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg hover:brightness-105 active:scale-98 transition disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                    >
+                      {isPullingByKey ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Puxando Nota Fiscal da SEFAZ & Gerando DANFE...</span>
+                        </>
+                      ) : (
+                        <>
+                          <KeyRound className="w-4 h-4" />
+                          <span>Puxar Nota Fiscal Verdadeira (DANFE + XML)</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+
+                {/* Coluna Direita: Live Inspector dos 44 Dígitos */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="bg-slate-800/60 rounded-2xl p-5 border border-slate-700/60 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-[#DFB76C]" />
+                        Decodificação Automática MOC / SEFAZ
+                      </h4>
+                      {decodedKey?.validLength ? (
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                          44 Dígitos Válidos
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-900 px-2 py-0.5 rounded">
+                          Aguardando Chave
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                        <span className="text-slate-400">UF de Emissão:</span>
+                        <span className="font-bold text-white">{decodedKey?.uf || '—'}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                        <span className="text-slate-400">Ano e Mês:</span>
+                        <span className="font-bold text-white">{decodedKey?.anoMes || '—'}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                        <span className="text-slate-400">CNPJ do Emitente:</span>
+                        <span className="font-mono font-bold text-[#DFB76C]">{decodedKey?.cnpjEmitente || '—'}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                        <span className="text-slate-400">Modelo do DF-e:</span>
+                        <span className="font-bold text-white">{decodedKey?.modelo || '—'}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                        <span className="text-slate-400">Série e Número da NF:</span>
+                        <span className="font-bold text-white">
+                          {decodedKey?.numero ? `Nº ${decodedKey.numero} (Série ${decodedKey.serie})` : '—'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 space-y-1.5">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-300">
+                        <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
+                        Garantia de Autenticidade & Sem Redirecionamentos:
+                      </div>
+                      <p className="leading-relaxed">
+                        Ao consultar por aqui, o sistema gera o espelho idêntico ao da Receita Federal e arquiva o PDF e XML diretamente no Cloudflare R2 e Supabase, permitindo auditoria fiscal em qualquer dispositivo.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* TAB 1: PUXAR DA SEFAZ VIA CERTIFICADO DIGITAL A1 */}
           {activeTab === 'sync' && (

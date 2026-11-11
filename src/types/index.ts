@@ -90,12 +90,39 @@ export type AuditAction =
   | 'FILE_DOWNLOAD'
   | 'FILE_RENAME'
   | 'FILE_DELETE'
+  | 'FILE_MOVED_TO_TRASH'
+  | 'FOLDER_MOVED_TO_TRASH'
+  | 'FILE_RESTORE'
+  | 'FOLDER_RESTORE'
+  | 'FILE_PERMANENT_DELETE'
+  | 'FOLDER_PERMANENT_DELETE'
+  | 'TRASH_EMPTIED'
   | 'FOLDER_CREATE'
   | 'FOLDER_RENAME'
   | 'FOLDER_DELETE'
   | 'BACKGROUND_IMAGE_CHANGED'
   | 'AUTH_BANNER_CHANGED'
   | 'USER_DELETED';
+
+export interface TrashItem {
+  id: string; // Unique trash identifier
+  original_id: string;
+  name: string;
+  type: 'file' | 'folder';
+  mime_type?: string;
+  original_size?: number;
+  sector: Sector;
+  original_folder_id?: string | null;
+  original_folder_name?: string;
+  storage_key?: string;
+  preview_url?: string;
+  deleted_at: string;
+  deleted_by: string;
+  deleted_by_role?: string;
+  tags?: string[];
+  pages_count?: number;
+  metadata?: Record<string, any>;
+}
 
 export interface AuditLog {
   id: string;
@@ -285,4 +312,86 @@ export interface AvisoItem {
   ativo: boolean;
   created_at: string;
 }
+
+// SEFAZ Web Services DF-e (NFe / CTe / NFSe) Types
+export type DFeDocType = 'all' | 'nfe' | 'cte' | 'nfse';
+
+export interface CertificateMetadata {
+  filename: string;
+  storage_key?: string;
+  subject?: string;
+  cnpj?: string;
+  razao_social?: string;
+  issuer?: string;
+  valid_from?: string;
+  valid_to?: string;
+  days_remaining?: number;
+  is_expired?: boolean;
+  serial_number?: string;
+  status: 'valid' | 'expiring_soon' | 'expired' | 'missing';
+}
+
+export interface SefazDFeItem {
+  id: string;
+  company_id: string;
+  doc_type: 'NFE' | 'CTE' | 'NFSE';
+  type: '0' | '1'; // 0 = Entrada/Tomado, 1 = Saída/Prestado
+  nsu: string;
+  chave_acesso: string;
+  numero: string;
+  serie: string;
+  natureza_operacao: string;
+  cfop?: string;
+  emit_razao_social: string;
+  emit_cnpj_cpf: string;
+  dest_razao_social: string;
+  dest_cnpj_cpf: string;
+  valor_total: number;
+  icms_total?: number;
+  iss_total?: number;
+  protocolo_autorizacao: string;
+  data_emissao: string;
+  manifest_status?: 'ciente' | 'confirmado' | 'desconhecido' | 'nao_realizado' | 'sem_manifesto';
+  pdf_storage_key?: string;
+  xml_storage_key?: string;
+  document_id?: string;
+  created_at: string;
+}
+
+export interface SefazSyncResult {
+  status: string;
+  message: string;
+  company_id: string;
+  company_name: string;
+  cnpj: string;
+  certificate_used: string;
+  doc_type: DFeDocType;
+  ult_nsu: string;
+  max_nsu: string;
+  total_documents: number;
+  nfe_count: number;
+  cte_count: number;
+  nfse_count: number;
+  entradas_count: number;
+  saidas_count: number;
+  total_entradas: number;
+  total_saidas: number;
+  documents: SefazDFeItem[];
+  destination_folder_id?: string;
+  destination_folder_name?: string;
+  executed_at: string;
+}
+
+export interface SefazWsStatusItem {
+  uf: string;
+  nome: string;
+  status: 'online' | 'degraded' | 'offline';
+  servico: string;
+  versao: string;
+  tempo_resposta_ms: number;
+  codigo_status: number;
+  motivo: string;
+  consultado_em: string;
+}
+
 

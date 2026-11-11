@@ -50,7 +50,8 @@ import {
   Info,
   MoreVertical,
   MoreHorizontal,
-  Plus
+  Plus,
+  CloudDownload
 } from 'lucide-react';
 import { Folder, DocumentFile, Sector, UserProfile, PermissionLevel, StorageMetrics } from '../types';
 import { formatBytes } from '../lib/optimization';
@@ -76,6 +77,10 @@ interface FileManagerProps {
   hasFolderPermission: (folderId: string, minLevel: PermissionLevel) => boolean;
   onOpenCompanyModal?: (initialQuery?: string) => void;
   onOpenSpedImporter?: () => void;
+  onOpenInvoiceEmission?: () => void;
+  onOpenSefazModule?: () => void;
+  onOpenRecycleBin?: () => void;
+  trashCount?: number;
   externalSearchQuery?: string;
   onClearExternalSearch?: () => void;
 }
@@ -90,6 +95,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
   onOpenFileViewer,
   onOpenUploadModal,
   onOpenSpedImporter,
+  onOpenInvoiceEmission,
+  onOpenSefazModule,
+  onOpenRecycleBin,
+  trashCount = 0,
   onCreateFolder,
   onDeleteFolder,
   onDeleteFile,
@@ -708,19 +717,6 @@ export const FileManager: React.FC<FileManagerProps> = ({
               >
                 <FolderPlus className="w-4 h-4 text-[#DFB76C] shrink-0" />
                 <span>Nova Pasta</span>
-              </button>
-            )}
-
-            {canUpload && onOpenSpedImporter && (
-              <button
-                id="import-sped-btn-desktop"
-                type="button"
-                onClick={onOpenSpedImporter}
-                className="h-11 px-4 rounded-xl border border-[#DFB76C]/40 bg-[#DFB76C]/10 hover:bg-[#DFB76C]/20 text-[#DFB76C] hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-98"
-                title="Assistente Web de Importação SPED Fiscal (.txt) do Domínio"
-              >
-                <FileText className="w-4 h-4 text-[#DFB76C] shrink-0" />
-                <span>Importar SPED (.txt)</span>
               </button>
             )}
 
@@ -2172,6 +2168,23 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     <FolderPlus className="w-3.5 h-3.5 stroke-[2.5]" />
                   </div>
                   <span className="whitespace-nowrap">Nova Pasta</span>
+                </button>
+              )}
+
+              {/* Opção Web Services SEFAZ */}
+              {canUpload && onOpenSefazModule && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFabOpen(false);
+                    onOpenSefazModule();
+                  }}
+                  className="min-h-[44px] px-4 py-2.5 rounded-full bg-[#091124] border border-emerald-500/60 text-emerald-300 font-bold text-xs shadow-2xl flex items-center gap-2.5 hover:bg-emerald-950/40 active:scale-95 transition-all cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold">
+                    <CloudDownload className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </div>
+                  <span className="whitespace-nowrap">Web Services SEFAZ</span>
                 </button>
               )}
             </div>

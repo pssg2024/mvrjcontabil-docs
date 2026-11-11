@@ -329,9 +329,19 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({
                             {company.nome_fantasia ? `${company.nome_fantasia} • ` : ''}CNPJ: {formatCnpj(company.cnpj)}
                           </p>
                           {company.certificate_filename ? (
-                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-900 bg-emerald-100 border border-emerald-300 w-fit px-2.5 py-0.5 rounded-md mt-1">
-                              <FileKey className="h-3.5 w-3.5 text-emerald-700" />
-                              <span className="truncate max-w-[180px]">Certificado: {company.certificate_filename}</span>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-900 bg-emerald-100 border border-emerald-300 w-fit px-2.5 py-0.5 rounded-md">
+                                <FileKey className="h-3.5 w-3.5 text-emerald-700" />
+                                <span className="truncate max-w-[220px]">Certificado A1: {company.certificate_filename}</span>
+                              </div>
+                              <a
+                                href={`/api/r2/view?key=${encodeURIComponent(company.certificate_storage_key || `certificates/${company.id}/${company.certificate_filename}`)}&name=${encodeURIComponent(company.certificate_filename)}`}
+                                download={company.certificate_filename}
+                                className="text-[10px] font-bold text-teal-800 hover:text-teal-950 bg-teal-50 hover:bg-teal-100 px-2 py-0.5 rounded border border-teal-300 transition cursor-pointer"
+                                title="Baixar arquivo do Certificado Digital A1 (.pfx)"
+                              >
+                                ⬇ Baixar .pfx
+                              </a>
                             </div>
                           ) : (
                             <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-950 bg-amber-100 border border-amber-300 w-fit px-2.5 py-0.5 rounded-md mt-1">

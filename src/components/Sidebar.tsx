@@ -19,7 +19,9 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderLock,
-  X
+  X,
+  CloudDownload,
+  Trash2
 } from 'lucide-react';
 import { UserProfile, StorageMetrics, AuthHeaderConfig } from '../types';
 
@@ -32,10 +34,13 @@ export interface SidebarProps {
   onOpenCompanyModal: () => void;
   onOpenSalaryCalculator: () => void;
   onOpenInvoiceEmission: () => void;
+  onOpenSefazModule?: () => void;
   onOpenPortalsDrawer: () => void;
   onOpenSpedImporter?: () => void;
   onOpenManualModal: () => void;
   onOpenBackgroundModal: () => void;
+  onOpenRecycleBin?: () => void;
+  trashCount?: number;
   onOpenSqlModal?: () => void;
   onOpenProfileModal: (tab?: 'profile' | 'security') => void;
   onLogout: () => void;
@@ -55,10 +60,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenCompanyModal,
   onOpenSalaryCalculator,
   onOpenInvoiceEmission,
+  onOpenSefazModule,
   onOpenPortalsDrawer,
   onOpenSpedImporter,
   onOpenManualModal,
   onOpenBackgroundModal,
+  onOpenRecycleBin,
+  trashCount = 0,
   onOpenSqlModal: _onOpenSqlModal,
   onOpenProfileModal,
   onLogout,
@@ -272,25 +280,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span className="truncate">Simulador de Salário</span>
                     </button>
 
-                    {/* Notas Fiscais (Entradas, Saídas e SEFAZ) */}
+                    {/* Notas Fiscais (Chave 44 Dígitos, Entradas, Saídas e SEFAZ) */}
                     <button
                       type="button"
                       id="sidebar-btn-invoice-emission"
                       onClick={() => handleLinkClick(onOpenInvoiceEmission)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/50 hover:text-white transition-colors cursor-pointer group text-left"
-                      title="Puxar Notas Fiscais da SEFAZ (Entradas e Saídas via Certificado A1)"
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-200 hover:bg-teal-500/10 hover:text-teal-300 transition-colors cursor-pointer group text-left border border-transparent hover:border-teal-500/25"
+                      title="Puxar Notas Fiscais Verdadeiras por Chave de Acesso (44 Dígitos) ou SEFAZ com Certificado A1"
                     >
                       <div className="flex items-center gap-2.5 truncate">
                         <FileDigit 
                           className="w-4 h-4 text-teal-400 group-hover:scale-110 transition-transform shrink-0" 
                           strokeWidth={1.75} 
                         />
-                        <span className="truncate">Notas Fiscais (Entradas & Saídas)</span>
+                        <span className="truncate">Puxar NF-e (Chave de Acesso)</span>
                       </div>
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-teal-500/20 text-teal-400 border border-teal-500/30 shrink-0">
-                        SEFAZ
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-teal-500/20 text-teal-300 border border-teal-500/30 shrink-0">
+                        44 Dígitos
                       </span>
                     </button>
+
+                    {/* Web Services SEFAZ (DF-e Lote: NF-e, CT-e, NFS-e com Certificado A1) */}
+                    {onOpenSefazModule && (
+                      <button
+                        type="button"
+                        id="sidebar-btn-sefaz-module"
+                        onClick={() => handleLinkClick(onOpenSefazModule)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-200 hover:bg-emerald-500/10 hover:text-emerald-300 transition-colors cursor-pointer group text-left border border-transparent hover:border-emerald-500/25"
+                        title="Web Services da SEFAZ: Consulta Automática por NSU, Certificados Digitais (.pfx) e Download Direto para o GED"
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          <CloudDownload 
+                            className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform shrink-0" 
+                            strokeWidth={1.75} 
+                          />
+                          <span className="truncate">Web Services SEFAZ</span>
+                        </div>
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                          DF-e / A1
+                        </span>
+                      </button>
+                    )}
 
                     {/* Importador SPED Fiscal (Domínio) */}
                     <button
@@ -345,6 +375,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <Calculator className="w-4 h-4 text-slate-400 group-hover:text-blue-400 transition-colors" strokeWidth={1.75} />
                 </button>
+                {onOpenSefazModule && (
+                  <button
+                    type="button"
+                    onClick={() => handleLinkClick(onOpenSefazModule)}
+                    className="w-full flex items-center justify-center p-2.5 rounded-lg text-emerald-400 hover:text-white hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                    title="Web Services SEFAZ (DF-e Lote & Certificado A1)"
+                  >
+                    <CloudDownload className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" strokeWidth={1.75} />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handleLinkClick(onOpenSpedImporter || (() => {}))}
@@ -509,6 +549,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
 
+          {/* Section: LIXEIRA & BACKUP (RECYCLE BIN) */}
+          {onOpenRecycleBin && (
+            <div>
+              <button
+                type="button"
+                id="sidebar-btn-recycle-bin"
+                onClick={() => handleLinkClick(onOpenRecycleBin)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-rose-500/10 hover:text-rose-300 transition-colors cursor-pointer group text-left"
+                title="Lixeira do GED • Backup e Recuperação Segura"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Trash2 
+                    className="w-4 h-4 text-rose-400 group-hover:text-rose-300 transition-colors shrink-0" 
+                    strokeWidth={1.75} 
+                  />
+                  {!isCollapsed && <span className="truncate">Lixeira (Backup)</span>}
+                </div>
+                {!isCollapsed && trashCount > 0 && (
+                  <span className="px-1.5 py-0.2 bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold rounded-full">
+                    {trashCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
 
         </div>
 

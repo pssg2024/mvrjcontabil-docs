@@ -1,5 +1,18 @@
 [
   {
+    "id": "comp-renatinho",
+    "razao_social": "BAR E DEPOSITO E COMERCIO DO RENATINHO LTDA",
+    "nome_fantasia": "Bar e Depósito do Renatinho",
+    "cnpj": "59.143.345/0001-47",
+    "inscricao_estadual": "148.910.432.110",
+    "regime_tributario": "Simples Nacional",
+    "certificate_storage_key": "certificates/comp-renatinho/BAR_E_DEPOSITO_E_COMERCIO_DO_RENATINHO_LTDA_59143345000147.pfx",
+    "certificate_filename": "BAR E DEPOSITO E COMERCIO DO RENATINHO LTDA_59143345000147.pfx",
+    "certificate_password": "123",
+    "created_at": "2026-10-30T14:55:00.000Z",
+    "updated_at": "2026-10-30T14:55:00.000Z"
+  },
+  {
     "id": "comp-1",
     "razao_social": "MVRJ Serviços de Assessoria Contábil Ltda",
     "nome_fantasia": "MVRJ Contábil",

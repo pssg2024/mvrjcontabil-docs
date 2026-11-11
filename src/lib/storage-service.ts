@@ -1,4 +1,4 @@
-import { DocumentFile, Folder, Sector, SiteBackgroundConfig, AuthHeaderConfig, AuditLog, FolderPermission, PermissionLevel, UserProfile } from '../types';
+import { DocumentFile, Folder, Sector, SiteBackgroundConfig, AuthHeaderConfig, AuditLog, FolderPermission, PermissionLevel, UserProfile, TrashItem } from '../types';
 
 export interface PresignedUploadResponse {
   storageKey: string;
@@ -1028,3 +1028,130 @@ export async function fetchProfilesFromApi(): Promise<UserProfile[]> {
   const cached = localStorage.getItem('mvrj_profiles');
   return cached ? JSON.parse(cached) : [];
 }
+
+/**
+ * ==============================================================================
+ * LIXEIRA & BACKUP DE SEGURANÇA (RECYCLE BIN API)
+ * ==============================================================================
+ */
+
+/**
+ * Busca todos os itens (arquivos e pastas) atualmente na Lixeira
+ */
+export async function fetchTrashItemsFromApi(userRole?: string): Promise<TrashItem[]> {
+  try {
+    const res = await fetch(`/api/trash?t=${Date.now()}`, {
+      headers: {
+        'x-user-role': userRole || 'admin',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (Array.isArray(data.trash)) {
+      return data.trash;
+    }
+  } catch (err) {
+    console.warn('[StorageService] Falha ao buscar itens da lixeira:', err);
+  }
+  return [];
+}
+
+/**
+ * Restaura um item da lixeira de volta para a pasta de origem no GED (Somente Administradores)
+ */
+export async function restoreTrashItemInApi(
+  itemId: string, 
+  userRole: string = 'admin', 
+  userName: string = 'Administrador'
+): Promise<{ status: string; message: string; restored_type: string; target_folder_id?: string }> {
+  const res = await fetch('/api/trash/restore', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-role': userRole,
+      'x-user-name': encodeURIComponent(userName),
+    },
+    body: JSON.stringify({ item_id: itemId, user_role: userRole, user_name: userName }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Falha ao restaurar item da lixeira');
+  }
+  return data;
+}
+
+/**
+ * Restaura todos os itens da lixeira em lote (Somente Administradores)
+ */
+export async function restoreAllTrashInApi(
+  userRole: string = 'admin', 
+  userName: string = 'Administrador'
+): Promise<{ status: string; message: string; restored_count: number }> {
+  const res = await fetch('/api/trash/restore-all', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-role': userRole,
+      'x-user-name': encodeURIComponent(userName),
+    },
+    body: JSON.stringify({ user_role: userRole, user_name: userName }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Falha ao restaurar todos os itens da lixeira');
+  }
+  return data;
+}
+
+/**
+ * Exclui permanentemente um item da lixeira (Somente Administradores)
+ * Remove definitivamente do Cloudflare R2 e do banco de dados
+ */
+export async function permanentDeleteTrashItemInApi(
+  itemId: string, 
+  userRole: string = 'admin', 
+  userName: string = 'Administrador'
+): Promise<{ status: string; message: string }> {
+  const res = await fetch(`/api/trash/permanent/${encodeURIComponent(itemId)}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-role': userRole,
+      'x-user-name': encodeURIComponent(userName),
+    },
+    body: JSON.stringify({ user_role: userRole, user_name: userName }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Falha ao excluir permanentemente item da lixeira');
+  }
+  return data;
+}
+
+/**
+ * Esvazia toda a lixeira permanentemente (Somente Administradores)
+ */
+export async function emptyTrashInApi(
+  userRole: string = 'admin', 
+  userName: string = 'Administrador'
+): Promise<{ status: string; message: string; deleted_count: number }> {
+  const res = await fetch('/api/trash/empty', {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-role': userRole,
+      'x-user-name': encodeURIComponent(userName),
+    },
+    body: JSON.stringify({ user_role: userRole, user_name: userName }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Falha ao esvaziar lixeira');
+  }
+  return data;
+}
+

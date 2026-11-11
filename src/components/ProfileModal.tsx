@@ -566,8 +566,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         title="Aplicar avatar predefinido"
                         className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-all disabled:opacity-50 cursor-pointer shadow-xs ${
                           avatarUrl === url 
-                            ? 'border-[#C59B4B] ring-2 ring-[#C59B4B]/40 scale-110 shadow-md' 
-                            : 'border-white opacity-85 hover:opacity-100 hover:scale-105'
+                            ? 'border-[#C59B4B] ring-2 ring-offset-1 ring-[#C59B4B] shadow-sm' 
+                            : 'border-slate-200 opacity-85 hover:opacity-100'
                         }`}
                       >
                         <img 
