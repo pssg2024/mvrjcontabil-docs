@@ -309,163 +309,209 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
       const totalFiles = selectedFiles.length;
       const knownFolders: FolderType[] = [...allFolders];
-      const createdFoldersMap = new Map<string, FolderType>();
+      const folderPathToIdMap = new Map<string, string>(); // maps "seg1/seg2/seg3" -> folderId
 
-      for (let i = 0; i < totalFiles; i++) {
-        setCurrentUploadIndex(i + 1);
-        const currentFile = selectedFiles[i];
-        const fullRelPath = ((currentFile as any).webkitRelativePath || '').replace(/\\/g, '/');
-
-        // Resolve destination folder hierarchically:
-        // When dragging or selecting a folder with subfolders (e.g. PastaA/SubpastaB/arquivo.docx),
-        // automatically create/find each subfolder level in order!
-        let destinationFolderId = targetFolder.id;
-        let cleanDocName = currentFile.name;
-
+      // 1. Collect all unique folder paths and pre-create them hierarchically
+      const allFolderPaths = new Set<string>();
+      for (const file of selectedFiles) {
+        const fullRelPath = ((file as any).webkitRelativePath || '').replace(/\\/g, '/');
         if (fullRelPath) {
           const parts = fullRelPath.split('/').filter(Boolean);
           if (parts.length > 1) {
-            cleanDocName = parts[parts.length - 1];
             const folderSegments = parts.slice(0, parts.length - 1);
-
-            // If user renamed the root folder in the input, apply the custom name
             if (folderUploadName && customFileName.trim() && folderSegments.length > 0) {
               folderSegments[0] = customFileName.trim();
             }
-
-            // Traverse folder levels starting from targetFolder.id
-            let currentParentId = targetFolder.id;
-            for (let s = 0; s < folderSegments.length; s++) {
-              const segName = folderSegments[s].trim();
+            let cumPath = '';
+            for (const seg of folderSegments) {
+              const segName = seg.trim();
               if (!segName) continue;
-
-              const cacheKey = `${currentParentId}::${segName.toLowerCase()}`;
-              let existing = createdFoldersMap.get(cacheKey) ||
-                knownFolders.find(f => 
-                  f.name.trim().toLowerCase() === segName.toLowerCase() &&
-                  (f.parent_id === currentParentId || (!f.parent_id && !currentParentId)) &&
-                  f.sector === targetFolder.sector
-                );
-
-              if (!existing) {
-                setPipelineStatusText(`Criando pasta "${segName}"...`);
-                const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `fold-${Date.now()}-${s}`;
-                const created = await createFolderInApi(
-                  segName,
-                  currentParentId,
-                  targetFolder.sector,
-                  currentUser.id,
-                  newId
-                );
-                const folderObj: FolderType = created && created.id ? created : {
-                  id: newId,
-                  parent_id: currentParentId,
-                  name: segName,
-                  sector: targetFolder.sector,
-                  created_by: currentUser.id,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                };
-                createdFoldersMap.set(cacheKey, folderObj);
-                knownFolders.push(folderObj);
-                if (onFolderCreated) {
-                  onFolderCreated(folderObj);
-                }
-                existing = folderObj;
-              }
-
-              currentParentId = existing.id;
+              cumPath = cumPath ? `${cumPath}/${segName}` : segName;
+              allFolderPaths.add(cumPath);
             }
-
-            destinationFolderId = currentParentId;
-          }
-        } else if (selectedFiles.length === 1 && customFileName.trim()) {
-          cleanDocName = customFileName.trim();
-        }
-
-        let finalName = cleanDocName;
-        const dotIndex = currentFile.name.lastIndexOf('.');
-        if (dotIndex >= 0) {
-          const ext = currentFile.name.substring(dotIndex);
-          if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
-            finalName += ext;
           }
         }
+      }
 
-        // ETAPA 1: OTIMIZAÇÃO AUTOMÁTICA (PDF ou IMAGEM)
-        setOptimizationStage('optimizing');
-        setPipelineStatusText(`Otimizando "${finalName}" (${i + 1} de ${totalFiles})...`);
-        const optResult = await optimizeFile(currentFile);
-        const arrayBuf = await optResult.file.arrayBuffer();
-        const checksum = await computeChecksum(arrayBuf);
+      // Sort paths by segment depth so parent folders are created before child folders
+      const sortedPaths = Array.from(allFolderPaths).sort((a, b) => a.split('/').length - b.split('/').length);
 
-        const stats = {
-          originalSize: optResult.originalSize,
-          optimizedSize: optResult.optimizedSize,
-          reductionPercentage: optResult.reductionPercentage,
-          mimeType: optResult.mimeType,
-          checksum,
-          pagesCount: optResult.pagesCount || 1,
-        };
+      for (const pathStr of sortedPaths) {
+        const segments = pathStr.split('/');
+        const segName = segments[segments.length - 1];
+        const parentPath = segments.slice(0, segments.length - 1).join('/');
+        const currentParentId = parentPath ? (folderPathToIdMap.get(parentPath) || targetFolder.id) : targetFolder.id;
 
-        // ETAPA 2: SOLICITAÇÃO DA PRESIGNED URL AO BACKEND
-        setOptimizationStage('requesting-url');
-        setPipelineStatusText(`Preparando canal de envio seguro...`);
-        const presignedData = await getPresignedUploadUrl(
-          finalName,
-          optResult.mimeType,
-          targetFolder.sector,
-          destinationFolderId,
-          optResult.optimizedSize
+        setPipelineStatusText(`Criando pasta "${segName}"...`);
+        let existing = knownFolders.find(f => 
+          f.name.trim().toLowerCase() === segName.toLowerCase() &&
+          (f.parent_id === currentParentId || (!f.parent_id && !currentParentId)) &&
+          f.sector === targetFolder.sector
         );
 
-        // ETAPA 3: UPLOAD DIRETO PARA CLOUDFLARE R2 COM FALLBACK RESILIENTE
-        setOptimizationStage('uploading-r2');
-        setPipelineStatusText(`Enviando "${finalName}" para o Cloudflare R2...`);
-        await uploadToPresignedUrl(
-          presignedData.uploadUrl,
-          optResult.file,
-          optResult.mimeType,
-          (progress) => setUploadProgress(progress),
-          presignedData.storageKey,
-          finalName
-        );
+        const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `fold-${Date.now()}-${Math.random()}`;
 
-        // ETAPA 4: SUCESSO & REGISTRO NO GED & SUPABASE
-        setOptimizationStage('finished');
-        setPipelineStatusText(`Registrado com sucesso no GED.`);
-
-        const tempDoc: DocumentFile = {
-          id: `file-${Date.now()}-${i}`,
-          folder_id: destinationFolderId,
-          name: finalName,
-          storage_key: presignedData.storageKey,
-          mime_type: optResult.mimeType,
-          original_size: stats.originalSize,
-          optimized_size: stats.optimizedSize,
-          compression_ratio: stats.reductionPercentage,
-          pages_count: stats.pagesCount,
-          tags,
-          uploaded_by: currentUser.id,
-          uploader_name: currentUser.full_name,
-          sector: targetFolder.sector,
-          checksum_sha256: checksum,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          preview_url: optResult.dataUrl,
-        };
-
-        let finalDoc = tempDoc;
-        try {
-          const saved = await saveFileRecordToApi(tempDoc);
-          if (saved && saved.id) {
-            finalDoc = { ...saved, preview_url: optResult.dataUrl || saved.preview_url };
+        if (!existing) {
+          try {
+            const created = await createFolderInApi(
+              segName,
+              currentParentId,
+              targetFolder.sector,
+              currentUser.id,
+              newId
+            );
+            existing = created && created.id ? created : {
+              id: newId,
+              parent_id: currentParentId,
+              name: segName,
+              sector: targetFolder.sector,
+              created_by: currentUser.id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+          } catch (folderErr) {
+            console.warn('Aviso ao criar pasta na API (usando fallback local):', folderErr);
+            existing = {
+              id: newId,
+              parent_id: currentParentId,
+              name: segName,
+              sector: targetFolder.sector,
+              created_by: currentUser.id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
           }
-        } catch (dbErr: any) {
-          console.error('Falha ao registrar documento:', dbErr);
+          knownFolders.push(existing);
+          if (onFolderCreated) {
+            onFolderCreated(existing);
+          }
         }
 
-        onUploadSuccess(finalDoc);
+        folderPathToIdMap.set(pathStr, existing.id);
+      }
+
+      // 2. Upload all files using resolved destination folder IDs in concurrent batches of 4
+      const batchSize = 4;
+      let completedCount = 0;
+
+      for (let i = 0; i < totalFiles; i += batchSize) {
+        const batch = selectedFiles.slice(i, i + batchSize);
+        
+        await Promise.all(batch.map(async (currentFile, batchIdx) => {
+          const fileIndex = i + batchIdx;
+          setCurrentUploadIndex(fileIndex + 1);
+          const fullRelPath = ((currentFile as any).webkitRelativePath || '').replace(/\\/g, '/');
+
+          let destinationFolderId = targetFolder.id;
+          let cleanDocName = currentFile.name;
+
+          if (fullRelPath) {
+            const parts = fullRelPath.split('/').filter(Boolean);
+            if (parts.length > 1) {
+              cleanDocName = parts[parts.length - 1];
+              const folderSegments = parts.slice(0, parts.length - 1);
+              if (folderUploadName && customFileName.trim() && folderSegments.length > 0) {
+                folderSegments[0] = customFileName.trim();
+              }
+              const pathStr = folderSegments.join('/');
+              if (folderPathToIdMap.has(pathStr)) {
+                destinationFolderId = folderPathToIdMap.get(pathStr)!;
+              }
+            }
+          } else if (selectedFiles.length === 1 && customFileName.trim()) {
+            cleanDocName = customFileName.trim();
+          }
+
+          let finalName = cleanDocName;
+          const dotIndex = currentFile.name.lastIndexOf('.');
+          if (dotIndex >= 0) {
+            const ext = currentFile.name.substring(dotIndex);
+            if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
+              finalName += ext;
+            }
+          }
+
+          // ETAPA 1: OTIMIZAÇÃO AUTOMÁTICA (PDF ou IMAGEM)
+          setOptimizationStage('optimizing');
+          setPipelineStatusText(`Otimizando "${finalName}" (${fileIndex + 1} de ${totalFiles})...`);
+          const optResult = await optimizeFile(currentFile);
+          const arrayBuf = await optResult.file.arrayBuffer();
+          const checksum = await computeChecksum(arrayBuf);
+
+          const stats = {
+            originalSize: optResult.originalSize,
+            optimizedSize: optResult.optimizedSize,
+            reductionPercentage: optResult.reductionPercentage,
+            mimeType: optResult.mimeType,
+            checksum,
+            pagesCount: optResult.pagesCount || 1,
+          };
+
+          // ETAPA 2: SOLICITAÇÃO DA PRESIGNED URL AO BACKEND
+          setOptimizationStage('requesting-url');
+          setPipelineStatusText(`Preparando canal seguro para "${finalName}"...`);
+          const presignedData = await getPresignedUploadUrl(
+            finalName,
+            optResult.mimeType,
+            targetFolder.sector,
+            destinationFolderId,
+            optResult.optimizedSize
+          );
+
+          // ETAPA 3: UPLOAD DIRETO PARA CLOUDFLARE R2 COM FALLBACK RESILIENTE
+          setOptimizationStage('uploading-r2');
+          setPipelineStatusText(`Enviando "${finalName}" (${fileIndex + 1}/${totalFiles})...`);
+          await uploadToPresignedUrl(
+            presignedData.uploadUrl,
+            optResult.file,
+            optResult.mimeType,
+            (progress) => {
+              // Atualiza progresso individual
+            },
+            presignedData.storageKey,
+            finalName
+          );
+
+          completedCount++;
+          const overallPct = Math.round((completedCount / totalFiles) * 100);
+          setUploadProgress(overallPct);
+
+          // ETAPA 4: SUCESSO & REGISTRO NO GED & SUPABASE
+          setOptimizationStage('finished');
+          setPipelineStatusText(`Enviado (${completedCount}/${totalFiles})...`);
+
+          const tempDoc: DocumentFile = {
+            id: `file-${Date.now()}-${fileIndex}`,
+            folder_id: destinationFolderId,
+            name: finalName,
+            storage_key: presignedData.storageKey,
+            mime_type: optResult.mimeType,
+            original_size: stats.originalSize,
+            optimized_size: stats.optimizedSize,
+            compression_ratio: stats.reductionPercentage,
+            pages_count: stats.pagesCount,
+            tags,
+            uploaded_by: currentUser.id,
+            uploader_name: currentUser.full_name,
+            sector: targetFolder.sector,
+            checksum_sha256: checksum,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            preview_url: optResult.dataUrl,
+          };
+
+          let finalDoc = tempDoc;
+          try {
+            const saved = await saveFileRecordToApi(tempDoc);
+            if (saved && saved.id) {
+              finalDoc = { ...saved, preview_url: optResult.dataUrl || saved.preview_url };
+            }
+          } catch (dbErr: any) {
+            console.error('Falha ao registrar documento:', dbErr);
+          }
+
+          onUploadSuccess(finalDoc);
+        }));
       }
 
       // Notifica sucesso após concluir todos os arquivos da pasta ou arquivo único
