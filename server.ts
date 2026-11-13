@@ -19,6 +19,25 @@ const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCT
 const SEED_STORAGE_DIR = path.join(process.cwd(), 'storage');
 const STORAGE_BASE_DIR = IS_SERVERLESS ? path.join('/tmp', 'mvrj-storage') : SEED_STORAGE_DIR;
 
+function resolveStorageReadPath(relativePath: string): string | null {
+  const runtimePath = path.join(STORAGE_BASE_DIR, relativePath);
+  if (fs.existsSync(runtimePath)) return runtimePath;
+  const seedPath = path.join(SEED_STORAGE_DIR, relativePath);
+  if (fs.existsSync(seedPath)) return seedPath;
+  return null;
+}
+
+function normalizeAvatarUrlServer(url?: string | null): string | undefined {
+  if (!url || typeof url !== 'string') return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  const match = trimmed.match(/^https?:\/\/[^/]+(\/api\/r2\/avatar\/.+)$/i);
+  if (match && match[1]) {
+    return match[1];
+  }
+  return trimmed;
+}
+
 // Multer configured with memoryStorage for direct streaming to Cloudflare R2
 // NEVER writes files to local server directories (e.g. ./uploads, ./public/uploads, /tmp)
 const upload = multer({
@@ -877,6 +896,7 @@ app.post(['/api/sped/upload', '/api/integrations/sped-upload'], (req, res, next)
     // Salva no armazenamento em disco/memória unificado
     persistedFiles.unshift(newFileRecord);
     savePersistedFiles();
+    invalidateFilesCache();
     saveR2Files(persistedFiles).catch(() => {});
 
     // 13. Sincronização com Supabase (se conectado)
@@ -1281,9 +1301,9 @@ app.get('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
       return res.send(cached.buffer);
     }
 
-    // 2. Verificar cache permanente em disco local
-    const avatarDiskPath = path.join(STORAGE_BASE_DIR, 'avatars', `${userId}.webp`);
-    if (fs.existsSync(avatarDiskPath)) {
+    // 2. Verificar cache permanente em disco local (runtime ou seed empacotado)
+    const avatarDiskPath = resolveStorageReadPath(path.join('avatars', `${userId}.webp`));
+    if (avatarDiskPath) {
       try {
         const diskBuf = fs.readFileSync(avatarDiskPath);
         inMemoryFileStore.set(storageKey, {
@@ -1298,40 +1318,25 @@ app.get('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
       } catch (e) {}
     }
 
-    // 3. Se não estiver em cache local, buscar no Cloudflare R2
+    // 3. Se não estiver em cache local, redirecionar diretamente para Presigned GET URL no Cloudflare R2 (0 banda no servidor)
     const { client, bucketName, isConfigured } = getR2Client();
     if (isConfigured && client) {
       try {
-        const command = new GetObjectCommand({
+        await client.send(new HeadObjectCommand({
           Bucket: bucketName,
           Key: storageKey,
-        });
-        const r2Response = await client.send(command);
-
-        if (r2Response.Body) {
-          const chunks: Buffer[] = [];
-          for await (const chunk of r2Response.Body as any) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-          }
-          const buffer = Buffer.concat(chunks);
-
-          // Salvar em cache em memória e em disco para requisições subsequentes
-          inMemoryFileStore.set(storageKey, {
-            buffer,
-            mimeType: 'image/webp',
-            name: `${userId}.webp`,
-          });
-          try {
-            const dir = path.dirname(avatarDiskPath);
-            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-            fs.writeFileSync(avatarDiskPath, buffer);
-          } catch (e) {}
-
-          res.setHeader('Content-Type', 'image/webp');
-          res.setHeader('Cache-Control', 'public, max-age=86400');
-          res.setHeader('Content-Length', buffer.length);
-          return res.send(buffer);
-        }
+        }));
+        const signedAvatarUrl = await getSignedUrl(
+          client,
+          new GetObjectCommand({
+            Bucket: bucketName,
+            Key: storageKey,
+            ResponseContentType: 'image/webp',
+          }),
+          { expiresIn: 3600 }
+        );
+        res.setHeader('Cache-Control', 'public, max-age=1800');
+        return res.redirect(302, signedAvatarUrl);
       } catch (s3Err: any) {
         return res.status(404).json({ error: 'Avatar não encontrado no R2' });
       }
@@ -1486,11 +1491,15 @@ let persistedProfiles: StoredProfile[] = [
 
 function loadPersistedProfiles() {
   try {
-    if (fs.existsSync(PROFILES_FILE)) {
-      const raw = fs.readFileSync(PROFILES_FILE, 'utf-8');
+    const readPath = resolveStorageReadPath('profiles.json');
+    if (readPath) {
+      const raw = fs.readFileSync(readPath, 'utf-8');
       const data = JSON.parse(raw);
       if (Array.isArray(data) && data.length > 0) {
-        persistedProfiles = data;
+        persistedProfiles = data.map((p: StoredProfile) => ({
+          ...p,
+          avatar_url: normalizeAvatarUrlServer(p.avatar_url) || null,
+        }));
         console.log(`[Profiles] ${persistedProfiles.length} perfis carregados do disco com sucesso`);
       }
     } else {
@@ -1698,10 +1707,14 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
           const emailKey = p.email?.toLowerCase().trim();
           if (emailKey) {
             const existing = profilesMap.get(emailKey);
+            const rawAvatar = normalizeAvatarUrlServer(p.avatar_url) ||
+              normalizeAvatarUrlServer(existing?.avatar_url) ||
+              normalizeAvatarUrlServer((existing as any)?.avatarUrl);
+            const seedAvatarExists = p.id ? Boolean(resolveStorageReadPath(path.join('avatars', `${p.id}.webp`))) : false;
             profilesMap.set(emailKey, {
               ...existing,
               ...p,
-              avatar_url: p.avatar_url || existing?.avatar_url || (existing as any)?.avatarUrl || (p.id ? `/api/r2/avatar/${p.id}.webp` : undefined),
+              avatar_url: rawAvatar || (seedAvatarExists ? `/api/r2/avatar/${p.id}.webp` : null),
               status: p.status || existing?.status || 'pending',
             });
           }
@@ -1863,7 +1876,10 @@ async function getAllUnifiedProfiles(forceRefresh = false): Promise<StoredProfil
     }
   });
 
-  const result = Array.from(profilesMap.values());
+  const result = Array.from(profilesMap.values()).map(p => ({
+    ...p,
+    avatar_url: normalizeAvatarUrlServer(p.avatar_url) || null,
+  }));
   persistedProfiles = result;
   cachedUnifiedProfiles = result;
   lastUnifiedProfilesFetchTime = Date.now();
@@ -3016,8 +3032,9 @@ async function generateDanfsePdf(nfse: any, company: any): Promise<Buffer> {
 function loadDeletedFolders() {
   if (deletedFoldersLoaded) return;
   try {
-    if (fs.existsSync(DELETED_FOLDERS_FILE)) {
-      const raw = fs.readFileSync(DELETED_FOLDERS_FILE, 'utf-8');
+    const readPath = resolveStorageReadPath('deleted_folders.json');
+    if (readPath) {
+      const raw = fs.readFileSync(readPath, 'utf-8');
       const data = JSON.parse(raw);
       if (Array.isArray(data)) {
         persistedDeletedFolderIds = new Set(data);
@@ -3080,8 +3097,9 @@ async function saveR2DeletedFolders() {
 function loadDeletedFiles() {
   if (deletedFilesLoaded) return;
   try {
-    if (fs.existsSync(DELETED_FILES_FILE)) {
-      const raw = fs.readFileSync(DELETED_FILES_FILE, 'utf-8');
+    const readPath = resolveStorageReadPath('deleted_files.json');
+    if (readPath) {
+      const raw = fs.readFileSync(readPath, 'utf-8');
       const data = JSON.parse(raw);
       if (Array.isArray(data)) {
         persistedDeletedFileIds = new Set(data);
@@ -3150,8 +3168,9 @@ function toDeterministicUuid(id: string): string {
 function loadPersistedFolders() {
   if (foldersLoaded) return;
   try {
-    if (fs.existsSync(FOLDERS_FILE)) {
-      const raw = fs.readFileSync(FOLDERS_FILE, 'utf-8');
+    const readPath = resolveStorageReadPath('folders.json');
+    if (readPath) {
+      const raw = fs.readFileSync(readPath, 'utf-8');
       const data = JSON.parse(raw);
       if (Array.isArray(data)) {
         persistedFolders = data;
@@ -3181,8 +3200,9 @@ function savePersistedFolders() {
 function loadPersistedFiles() {
   if (filesLoaded) return;
   try {
-    if (fs.existsSync(FILES_FILE)) {
-      const raw = fs.readFileSync(FILES_FILE, 'utf-8');
+    const readPath = resolveStorageReadPath('files.json');
+    if (readPath) {
+      const raw = fs.readFileSync(readPath, 'utf-8');
       const data = JSON.parse(raw);
       if (Array.isArray(data)) {
         persistedFiles = data;
@@ -3334,327 +3354,300 @@ async function saveR2Files(filesList: StoredFile[]) {
   }
 }
 
-async function getAllUnifiedFolders(): Promise<StoredFolder[]> {
-  loadDeletedFolders();
-  if (persistedDeletedFolderIds.size === 0) {
-    try {
-      const r2Deleted = await fetchR2DeletedFolders();
-      for (const dId of r2Deleted) {
-        if (dId) persistedDeletedFolderIds.add(dId);
-      }
-    } catch (e) {}
-  }
+let cachedUnifiedFolders: StoredFolder[] | null = null;
+let lastUnifiedFoldersFetchTime = 0;
+let inFlightFoldersPromise: Promise<StoredFolder[]> | null = null;
 
-  const supabase = getSupabaseServerClient();
-  if (supabase) {
-    try {
-      const { data: dbFolders, error } = await supabase
-        .from('folders')
-        .select('*')
-        .order('created_at', { ascending: false });
+let cachedUnifiedFiles: StoredFile[] | null = null;
+let lastUnifiedFilesFetchTime = 0;
+let inFlightFilesPromise: Promise<StoredFile[]> | null = null;
 
-      if (!error && Array.isArray(dbFolders)) {
-        console.log(`[FOLDERS SYNC] Supabase retornou ${dbFolders.length} pastas.`);
-        const validDbFolders: any[] = [];
+const DRIVE_CACHE_TTL_MS = 3000;
 
-        for (const df of dbFolders) {
-          const isDeleted = persistedDeletedFolderIds.has(df.id) ||
-                            persistedDeletedFolderIds.has(toDeterministicUuid(df.id)) ||
-                            persistedDeletedFolderIds.has(df.name.toLowerCase().trim());
-          if (isDeleted) {
-            // Se a pasta foi excluída definitivamente, garante sua remoção no Supabase
-            try {
-              await supabase.from('folders').delete().or(`id.eq.${df.id},name.eq.${df.name}`);
-            } catch {}
-            continue;
-          }
-          validDbFolders.push(df);
-        }
-
-        const mapped: StoredFolder[] = validDbFolders.map((df: any) => ({
-          id: df.id,
-          parent_id: df.parent_id || null,
-          name: df.name,
-          sector: df.sector || 'Geral',
-          created_by: df.created_by || null,
-          created_at: df.created_at,
-          updated_at: df.updated_at || df.created_at,
-          allowed_user_ids: Array.isArray(df.allowed_user_ids) ? df.allowed_user_ids : undefined,
-        }));
-        persistedFolders = mapped;
-        savePersistedFolders();
-        saveR2Folders(mapped).catch(() => {});
-        return mapped;
-      } else if (error) {
-        console.error('[FOLDERS SYNC] Erro ao buscar pastas no Supabase:', error.message);
-      }
-    } catch (sbErr: any) {
-      console.error('[PASTAS] Exceção Sync Supabase:', sbErr.message);
-    }
-  }
-
-  loadPersistedFolders();
-  persistedFolders = persistedFolders.filter(f => 
-    !persistedDeletedFolderIds.has(f.id) && 
-    !persistedDeletedFolderIds.has(toDeterministicUuid(f.id)) &&
-    !persistedDeletedFolderIds.has(f.name.toLowerCase().trim())
-  );
-  return persistedFolders;
+function invalidateFoldersCache() {
+  cachedUnifiedFolders = null;
+  lastUnifiedFoldersFetchTime = 0;
 }
 
-async function getAllUnifiedFiles(): Promise<StoredFile[]> {
-  const filesMap = new Map<string, StoredFile>();
-  
-  // 1. Carrega lista de exclusões persistentes (Tombstones)
-  loadDeletedFiles();
-  loadDeletedFolders();
-  if (persistedDeletedFileIds.size === 0) {
-    try {
-      const r2Deleted = await fetchR2DeletedFiles();
-      for (const dId of r2Deleted) {
-        if (dId) persistedDeletedFileIds.add(dId);
-      }
-    } catch (e) {}
+function invalidateFilesCache() {
+  cachedUnifiedFiles = null;
+  lastUnifiedFilesFetchTime = 0;
+}
+
+async function getAllUnifiedFolders(forceRefresh = false): Promise<StoredFolder[]> {
+  const now = Date.now();
+  if (!forceRefresh && cachedUnifiedFolders && (now - lastUnifiedFoldersFetchTime < DRIVE_CACHE_TTL_MS)) {
+    return cachedUnifiedFolders;
   }
+  if (inFlightFoldersPromise) return inFlightFoldersPromise;
 
-  // 2. Carrega do armazenamento persistente em disco
-  loadPersistedFiles();
-  for (const f of persistedFiles) {
-    if (!f || !f.id) continue;
-    const isFileDeleted = persistedDeletedFileIds.has(f.id) || 
-                          (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) || 
-                          persistedDeletedFileIds.has(toDeterministicUuid(f.id));
-    const isFolderDeleted = f.folder_id && (
-      persistedDeletedFolderIds.has(f.folder_id) || 
-      persistedDeletedFolderIds.has(toDeterministicUuid(f.folder_id))
-    );
-    if (!isFileDeleted && !isFolderDeleted) {
-      filesMap.set(f.id, f);
-    } else {
-      persistedDeletedFileIds.add(f.id);
-      if (f.storage_key) persistedDeletedFileIds.add(f.storage_key);
-      persistedDeletedFileIds.add(toDeterministicUuid(f.id));
-    }
-  }
-
-  // 3. Se local estiver vazio, restaura a partir do Cloudflare R2
-  if (filesMap.size === 0) {
+  inFlightFoldersPromise = (async () => {
     try {
-      const r2Files = await fetchR2Files();
-      for (const rf of r2Files) {
-        if (!rf || !rf.id) continue;
-        const isFileDeleted = persistedDeletedFileIds.has(rf.id) || 
-                              (rf.storage_key && persistedDeletedFileIds.has(rf.storage_key)) || 
-                              persistedDeletedFileIds.has(toDeterministicUuid(rf.id));
-        const isFolderDeleted = rf.folder_id && (
-          persistedDeletedFolderIds.has(rf.folder_id) || 
-          persistedDeletedFolderIds.has(toDeterministicUuid(rf.folder_id))
-        );
-        if (!isFileDeleted && !isFolderDeleted) {
-          filesMap.set(rf.id, rf);
-        } else {
-          persistedDeletedFileIds.add(rf.id);
-          if (rf.storage_key) persistedDeletedFileIds.add(rf.storage_key);
-          persistedDeletedFileIds.add(toDeterministicUuid(rf.id));
-        }
-      }
-    } catch (e) {}
-  }
-
-  // 4. Sincroniza e consolida com Supabase de forma segura (respeitando exclusões reais!)
-  const supabase = getSupabaseServerClient();
-  if (supabase) {
-    try {
-      const { data: dbFiles, error } = await supabase
-        .from('files')
-        .select('*, folders(name, sector), profiles:uploaded_by(full_name, email)')
-        .order('created_at', { ascending: false });
-
-      if (!error && Array.isArray(dbFiles)) {
-        // Atualiza ou insere dados autoritativos vindos do Supabase
-        for (const f of dbFiles) {
-          const isFileDeleted = persistedDeletedFileIds.has(f.id) || 
-                                (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) ||
-                                persistedDeletedFileIds.has(toDeterministicUuid(f.id));
-          const isFolderDeleted = f.folder_id && (
-            persistedDeletedFolderIds.has(f.folder_id) || 
-            persistedDeletedFolderIds.has(toDeterministicUuid(f.folder_id))
-          );
-
-          if (isFileDeleted || isFolderDeleted) {
-            persistedDeletedFileIds.add(f.id);
-            if (f.storage_key) persistedDeletedFileIds.add(f.storage_key);
-            persistedDeletedFileIds.add(toDeterministicUuid(f.id));
-            // Se foi excluído, remove também do Supabase
-            try {
-              await supabase.from('files').delete().eq('id', f.id);
-            } catch {}
-            continue;
+      loadDeletedFolders();
+      loadPersistedFolders();
+      if (persistedDeletedFolderIds.size === 0) {
+        try {
+          const r2Deleted = await fetchR2DeletedFolders();
+          for (const dId of r2Deleted) {
+            if (dId) persistedDeletedFolderIds.add(dId);
           }
-
-          const folder = f.folders as any;
-          const profile = f.profiles as any;
-          const resolvedSector = folder?.sector || persistedFolders.find(pf => pf.id === f.folder_id)?.sector || f.sector || 'Fiscal';
-          const resolvedUploaderName = profile?.full_name || f.uploader_name || 'Evandro (Administrador)';
-
-          filesMap.set(f.id, {
-            id: f.id,
-            folder_id: f.folder_id,
-            name: f.name,
-            storage_key: f.storage_key,
-            mime_type: f.mime_type,
-            original_size: Number(f.original_size) || 0,
-            optimized_size: Number(f.optimized_size) || 0,
-            compression_ratio: Number(f.compression_ratio) || 0,
-            pages_count: f.pages_count || 1,
-            tags: Array.isArray(f.tags) ? f.tags : [],
-            uploaded_by: f.uploaded_by || '57e1d483-669b-4791-b09e-7496570e63ea',
-            uploader_name: resolvedUploaderName,
-            sector: resolvedSector,
-            checksum_sha256: f.checksum_sha256,
-            due_date: f.due_date || undefined,
-            company_name: f.company_name || undefined,
-            client_phone: f.client_phone || undefined,
-            notification_sent: f.notification_sent !== undefined ? Boolean(f.notification_sent) : false,
-            document_type: f.document_type || undefined,
-            amount: f.amount !== undefined && f.amount !== null ? Number(f.amount) : undefined,
-            is_archived: f.is_archived || false,
-            created_at: f.created_at,
-            updated_at: f.updated_at,
-            preview_url: `/api/r2/view?key=${encodeURIComponent(f.storage_key)}&name=${encodeURIComponent(f.name)}`,
-          });
-        }
-
-        // Para arquivos locais que não estão no Supabase:
-        const dbFileIds = new Set(dbFiles.map(df => df.id));
-        for (const [id, localFile] of Array.from(filesMap.entries())) {
-          if (!dbFileIds.has(id)) {
-            // Tenta sincronizar com Supabase se não foi explicitamente excluído
-            const isFileDeleted = persistedDeletedFileIds.has(localFile.id) || 
-                                  (localFile.storage_key && persistedDeletedFileIds.has(localFile.storage_key));
-            const isFolderDeleted = localFile.folder_id && (
-              persistedDeletedFolderIds.has(localFile.folder_id) || 
-              persistedDeletedFolderIds.has(toDeterministicUuid(localFile.folder_id))
-            );
-
-            if (!isFileDeleted && !isFolderDeleted) {
-              try {
-                let resFolderId = localFile.folder_id;
-                if (!isValidUuid(resFolderId)) {
-                  resFolderId = toDeterministicUuid(localFile.folder_id || 'fold-fisc-root');
-                }
-                
-                const { data: fCheck } = await supabase.from('folders').select('id').eq('id', resFolderId).maybeSingle();
-                if (!fCheck) {
-                  await supabase.from('folders').upsert({
-                    id: resFolderId,
-                    name: localFile.sector || 'Geral',
-                    sector: localFile.sector || 'Fiscal',
-                    created_at: new Date().toISOString(),
-                  });
-                }
-
-                let uploaderUuid: string | null = null;
-                if (isValidUuid(localFile.uploaded_by)) {
-                  const { data: pCheck } = await supabase.from('profiles').select('id').eq('id', localFile.uploaded_by).maybeSingle();
-                  if (pCheck) uploaderUuid = pCheck.id;
-                }
-
-                try {
-                  const { error: syncErr } = await supabase.from('files').upsert({
-                    id: localFile.id,
-                    folder_id: resFolderId,
-                    name: localFile.name,
-                    storage_key: localFile.storage_key,
-                    mime_type: localFile.mime_type,
-                    original_size: localFile.original_size,
-                    optimized_size: localFile.optimized_size,
-                    compression_ratio: localFile.compression_ratio,
-                    pages_count: localFile.pages_count,
-                    tags: localFile.tags,
-                    uploaded_by: uploaderUuid,
-                    checksum_sha256: localFile.checksum_sha256 || null,
-                    due_date: localFile.due_date || null,
-                    company_name: localFile.company_name || null,
-                    client_phone: localFile.client_phone || null,
-                    notification_sent: localFile.notification_sent !== undefined ? Boolean(localFile.notification_sent) : false,
-                    document_type: localFile.document_type || null,
-                    amount: localFile.amount !== undefined ? localFile.amount : null,
-                    created_at: localFile.created_at,
-                    updated_at: localFile.updated_at,
-                  });
-                  if (syncErr) {
-                    await supabase.from('files').upsert({
-                      id: localFile.id,
-                      folder_id: resFolderId,
-                      name: localFile.name,
-                      storage_key: localFile.storage_key,
-                      mime_type: localFile.mime_type,
-                      original_size: localFile.original_size,
-                      optimized_size: localFile.optimized_size,
-                      compression_ratio: localFile.compression_ratio,
-                      pages_count: localFile.pages_count,
-                      tags: localFile.tags,
-                      uploaded_by: uploaderUuid,
-                      created_at: localFile.created_at,
-                      updated_at: localFile.updated_at,
-                    });
-                  }
-                } catch (syncSingleErr) {
-                  console.warn('[Sync Local File to DB Error]', localFile.name, syncSingleErr);
-                }
-              } catch (outerErr) {
-                console.warn('[Sync Outer Error]', outerErr);
-              }
-            } else {
-              filesMap.delete(id);
-            }
-          }
-        }
-      } else if (error) {
-        console.error('[FILES SYNC] Erro ao buscar arquivos no Supabase:', error.message);
+        } catch (e) {}
       }
-    } catch (err: any) {
-      console.warn('[ARQUIVOS] Aviso Sync Supabase:', err.message);
-    }
-  }
 
-  // Limpeza automática de arquivos órfãos (cuja pasta foi excluída ou não existe mais)
-  const validFolderIds = new Set(persistedFolders.map(f => f.id));
-  const defaultRootFolderIds = new Set([
-    'fold-fisc-root', 'fold-dp-root', 'fold-cont-root', 
-    'fold-dir-root', 'fold-fin-root', 'fold-geral-root'
-  ]);
-
-  for (const [id, f] of Array.from(filesMap.entries())) {
-    if (f.folder_id && !validFolderIds.has(f.folder_id) && !defaultRootFolderIds.has(f.folder_id)) {
-      persistedDeletedFileIds.add(f.id);
-      if (f.storage_key) persistedDeletedFileIds.add(f.storage_key);
-      filesMap.delete(id);
+      const supabase = getSupabaseServerClient();
       if (supabase) {
         try {
-          await supabase.from('files').delete().eq('id', f.id);
-        } catch {}
-      }
-    }
-  }
+          const { data: dbFolders, error } = await supabase
+            .from('folders')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-  const result = Array.from(filesMap.values()).filter(f => {
-    const isFileDeleted = persistedDeletedFileIds.has(f.id) || 
-                          !f.id ||
-                          (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) || 
-                          persistedDeletedFileIds.has(toDeterministicUuid(f.id));
-    const isFolderDeleted = f.folder_id && (
-      persistedDeletedFolderIds.has(f.folder_id) || 
-      persistedDeletedFolderIds.has(toDeterministicUuid(f.folder_id))
-    );
-    return !isFileDeleted && !isFolderDeleted;
-  });
-  persistedFiles = result;
-  savePersistedFiles();
-  saveDeletedFiles();
-  saveR2Files(result).catch(() => {});
-  return result;
+          if (!error && Array.isArray(dbFolders) && dbFolders.length > 0) {
+            console.log(`[FOLDERS SYNC] Supabase retornou ${dbFolders.length} pastas.`);
+            const validDbFolders: any[] = [];
+
+            for (const df of dbFolders) {
+              const isDeleted = persistedDeletedFolderIds.has(df.id) ||
+                                persistedDeletedFolderIds.has(toDeterministicUuid(df.id)) ||
+                                persistedDeletedFolderIds.has(df.name.toLowerCase().trim());
+              if (isDeleted) continue;
+              validDbFolders.push(df);
+            }
+
+            const mapped: StoredFolder[] = validDbFolders.map((df: any) => ({
+              id: df.id,
+              parent_id: df.parent_id || null,
+              name: df.name,
+              sector: df.sector || 'Geral',
+              created_by: df.created_by || null,
+              created_at: df.created_at,
+              updated_at: df.updated_at || df.created_at,
+              allowed_user_ids: Array.isArray(df.allowed_user_ids) ? df.allowed_user_ids : undefined,
+            }));
+            persistedFolders = mapped;
+            savePersistedFolders();
+            saveR2Folders(mapped).catch(() => {});
+            cachedUnifiedFolders = mapped;
+            lastUnifiedFoldersFetchTime = Date.now();
+            return mapped;
+          } else if (error) {
+            console.error('[FOLDERS SYNC] Erro ao buscar pastas no Supabase:', error.message);
+          }
+        } catch (sbErr: any) {
+          console.error('[PASTAS] Exceção Sync Supabase:', sbErr.message);
+        }
+      }
+
+      if (persistedFolders.length === 0) {
+        const r2Folders = await fetchR2Folders().catch(() => []);
+        if (r2Folders.length > 0) {
+          persistedFolders = r2Folders;
+        }
+      }
+
+      persistedFolders = persistedFolders.filter(f =>
+        !persistedDeletedFolderIds.has(f.id) &&
+        !persistedDeletedFolderIds.has(toDeterministicUuid(f.id)) &&
+        !persistedDeletedFolderIds.has(f.name.toLowerCase().trim())
+      );
+      cachedUnifiedFolders = persistedFolders;
+      lastUnifiedFoldersFetchTime = Date.now();
+      return persistedFolders;
+    } finally {
+      inFlightFoldersPromise = null;
+    }
+  })();
+
+  return inFlightFoldersPromise;
+}
+
+async function getAllUnifiedFiles(forceRefresh = false): Promise<StoredFile[]> {
+  const now = Date.now();
+  if (!forceRefresh && cachedUnifiedFiles && (now - lastUnifiedFilesFetchTime < DRIVE_CACHE_TTL_MS)) {
+    return cachedUnifiedFiles;
+  }
+  if (inFlightFilesPromise) return inFlightFilesPromise;
+
+  inFlightFilesPromise = (async () => {
+    try {
+      const filesMap = new Map<string, StoredFile>();
+
+      // Garantir que as pastas estejam carregadas antes de validar folder_id / órfãos (evita falsos órfãos no cold start Serverless)
+      const activeFolders = persistedFolders.length > 0 ? persistedFolders : await getAllUnifiedFolders();
+      const folderAliasMap = new Map<string, string>();
+      const validFolderIds = new Set<string>();
+      for (const fol of activeFolders) {
+        if (!fol?.id) continue;
+        validFolderIds.add(fol.id);
+        validFolderIds.add(fol.id.toLowerCase());
+        validFolderIds.add(toDeterministicUuid(fol.id));
+        folderAliasMap.set(fol.id.toLowerCase(), fol.id);
+        folderAliasMap.set(toDeterministicUuid(fol.id).toLowerCase(), fol.id);
+      }
+      const normalizeFileFolderId = (rawFolderId?: string | null): string => {
+        if (!rawFolderId) return 'fold-fisc-root';
+        const trimmed = String(rawFolderId).trim();
+        const direct = folderAliasMap.get(trimmed.toLowerCase());
+        if (direct) return direct;
+        const det = folderAliasMap.get(toDeterministicUuid(trimmed).toLowerCase());
+        if (det) return det;
+        return trimmed;
+      };
+
+      // 1. Carrega lista de exclusões persistentes (Tombstones)
+      loadDeletedFiles();
+      loadDeletedFolders();
+      if (persistedDeletedFileIds.size === 0) {
+        try {
+          const r2Deleted = await fetchR2DeletedFiles();
+          for (const dId of r2Deleted) {
+            if (dId) persistedDeletedFileIds.add(dId);
+          }
+        } catch (e) {}
+      }
+
+      // 2. Carrega do armazenamento persistente em disco (runtime ou seed empacotado)
+      loadPersistedFiles();
+      for (const f of persistedFiles) {
+        if (!f || !f.id) continue;
+        const rawFolderId = f.folder_id || (f as any).folderId || 'fold-fisc-root';
+        const isFileDeleted = persistedDeletedFileIds.has(f.id) ||
+                              (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) ||
+                              persistedDeletedFileIds.has(toDeterministicUuid(f.id));
+        const isFolderDeleted = rawFolderId && (
+          persistedDeletedFolderIds.has(rawFolderId) ||
+          persistedDeletedFolderIds.has(toDeterministicUuid(rawFolderId))
+        );
+        if (!isFileDeleted && !isFolderDeleted) {
+          filesMap.set(f.id, { ...f, folder_id: normalizeFileFolderId(rawFolderId) });
+        }
+      }
+
+      // 3. Se local estiver vazio, restaura a partir do Cloudflare R2
+      if (filesMap.size === 0) {
+        try {
+          const r2Files = await fetchR2Files();
+          for (const rf of r2Files) {
+            if (!rf || !rf.id) continue;
+            const rawFolderId = rf.folder_id || (rf as any).folderId || 'fold-fisc-root';
+            const isFileDeleted = persistedDeletedFileIds.has(rf.id) ||
+                                  (rf.storage_key && persistedDeletedFileIds.has(rf.storage_key)) ||
+                                  persistedDeletedFileIds.has(toDeterministicUuid(rf.id));
+            const isFolderDeleted = rawFolderId && (
+              persistedDeletedFolderIds.has(rawFolderId) ||
+              persistedDeletedFolderIds.has(toDeterministicUuid(rawFolderId))
+            );
+            if (!isFileDeleted && !isFolderDeleted) {
+              filesMap.set(rf.id, { ...rf, folder_id: normalizeFileFolderId(rawFolderId) });
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 4. Sincroniza e consolida com Supabase de forma não-bloqueante
+      const supabase = getSupabaseServerClient();
+      if (supabase) {
+        try {
+          const { data: dbFiles, error } = await supabase
+            .from('files')
+            .select('*, folders(name, sector), profiles:uploaded_by(full_name, email)')
+            .order('created_at', { ascending: false });
+
+          if (!error && Array.isArray(dbFiles)) {
+            for (const f of dbFiles) {
+              const rawFolderId = f.folder_id || 'fold-fisc-root';
+              const isFileDeleted = persistedDeletedFileIds.has(f.id) ||
+                                    (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) ||
+                                    persistedDeletedFileIds.has(toDeterministicUuid(f.id));
+              const isFolderDeleted = rawFolderId && (
+                persistedDeletedFolderIds.has(rawFolderId) ||
+                persistedDeletedFolderIds.has(toDeterministicUuid(rawFolderId))
+              );
+
+              if (isFileDeleted || isFolderDeleted) {
+                continue;
+              }
+
+              const resolvedFolderId = normalizeFileFolderId(rawFolderId);
+              const folder = f.folders as any;
+              const profile = f.profiles as any;
+              const resolvedSector = folder?.sector || activeFolders.find(pf => pf.id === resolvedFolderId)?.sector || f.sector || 'Fiscal';
+              const resolvedUploaderName = profile?.full_name || f.uploader_name || 'Evandro (Administrador)';
+
+              filesMap.set(f.id, {
+                id: f.id,
+                folder_id: resolvedFolderId,
+                name: f.name,
+                storage_key: f.storage_key,
+                mime_type: f.mime_type,
+                original_size: Number(f.original_size) || 0,
+                optimized_size: Number(f.optimized_size) || 0,
+                compression_ratio: Number(f.compression_ratio) || 0,
+                pages_count: f.pages_count || 1,
+                tags: Array.isArray(f.tags) ? f.tags : [],
+                uploaded_by: f.uploaded_by || '57e1d483-669b-4791-b09e-7496570e63ea',
+                uploader_name: resolvedUploaderName,
+                sector: resolvedSector,
+                checksum_sha256: f.checksum_sha256,
+                due_date: f.due_date || undefined,
+                company_name: f.company_name || undefined,
+                client_phone: f.client_phone || undefined,
+                notification_sent: f.notification_sent !== undefined ? Boolean(f.notification_sent) : false,
+                document_type: f.document_type || undefined,
+                amount: f.amount !== undefined && f.amount !== null ? Number(f.amount) : undefined,
+                is_archived: f.is_archived || false,
+                created_at: f.created_at,
+                updated_at: f.updated_at,
+                preview_url: `/api/r2/view?key=${encodeURIComponent(f.storage_key)}&name=${encodeURIComponent(f.name)}`,
+              });
+            }
+          } else if (error) {
+            console.error('[FILES SYNC] Erro ao buscar arquivos no Supabase:', error.message);
+          }
+        } catch (err: any) {
+          console.warn('[ARQUIVOS] Aviso Sync Supabase:', err.message);
+        }
+      }
+
+      // Somente limpar órfãos se a lista de pastas foi carregada com sucesso (protege contra cold-start)
+      const defaultRootFolderIds = new Set([
+        'fold-fisc-root', 'fold-dp-root', 'fold-cont-root',
+        'fold-dir-root', 'fold-fin-root', 'fold-geral-root'
+      ]);
+
+      const result = Array.from(filesMap.values()).filter(f => {
+        if (!f || !f.id) return false;
+        const isFileDeleted = persistedDeletedFileIds.has(f.id) ||
+                              (f.storage_key && persistedDeletedFileIds.has(f.storage_key)) ||
+                              persistedDeletedFileIds.has(toDeterministicUuid(f.id));
+        const isFolderDeleted = f.folder_id && (
+          persistedDeletedFolderIds.has(f.folder_id) ||
+          persistedDeletedFolderIds.has(toDeterministicUuid(f.folder_id))
+        );
+        if (isFileDeleted || isFolderDeleted) return false;
+
+        if (activeFolders.length > 0 && f.folder_id && !defaultRootFolderIds.has(f.folder_id)) {
+          const hasFolder = validFolderIds.has(f.folder_id) ||
+                            validFolderIds.has(f.folder_id.toLowerCase()) ||
+                            validFolderIds.has(toDeterministicUuid(f.folder_id));
+          if (!hasFolder) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      persistedFiles = result;
+      savePersistedFiles();
+      cachedUnifiedFiles = result;
+      lastUnifiedFilesFetchTime = Date.now();
+      return result;
+    } finally {
+      inFlightFilesPromise = null;
+    }
+  })();
+
+  return inFlightFilesPromise;
 }
 
 // ==============================================================================
@@ -3776,6 +3769,7 @@ app.post('/api/folders', async (req: Request, res: Response) => {
       persistedFolders.push(newFolder);
     }
     savePersistedFolders();
+    invalidateFoldersCache();
 
     // 3. Backup to R2
     saveR2Folders(persistedFolders).catch(() => {});
@@ -3810,6 +3804,7 @@ app.put('/api/folders/:id', async (req: Request, res: Response) => {
 
     persistedFolders[existingIdx] = updatedFolder;
     savePersistedFolders();
+    invalidateFoldersCache();
     saveR2Folders(persistedFolders).catch(() => {});
 
     // Sync to Supabase if connected
@@ -3929,10 +3924,12 @@ app.delete('/api/folders/:id', async (req: Request, res: Response) => {
     // 3. Remove pastas e arquivos da lista ativa do GED
     persistedFolders = persistedFolders.filter(f => f.id !== folderId && f.parent_id !== folderId && f.id !== uuidId);
     savePersistedFolders();
+    invalidateFoldersCache();
     saveR2Folders(persistedFolders).catch(() => {});
 
     persistedFiles = persistedFiles.filter(f => f.folder_id !== folderId && toDeterministicUuid(f.folder_id) !== uuidId);
     savePersistedFiles();
+    invalidateFilesCache();
     saveR2Files(persistedFiles).catch(() => {});
 
     // 4. Marca ou remove do Supabase ativo
@@ -4045,6 +4042,7 @@ app.post('/api/files', async (req: Request, res: Response) => {
     // 1. Immediately save to disk, memory and Cloudflare R2 backup
     persistedFiles.unshift(newFile);
     savePersistedFiles();
+    invalidateFilesCache();
     saveR2Files(persistedFiles).catch(() => {});
 
     // 2. Sync to Supabase if connected
@@ -5613,6 +5611,7 @@ app.patch('/api/files/:id', async (req: Request, res: Response) => {
       };
       updatedFile = persistedFiles[fileIdx];
       savePersistedFiles();
+      invalidateFilesCache();
       saveR2Files(persistedFiles).catch(() => {});
     }
 
@@ -5719,6 +5718,7 @@ app.delete('/api/files/:id', async (req: Request, res: Response) => {
       toDeterministicUuid(f.id) !== uuidId
     );
     savePersistedFiles();
+    invalidateFilesCache();
     saveR2Files(persistedFiles).catch(() => {});
 
     // NOTA DE SEGURANÇA: O arquivo NÃO é deletado do Cloudflare R2 aqui!
@@ -5869,6 +5869,8 @@ app.post('/api/trash/restore', async (req: Request, res: Response) => {
       savePersistedTrash();
       saveDeletedFiles();
       savePersistedFiles();
+      invalidateFoldersCache();
+      invalidateFilesCache();
 
       if (supabase) {
         try {
@@ -5933,6 +5935,7 @@ app.post('/api/trash/restore', async (req: Request, res: Response) => {
 
       persistedFiles.unshift(restoredDoc);
       savePersistedFiles();
+      invalidateFilesCache();
       saveR2Files(persistedFiles).catch(() => {});
 
       // Remove da lixeira
@@ -6062,6 +6065,8 @@ app.post('/api/trash/restore-all', async (req: Request, res: Response) => {
     savePersistedTrash();
     savePersistedFolders();
     savePersistedFiles();
+    invalidateFoldersCache();
+    invalidateFilesCache();
     saveDeletedFolders();
     saveDeletedFiles();
 
@@ -6411,7 +6416,7 @@ app.get('/api/cnpj/:cnpj', async (req: Request, res: Response) => {
 // ==============================================================================
 // 17. Real-Time Storage Metrics Endpoint (Used and Free Capacity)
 // ==============================================================================
-app.get('/api/storage/metrics', async (req: Request, res: Response) => {
+app.get(['/api/storage/metrics', '/api/metrics'], async (req: Request, res: Response) => {
   try {
     const { isConfigured, bucketName } = getR2Client();
     const totalCapacityBytes = process.env.R2_QUOTA_BYTES ? parseInt(process.env.R2_QUOTA_BYTES, 10) : 10 * 1024 * 1024 * 1024;

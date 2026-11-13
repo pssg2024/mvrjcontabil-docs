@@ -58,6 +58,7 @@ import { formatBytes } from '../lib/optimization';
 import { getPresignedDownloadUrl, getPermanentViewUrl } from '../lib/storage-service';
 import { FiscalNewsBanner } from './FiscalNewsBanner';
 import { WidgetAvisos } from './WidgetAvisos';
+import { UserAvatar } from './UserAvatar';
 
 interface FileManagerProps {
   currentUser: UserProfile;
@@ -205,30 +206,105 @@ export const FileManager: React.FC<FileManagerProps> = ({
     currentUser?.sector === 'Diretoria' || 
     (currentUser as any)?.setor === 'Diretoria';
 
+  const normalizeId = (val?: string | null): string => (val ? String(val).trim().toLowerCase() : '');
+
+  const folderById = useMemo(() => {
+    const map = new Map<string, Folder>();
+    for (const f of folders) {
+      if (f?.id) map.set(normalizeId(f.id), f);
+    }
+    return map;
+  }, [folders]);
+
+  const isFolderOrAncestorAllowed = (folderId?: string | null): boolean => {
+    if (isFullAdmin) return true;
+    if (!folderId) return true;
+    let curr = folderById.get(normalizeId(folderId));
+    const visited = new Set<string>();
+    while (curr) {
+      if (curr.allowed_user_ids?.includes(currentUser?.id)) return true;
+      const cid = normalizeId(curr.id);
+      if (visited.has(cid)) break;
+      visited.add(cid);
+      const pid = curr.parent_id || (curr as any).parentId;
+      curr = pid ? folderById.get(normalizeId(pid)) : undefined;
+    }
+    return false;
+  };
+
+  // Contagem recursiva de documentos por pasta (inclui arquivos diretos e de todas as subpastas)
+  const folderRecursiveCounts = useMemo(() => {
+    const directCount = new Map<string, number>();
+    for (const file of files) {
+      const fid = normalizeId(file.folder_id || (file as any).folderId);
+      if (fid) {
+        directCount.set(fid, (directCount.get(fid) || 0) + 1);
+      }
+    }
+
+    const childrenMap = new Map<string, string[]>();
+    for (const folder of folders) {
+      const pid = normalizeId(folder.parent_id || (folder as any).parentId);
+      const fid = normalizeId(folder.id);
+      if (pid && fid) {
+        const list = childrenMap.get(pid) || [];
+        list.push(fid);
+        childrenMap.set(pid, list);
+      }
+    }
+
+    const memo = new Map<string, number>();
+    const computeCount = (fid: string, visiting = new Set<string>()): number => {
+      if (memo.has(fid)) return memo.get(fid)!;
+      if (visiting.has(fid)) return 0;
+      visiting.add(fid);
+      let total = directCount.get(fid) || 0;
+      const children = childrenMap.get(fid) || [];
+      for (const childId of children) {
+        total += computeCount(childId, visiting);
+      }
+      visiting.delete(fid);
+      memo.set(fid, total);
+      return total;
+    };
+
+    for (const folder of folders) {
+      const fid = normalizeId(folder.id);
+      if (fid) computeCount(fid);
+    }
+
+    return memo;
+  }, [folders, files]);
+
   // Breadcrumbs calculation
   const getBreadcrumbs = (): Folder[] => {
     if (!currentFolderId) return [];
     const trail: Folder[] = [];
-    let curr = folders.find(f => f.id === currentFolderId);
+    const visited = new Set<string>();
+    let curr = folderById.get(normalizeId(currentFolderId));
     while (curr) {
+      const cid = normalizeId(curr.id);
+      if (visited.has(cid)) break;
+      visited.add(cid);
       trail.unshift(curr);
-      curr = curr.parent_id ? folders.find(f => f.id === curr!.parent_id) : undefined;
+      const pid = curr.parent_id || (curr as any).parentId;
+      curr = pid ? folderById.get(normalizeId(pid)) : undefined;
     }
     return trail;
   };
 
   const breadcrumbs = getBreadcrumbs();
-  const currentFolder = currentFolderId ? folders.find(f => f.id === currentFolderId) || null : null;
+  const currentFolder = currentFolderId ? folderById.get(normalizeId(currentFolderId)) || null : null;
 
   // Proteção em tempo real: se o usuário comum estiver dentro de uma pasta para a qual não tem autorização, redireciona para a raiz
   useEffect(() => {
     if (currentFolderId && !isFullAdmin) {
-      const folder = folders.find(f => f.id === currentFolderId);
-      if (folder && !folder.allowed_user_ids?.includes(currentUser.id)) {
+      const folder = folderById.get(normalizeId(currentFolderId));
+      if (folder && !isFolderOrAncestorAllowed(currentFolderId)) {
         setCurrentFolderId(null);
       }
     }
-  }, [currentFolderId, folders, currentUser.id, isFullAdmin]);
+  }, [currentFolderId, folderById, currentUser.id, isFullAdmin]);
 
   // Trava de rolagem rigorosa na página ao fundo (Body Scroll Lock) ao gerenciar permissões
   useEffect(() => {
@@ -260,11 +336,8 @@ export const FileManager: React.FC<FileManagerProps> = ({
   // Filter folders: direct children or search results across drive
   // Administradores veem tudo; Usuários comuns veem apenas pastas expressamente autorizadas
   const visibleFolders = folders.filter(folder => {
-    if (!isFullAdmin) {
-      const isAllowed = Boolean(folder.allowed_user_ids?.includes(currentUser?.id));
-      if (!isAllowed) {
-        return false;
-      }
+    if (!isFullAdmin && !isFolderOrAncestorAllowed(folder.id)) {
+      return false;
     }
 
     if (searchQuery.trim()) {
@@ -273,9 +346,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
       if (selectedSector !== 'ALL' && folder.sector !== selectedSector) return false;
       return true;
     }
-    const isDirectChild = currentFolderId 
-      ? folder.parent_id === currentFolderId 
-      : (!folder.parent_id || folder.parent_id === null || folder.parent_id === '');
+    const parentId = folder.parent_id ?? (folder as any).parentId ?? null;
+    const isDirectChild = currentFolderId
+      ? normalizeId(parentId) === normalizeId(currentFolderId)
+      : (!parentId || parentId === null || parentId === '');
     if (!isDirectChild) return false;
     if (selectedSector !== 'ALL' && folder.sector !== selectedSector) return false;
     return true;
@@ -284,23 +358,23 @@ export const FileManager: React.FC<FileManagerProps> = ({
   // Filter files: direct children or search results across drive
   // Usuários comuns só visualizam documentos contidos em pastas para as quais receberam autorização
   const visibleFiles = files.filter(file => {
-    if (!isFullAdmin && file.folder_id) {
-      const parentFolder = folders.find(f => f.id === file.folder_id);
-      if (parentFolder) {
-        const isAllowed = Boolean(parentFolder.allowed_user_ids?.includes(currentUser?.id));
-        if (!isAllowed) return false;
+    const fileFolderId = file.folder_id || (file as any).folderId || null;
+
+    if (!isFullAdmin && fileFolderId) {
+      if (folderById.has(normalizeId(fileFolderId)) && !isFolderOrAncestorAllowed(fileFolderId)) {
+        return false;
       }
     }
 
     const matchesSearch = searchQuery
       ? file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        file.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (Array.isArray(file.tags) && file.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))) ||
         (file.uploader_name && file.uploader_name.toLowerCase().includes(searchQuery.toLowerCase()))
       : true;
 
     // When inside a specific folder, files of that folder are shown directly; on root/global search, respect selected sector filter
-    const matchesSector = currentFolderId 
-      ? true 
+    const matchesSector = currentFolderId
+      ? true
       : (selectedSector === 'ALL' || file.sector === selectedSector);
     if (!matchesSector) return false;
 
@@ -310,9 +384,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
     }
 
     // In regular navigation, show files in current folder strictly
-    const isInCurrentFolder = currentFolderId 
-      ? (file.folder_id === currentFolderId || String(file.folder_id).toLowerCase() === String(currentFolderId).toLowerCase())
-      : (!file.folder_id || file.folder_id === null || file.folder_id === '' || file.folder_id === 'root' || file.folder_id === 'fold-fisc-root');
+    const isInCurrentFolder = currentFolderId
+      ? normalizeId(fileFolderId) === normalizeId(currentFolderId)
+      : (!fileFolderId || fileFolderId === null || fileFolderId === '' || fileFolderId === 'root' || fileFolderId === 'fold-fisc-root');
     if (!isInCurrentFolder) return false;
     return matchesSearch;
   });
@@ -940,7 +1014,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
             /* Cards em 2 colunas no mobile (Item 5) */
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 w-full">
               {visibleFolders.map(folder => {
-                const folderFilesCount = files.filter(f => f.folder_id === folder.id).length;
+                const folderFilesCount = folderRecursiveCounts.get(normalizeId(folder.id)) ?? 0;
                 return (
                   <div
                     key={folder.id}
@@ -1075,7 +1149,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
             /* Modo Lista */
             <div className="flex flex-col gap-2 w-full">
               {visibleFolders.map(folder => {
-                const folderFilesCount = files.filter(f => f.folder_id === folder.id).length;
+                const folderFilesCount = folderRecursiveCounts.get(normalizeId(folder.id)) ?? 0;
                 return (
                   <div
                     key={folder.id}
@@ -2045,11 +2119,11 @@ export const FileManager: React.FC<FileManagerProps> = ({
                           className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0"
                         />
                         <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700 overflow-hidden">
-                          {user.avatar_url ? (
-                            <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
-                          ) : (
-                            user.full_name.charAt(0).toUpperCase()
-                          )}
+                          <UserAvatar
+                            src={user.avatar_url}
+                            name={user.full_name}
+                            fallbackClassName="w-full h-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center"
+                          />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{user.full_name}</p>

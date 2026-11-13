@@ -28,6 +28,7 @@ import {
 import { UserProfile, UserRole, StorageMetrics, AuthHeaderConfig } from '../types';
 import { formatBytes } from '../lib/optimization';
 import { PortalsDrawer } from './PortalsDrawer';
+import { UserAvatar } from './UserAvatar';
 
 interface NavbarProps {
   currentUser: UserProfile | null;
@@ -499,18 +500,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 {/* Avatar com status online */}
                 <div className="relative w-7.5 h-7.5 rounded-lg overflow-hidden shrink-0 ring-1.5 ring-emerald-500/80 shadow-xs">
-                  {currentUser.avatar_url ? (
-                    <img 
-                      src={currentUser.avatar_url} 
-                      alt={currentUser.full_name}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
-                      <span>{currentUser.full_name.charAt(0).toUpperCase()}</span>
-                    </div>
-                  )}
+                  <UserAvatar src={currentUser.avatar_url} name={currentUser.full_name} />
                   {/* Status Ring verde */}
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-slate-950 absolute -bottom-0.5 -right-0.5"></span>
                 </div>
@@ -538,16 +528,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {/* Cabeçalho do usuário */}
                   <div className="bg-slate-950/60 border border-white/5 p-3 rounded-xl flex items-center gap-3 mb-1">
                     <div className="w-9 h-9 rounded-full overflow-hidden bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0 ring-2 ring-emerald-500/80">
-                      {currentUser.avatar_url ? (
-                        <img 
-                          src={currentUser.avatar_url} 
-                          alt={currentUser.full_name}
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span>{currentUser.full_name.charAt(0).toUpperCase()}</span>
-                      )}
+                      <UserAvatar src={currentUser.avatar_url} name={currentUser.full_name} />
                     </div>
                     <div className="truncate flex-1">
                       <p className="font-bold text-xs text-white truncate">{currentUser.full_name}</p>
@@ -736,18 +717,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               {currentUser && (
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-3">
                   <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 ring-1 ring-slate-200 dark:ring-slate-700">
-                    {currentUser.avatar_url ? (
-                      <img 
-                        src={currentUser.avatar_url} 
-                        alt={currentUser.full_name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[#1B357B] text-white font-bold text-sm flex items-center justify-center">
-                        <span>{currentUser.full_name.charAt(0).toUpperCase()}</span>
-                      </div>
-                    )}
+                    <UserAvatar
+                      src={currentUser.avatar_url}
+                      name={currentUser.full_name}
+                      fallbackClassName="w-full h-full bg-[#1B357B] text-white font-bold text-sm flex items-center justify-center"
+                    />
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 absolute bottom-0 right-0"></span>
                   </div>
                   <div className="min-w-0 flex-1">

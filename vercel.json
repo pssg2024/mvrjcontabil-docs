@@ -11,7 +11,11 @@
   "rewrites": [
     {
       "source": "/og-image.jpg",
-      "destination": "/api/og-image"
+      "destination": "/api/index?__path=og-image"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index?__path=$1"
     },
     {
       "source": "/((?!api/|assets/|.*\\..*).*)",

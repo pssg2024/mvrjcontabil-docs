@@ -21,6 +21,7 @@ import { SalaryCalculatorModal } from './components/SalaryCalculatorModal';
 import { SpedImporterModal } from './components/SpedImporterModal';
 import { RecycleBinModal } from './components/RecycleBinModal';
 import { MvrjAssistantWidget } from './components/MvrjAssistantWidget';
+import { UserAvatar, normalizeAvatarUrl } from './components/UserAvatar';
 import { ShieldCheck, Menu } from 'lucide-react';
 import { 
   UserProfile, 
@@ -131,10 +132,13 @@ export default function App() {
                 return null;
               }
               if (match && match.avatar_url) {
-                parsed.avatar_url = match.avatar_url;
+                parsed.avatar_url = normalizeAvatarUrl(match.avatar_url);
+              } else if (parsed.avatar_url) {
+                parsed.avatar_url = normalizeAvatarUrl(parsed.avatar_url);
               }
             }
           } catch {}
+          parsed.avatar_url = normalizeAvatarUrl(parsed.avatar_url);
           return parsed;
         }
       }
@@ -610,7 +614,7 @@ export default function App() {
               }
             }
 
-            const resolvedAvatar = match.avatar_url || prevUser.avatar_url;
+            const resolvedAvatar = normalizeAvatarUrl(match.avatar_url) || normalizeAvatarUrl(prevUser.avatar_url);
 
             // Se nenhum atributo relevante mudou, manter a mesma referência para evitar re-renderizações desnecessárias
             if (
@@ -1599,13 +1603,7 @@ export default function App() {
                 className="w-8 h-8 rounded-lg overflow-hidden ring-1.5 ring-emerald-500/80 cursor-pointer shadow-xs shrink-0"
                 title="Meu Perfil"
               >
-                {currentUser.avatar_url ? (
-                  <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
-                    {currentUser.full_name.charAt(0).toUpperCase()}
-                  </div>
-                )}
+                <UserAvatar src={currentUser.avatar_url} name={currentUser.full_name} />
               </div>
             </div>
 
@@ -1628,13 +1626,7 @@ export default function App() {
                   title="Meu Perfil & Configurações"
                 >
                   <div className="w-7 h-7 rounded-lg overflow-hidden ring-1 ring-emerald-500/80 shrink-0">
-                    {currentUser.avatar_url ? (
-                      <img src={currentUser.avatar_url} alt={currentUser.full_name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-[#1B357B] text-white font-bold text-xs flex items-center justify-center">
-                        {currentUser.full_name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <UserAvatar src={currentUser.avatar_url} name={currentUser.full_name} />
                   </div>
                   <span className="text-xs font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[140px]">
                     {currentUser.full_name}

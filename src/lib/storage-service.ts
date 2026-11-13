@@ -767,7 +767,10 @@ export async function fetchFoldersFromApi(): Promise<Folder[]> {
     if (!contentType.includes('application/json')) throw new Error('Not JSON');
     const data = await res.json();
     if (Array.isArray(data.folders)) {
-        return data.folders;
+      return data.folders.map((folder: any) => ({
+        ...folder,
+        parent_id: folder.parent_id ?? folder.parentId ?? null,
+      }));
     }
   } catch (err) {
     console.warn('[StorageService] Falha ao buscar pastas da API:', err);
@@ -858,7 +861,10 @@ export async function fetchFilesFromApi(): Promise<DocumentFile[]> {
     if (!contentType.includes('application/json')) throw new Error('Not JSON');
     const data = await res.json();
     if (Array.isArray(data.files)) {
-      return data.files;
+      return data.files.map((file: any) => ({
+        ...file,
+        folder_id: file.folder_id ?? file.folderId ?? 'fold-fisc-root',
+      }));
     }
   } catch (err) {
     console.warn('[StorageService] Falha ao buscar arquivos da API:', err);

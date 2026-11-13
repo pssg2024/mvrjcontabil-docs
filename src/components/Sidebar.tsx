@@ -24,6 +24,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { UserProfile, StorageMetrics, AuthHeaderConfig } from '../types';
+import { UserAvatar } from './UserAvatar';
 
 export interface SidebarProps {
   currentUser: UserProfile;
@@ -588,16 +589,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 title="Meu Perfil & Segurança"
               >
                 <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 ring-1 ring-slate-700 shadow-xs bg-slate-800 text-white flex items-center justify-center font-bold text-xs">
-                  {currentUser.avatar_url ? (
-                    <img 
-                      src={currentUser.avatar_url} 
-                      alt={currentUser.full_name}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span>{currentUser.full_name.charAt(0).toUpperCase()}</span>
-                  )}
+                  <UserAvatar
+                    src={currentUser.avatar_url}
+                    name={currentUser.full_name}
+                    fallbackClassName="w-full h-full bg-slate-800 text-white font-bold text-xs flex items-center justify-center"
+                  />
                   <span className="w-2 h-2 rounded-full bg-emerald-500 border-2 border-slate-950 absolute -bottom-0.5 -right-0.5"></span>
                 </div>
 
@@ -634,16 +630,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 ring-1 ring-slate-700 shadow-xs bg-slate-800 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
                 title={currentUser.full_name}
               >
-                {currentUser.avatar_url ? (
-                  <img 
-                    src={currentUser.avatar_url} 
-                    alt={currentUser.full_name}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span>{currentUser.full_name.charAt(0).toUpperCase()}</span>
-                )}
+                <UserAvatar
+                  src={currentUser.avatar_url}
+                  name={currentUser.full_name}
+                  fallbackClassName="w-full h-full bg-slate-800 text-white font-bold text-xs flex items-center justify-center"
+                />
                 <span className="w-2 h-2 rounded-full bg-emerald-500 border-2 border-slate-950 absolute -bottom-0.5 -right-0.5"></span>
               </button>
 

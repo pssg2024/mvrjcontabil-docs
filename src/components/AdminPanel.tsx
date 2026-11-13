@@ -22,6 +22,7 @@ import {
   Edit2,
   Loader2
 } from 'lucide-react';
+import { UserAvatar } from './UserAvatar';
 import { 
   UserProfile, 
   UserRole, 
@@ -339,16 +340,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     <div className="flex items-start space-x-3.5 mb-4">
                       <div className="w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-tr from-amber-500 to-orange-500 text-white font-black text-lg flex items-center justify-center shadow-xs shrink-0 border border-amber-200 dark:border-amber-800">
-                        {profile.avatar_url ? (
-                          <img 
-                            src={profile.avatar_url} 
-                            alt={profile.full_name} 
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          profile.full_name.charAt(0).toUpperCase()
-                        )}
+                        <UserAvatar
+                          src={profile.avatar_url}
+                          name={profile.full_name}
+                          fallbackClassName="w-full h-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white font-black text-lg flex items-center justify-center"
+                        />
                       </div>
                       <div className="pr-12">
                         <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-snug">{profile.full_name}</h4>
@@ -578,16 +574,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                 <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center text-sm shrink-0 border border-slate-300 dark:border-slate-700">
-                    {profile.avatar_url ? (
-                      <img 
-                        src={profile.avatar_url} 
-                        alt={profile.full_name} 
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      profile.full_name.charAt(0).toUpperCase()
-                    )}
+                    <UserAvatar
+                      src={profile.avatar_url}
+                      name={profile.full_name}
+                      fallbackClassName="w-full h-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center text-sm"
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
