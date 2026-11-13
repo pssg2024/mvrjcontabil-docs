@@ -70,7 +70,7 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
         setCurrentEditing(initialEditingAviso);
         setActiveTab('novo');
         setTitulo(initialEditingAviso.titulo || '');
-        setMensagem(initialEditingAviso.mensagem || '');
+        setMensagem(initialEditingAviso.mensagem || (initialEditingAviso as any).conteudo || '');
         setTipo(initialEditingAviso.tipo || 'info');
         setAutorNome(initialEditingAviso.autor_nome || currentUser.full_name || 'Administração');
       } else {
@@ -204,18 +204,23 @@ export const ModalNovoAviso: React.FC<ModalNovoAvisoProps> = ({
   const handleExecuteDelete = async () => {
     if (!targetDeleteAviso) return;
 
-    const id = targetDeleteAviso.id;
-    await deleteAviso(id);
-    if (onAvisoDeleted) {
-      onAvisoDeleted(id);
+    try {
+      const id = targetDeleteAviso.id;
+      await deleteAviso(id);
+      if (onAvisoDeleted) {
+        onAvisoDeleted(id);
+      }
+      if (currentEditing?.id === id) {
+        handleStartNew();
+      }
+      setTargetDeleteAviso(null);
+      setIsPasswordModalOpen(false);
+      setSuccessMsg('Publicação excluída com sucesso após autenticação!');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Erro ao excluir comunicado. Tente novamente.');
+      setIsPasswordModalOpen(false);
     }
-    if (currentEditing?.id === id) {
-      handleStartNew();
-    }
-    setTargetDeleteAviso(null);
-    setIsPasswordModalOpen(false);
-    setSuccessMsg('Publicação excluída com sucesso após autenticação!');
-    setTimeout(() => setSuccessMsg(null), 3000);
   };
 
   const formatDate = (isoString?: string) => {

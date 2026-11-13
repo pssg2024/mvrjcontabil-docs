@@ -10,10 +10,6 @@
   },
   "rewrites": [
     {
-      "source": "/og-image.jpg",
-      "destination": "/api/index?__path=og-image"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "/api/index?__path=$1"
     },

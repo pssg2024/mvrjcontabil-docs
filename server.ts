@@ -6797,9 +6797,16 @@ interface AvisoServerItem {
   created_at: string;
 }
 
-let inMemoryAvisos: AvisoServerItem[] = [
+const AVISOS_FILE = path.join(STORAGE_BASE_DIR, 'avisos.json');
+const R2_AVISOS_KEY = 'system/avisos.json';
+
+function isValidUuidServer(id?: string): boolean {
+  return typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+const DEFAULT_AVISOS_SEED: AvisoServerItem[] = [
   {
-    id: 'aviso-1',
+    id: '00000000-0000-4000-8000-000000000001',
     titulo: 'Fechamento Mensal de Folha e eSocial',
     mensagem: 'Lembramos a todos os clientes que os apontamentos e horas extras devem ser enviados até o dia 05 para processamento tempestivo da folha de pagamento.',
     tipo: 'alerta',
@@ -6808,7 +6815,7 @@ let inMemoryAvisos: AvisoServerItem[] = [
     created_at: new Date().toISOString(),
   },
   {
-    id: 'aviso-2',
+    id: '00000000-0000-4000-8000-000000000002',
     titulo: 'Prazo de Entrega DCTFWeb & EFD-Reinf',
     mensagem: 'Evite multas e retenções. Os documentos comprobatórios devem ser anexados na pasta Fiscal & Tributário com antecedência mínima de 48 horas úteis.',
     tipo: 'info',
@@ -6818,63 +6825,228 @@ let inMemoryAvisos: AvisoServerItem[] = [
   },
 ];
 
-app.get('/api/avisos', async (req: Request, res: Response) => {
+let inMemoryAvisos: AvisoServerItem[] = [];
+let inMemoryAvisosInitialized = false;
+
+function normalizeAvisoItem(raw: any): AvisoServerItem {
+  return {
+    id: String(raw?.id || crypto.randomUUID()),
+    titulo: String(raw?.titulo || '').trim(),
+    mensagem: String(raw?.mensagem ?? raw?.conteudo ?? '').trim(),
+    tipo: ['info', 'alerta', 'urgente'].includes(raw?.tipo) ? raw.tipo : 'info',
+    autor_nome: String(raw?.autor_nome || 'Administração').trim() || 'Administração',
+    ativo: raw?.ativo !== false,
+    created_at: raw?.created_at || new Date().toISOString(),
+  };
+}
+
+function sortAvisosDesc(items: AvisoServerItem[]): AvisoServerItem[] {
+  return [...items].sort((a, b) => {
+    const ta = new Date(a.created_at || 0).getTime();
+    const tb = new Date(b.created_at || 0).getTime();
+    return tb - ta;
+  });
+}
+
+function loadPersistedAvisosFromDisk(): { exists: boolean; items: AvisoServerItem[] } {
+  try {
+    const readPath = resolveStorageReadPath('avisos.json');
+    if (readPath && fs.existsSync(readPath)) {
+      const raw = fs.readFileSync(readPath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return { exists: true, items: parsed.map(normalizeAvisoItem) };
+      }
+    }
+  } catch (err) {
+    console.warn('[Avisos] Erro ao ler avisos do disco:', err);
+  }
+  return { exists: false, items: [] };
+}
+
+function savePersistedAvisosToDisk(items: AvisoServerItem[]) {
+  try {
+    const dir = path.dirname(AVISOS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(AVISOS_FILE, JSON.stringify(items, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('[Avisos] Erro ao salvar avisos no disco:', err);
+  }
+}
+
+async function fetchR2Avisos(): Promise<{ exists: boolean; items: AvisoServerItem[] }> {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return { exists: false, items: [] };
+  try {
+    const res = await client.send(new GetObjectCommand({
+      Bucket: bucketName,
+      Key: R2_AVISOS_KEY,
+    }));
+    if (res.Body) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as any) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+      if (Array.isArray(parsed)) {
+        return { exists: true, items: parsed.map(normalizeAvisoItem) };
+      }
+    }
+  } catch (err: any) {
+    if (err?.name !== 'NoSuchKey' && err?.$metadata?.httpStatusCode !== 404) {
+      console.warn('[R2 Avisos Fetch Aviso]', err?.message || err);
+    }
+  }
+  return { exists: false, items: [] };
+}
+
+async function saveR2Avisos(items: AvisoServerItem[]): Promise<boolean> {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return false;
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: R2_AVISOS_KEY,
+      Body: Buffer.from(JSON.stringify(items, null, 2), 'utf-8'),
+      ContentType: 'application/json',
+      Metadata: {
+        'system-sync': 'avisos',
+        'updated-at': new Date().toISOString(),
+      },
+    }));
+    return true;
+  } catch (err: any) {
+    console.warn('[R2 Avisos Save Aviso]', err?.message || err);
+    return false;
+  }
+}
+
+async function loadAllAvisosForMutation(): Promise<{ items: AvisoServerItem[]; source: string }> {
+  // 1. Cloudflare R2 é a fonte primária durável em ambientes serverless (Vercel)
+  const r2 = await fetchR2Avisos();
+  if (r2.exists) {
+    const sorted = sortAvisosDesc(r2.items);
+    inMemoryAvisos = sorted;
+    inMemoryAvisosInitialized = true;
+    savePersistedAvisosToDisk(sorted);
+    return { items: sorted, source: 'r2' };
+  }
+
+  // 2. Supabase como fonte secundária caso R2 ainda não possua system/avisos.json
   try {
     const supabase = getSupabaseServerClient();
     if (supabase) {
       const { data, error } = await supabase
         .from('avisos_sistema')
         .select('*')
-        .eq('ativo', true)
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        return res.json({ avisos: data, source: 'supabase' });
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const normalized = sortAvisosDesc(data.map(normalizeAvisoItem));
+        inMemoryAvisos = normalized;
+        inMemoryAvisosInitialized = true;
+        savePersistedAvisosToDisk(normalized);
+        await saveR2Avisos(normalized);
+        return { items: normalized, source: 'supabase' };
       }
     }
   } catch (err) {
-    console.warn('Erro ao consultar avisos no Supabase:', err);
+    console.warn('[Avisos] Erro ao consultar Supabase:', err);
   }
 
-  return res.json({ avisos: inMemoryAvisos.filter(a => a.ativo), source: 'memory' });
+  // 3. Disco local (storage/avisos.json ou /tmp/mvrj-storage/avisos.json)
+  const disk = loadPersistedAvisosFromDisk();
+  if (disk.exists) {
+    const sorted = sortAvisosDesc(disk.items);
+    inMemoryAvisos = sorted;
+    inMemoryAvisosInitialized = true;
+    return { items: sorted, source: 'disk' };
+  }
+
+  // 4. Memória da sessão ou semente inicial padrão (apenas na primeira inicialização)
+  if (inMemoryAvisosInitialized) {
+    return { items: sortAvisosDesc(inMemoryAvisos), source: 'memory' };
+  }
+
+  inMemoryAvisos = sortAvisosDesc(DEFAULT_AVISOS_SEED);
+  inMemoryAvisosInitialized = true;
+  savePersistedAvisosToDisk(inMemoryAvisos);
+  await saveR2Avisos(inMemoryAvisos);
+  return { items: inMemoryAvisos, source: 'seed' };
+}
+
+async function persistAvisosState(items: AvisoServerItem[]): Promise<{ r2Saved: boolean }> {
+  const sorted = sortAvisosDesc(items);
+  inMemoryAvisos = sorted;
+  inMemoryAvisosInitialized = true;
+  savePersistedAvisosToDisk(sorted);
+  const r2Saved = await saveR2Avisos(sorted);
+  return { r2Saved };
+}
+
+app.get('/api/avisos', async (req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  try {
+    const { items, source } = await loadAllAvisosForMutation();
+    return res.json({ avisos: items.filter((a) => a.ativo !== false), source });
+  } catch (err: any) {
+    console.warn('Erro ao carregar avisos:', err);
+    return res.json({
+      avisos: (inMemoryAvisosInitialized ? inMemoryAvisos : DEFAULT_AVISOS_SEED).filter((a) => a.ativo !== false),
+      source: 'fallback',
+    });
+  }
 });
 
 app.post('/api/avisos', async (req: Request, res: Response) => {
   try {
-    const { titulo, mensagem, tipo, autor_nome, ativo } = req.body;
-    if (!titulo || !mensagem) {
+    const { titulo, mensagem, conteudo, tipo, autor_nome, ativo } = req.body || {};
+    const finalTitulo = String(titulo || '').trim();
+    const finalMensagem = String(mensagem ?? conteudo ?? '').trim();
+
+    if (!finalTitulo || !finalMensagem) {
       return res.status(400).json({ error: 'Título e mensagem são obrigatórios' });
     }
 
-    const newAviso: AvisoServerItem = {
-      id: req.body.id || `aviso-${Date.now()}`,
-      titulo: String(titulo).trim(),
-      mensagem: String(mensagem).trim(),
+    const { items: currentList } = await loadAllAvisosForMutation();
+
+    let newAviso: AvisoServerItem = {
+      id: isValidUuidServer(req.body?.id) ? req.body.id : crypto.randomUUID(),
+      titulo: finalTitulo,
+      mensagem: finalMensagem,
       tipo: ['info', 'alerta', 'urgente'].includes(tipo) ? tipo : 'info',
       autor_nome: autor_nome ? String(autor_nome).trim() : 'Administração',
       ativo: ativo !== false,
-      created_at: req.body.created_at || new Date().toISOString(),
+      created_at: req.body?.created_at || new Date().toISOString(),
     };
 
+    let source = 'disk';
     const supabase = getSupabaseServerClient();
     if (supabase) {
       try {
         const { data, error } = await supabase
           .from('avisos_sistema')
-          .insert([newAviso])
+          .upsert([newAviso], { onConflict: 'id' })
           .select()
           .single();
         if (!error && data) {
-          inMemoryAvisos.unshift(data);
-          return res.status(201).json({ success: true, aviso: data, source: 'supabase' });
+          newAviso = normalizeAvisoItem(data);
+          source = 'supabase';
         }
       } catch (err) {
         console.warn('Falha ao inserir aviso no Supabase:', err);
       }
     }
 
-    inMemoryAvisos.unshift(newAviso);
-    return res.status(201).json({ success: true, aviso: newAviso, source: 'memory' });
+    const nextList = [newAviso, ...currentList.filter((a) => a.id !== newAviso.id)];
+    const { r2Saved } = await persistAvisosState(nextList);
+    if (r2Saved) {
+      source = source === 'supabase' ? 'r2+supabase' : 'r2';
+    }
+
+    return res.status(201).json({ success: true, aviso: newAviso, source });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -6883,44 +7055,51 @@ app.post('/api/avisos', async (req: Request, res: Response) => {
 app.put('/api/avisos/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { titulo, mensagem, tipo, autor_nome, ativo } = req.body;
+    const { titulo, mensagem, conteudo, tipo, autor_nome, ativo } = req.body || {};
     if (!id) return res.status(400).json({ error: 'ID é obrigatório' });
 
+    const { items: currentList } = await loadAllAvisosForMutation();
+    const existing = currentList.find((a) => a.id === id);
+
     const updates: Partial<AvisoServerItem> = {};
-    if (titulo) updates.titulo = String(titulo).trim();
-    if (mensagem) updates.mensagem = String(mensagem).trim();
+    if (titulo !== undefined) updates.titulo = String(titulo).trim();
+    if (mensagem !== undefined || conteudo !== undefined) {
+      updates.mensagem = String(mensagem ?? conteudo ?? '').trim();
+    }
     if (tipo && ['info', 'alerta', 'urgente'].includes(tipo)) updates.tipo = tipo;
-    if (autor_nome) updates.autor_nome = String(autor_nome).trim();
+    if (autor_nome !== undefined) updates.autor_nome = String(autor_nome).trim() || 'Administração';
     if (typeof ativo === 'boolean') updates.ativo = ativo;
 
+    let updatedItem: AvisoServerItem = normalizeAvisoItem({
+      ...(existing || {}),
+      ...updates,
+      id,
+      created_at: existing?.created_at || new Date().toISOString(),
+    });
+
     const supabase = getSupabaseServerClient();
-    let updatedItem: AvisoServerItem | null = null;
-    if (supabase) {
+    if (supabase && isValidUuidServer(id)) {
       try {
         const { data, error } = await supabase
           .from('avisos_sistema')
-          .update(updates)
-          .eq('id', id)
+          .upsert([updatedItem], { onConflict: 'id' })
           .select()
           .single();
         if (!error && data) {
-          updatedItem = data;
+          updatedItem = normalizeAvisoItem(data);
         }
       } catch (err) {
         console.warn('Erro ao atualizar aviso no Supabase:', err);
       }
     }
 
-    const index = inMemoryAvisos.findIndex(a => a.id === id);
-    if (index >= 0) {
-      inMemoryAvisos[index] = {
-        ...inMemoryAvisos[index],
-        ...updates,
-      };
-      if (!updatedItem) updatedItem = inMemoryAvisos[index];
-    }
+    const nextList = existing
+      ? currentList.map((a) => (a.id === id ? updatedItem : a))
+      : [updatedItem, ...currentList];
 
-    return res.json({ success: true, aviso: updatedItem || { id, ...updates } });
+    await persistAvisosState(nextList);
+
+    return res.json({ success: true, aviso: updatedItem });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -6931,8 +7110,10 @@ app.delete('/api/avisos/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!id) return res.status(400).json({ error: 'ID é obrigatório' });
 
+    const { items: currentList } = await loadAllAvisosForMutation();
+
     const supabase = getSupabaseServerClient();
-    if (supabase) {
+    if (supabase && isValidUuidServer(id)) {
       try {
         await supabase.from('avisos_sistema').delete().eq('id', id);
       } catch (err) {
@@ -6940,12 +7121,15 @@ app.delete('/api/avisos/:id', async (req: Request, res: Response) => {
       }
     }
 
-    inMemoryAvisos = inMemoryAvisos.filter(a => a.id !== id);
+    const nextList = currentList.filter((a) => a.id !== id);
+    await persistAvisosState(nextList);
+
     return res.json({ success: true, deletedId: id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 // ==============================================================================
@@ -7971,57 +8155,30 @@ DIRETRIZES DE RESPOSTA:
 });
 
 // ==============================================================================
-// Rota dedicada para Open Graph og-image.jpg (registrada no app principal para funcionar em Serverless/Vercel também)
+// Rota dedicada para Open Graph og-image.jpg (prioriza card oficial com o logo da empresa)
 const handleOgImage = async (req: Request, res: Response) => {
   try {
-    const bgStorageKey = 'system/site-background.img';
-
-    // 1. Tenta a imagem de fundo do site (site-background.img)
-    const cachedBg = inMemoryFileStore.get(bgStorageKey);
-    if (cachedBg && cachedBg.buffer) {
-      res.setHeader('Content-Type', cachedBg.mimeType || 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-      return res.send(cachedBg.buffer);
-    }
-    const diskBgPath = path.join(ASSETS_DIR, 'site-background.img');
-    const diskBgMeta = path.join(ASSETS_DIR, 'site-background.meta.json');
-    if (fs.existsSync(diskBgPath)) {
-      try {
-        const buf = fs.readFileSync(diskBgPath);
-        let mime = 'image/jpeg';
-        if (fs.existsSync(diskBgMeta)) {
-          const meta = JSON.parse(fs.readFileSync(diskBgMeta, 'utf-8'));
-          if (meta.mimeType) mime = meta.mimeType;
-        }
-        res.setHeader('Content-Type', mime);
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-        return res.send(buf);
-      } catch (e) {}
-    }
-
-    // 2. Tenta a imagem de login / header (auth-header.img)
-    const diskAuthPath = path.join(ASSETS_DIR, 'auth-header.img');
-    const diskAuthMeta = path.join(ASSETS_DIR, 'auth-header.meta.json');
-    if (fs.existsSync(diskAuthPath)) {
-      try {
-        const buf = fs.readFileSync(diskAuthPath);
-        let mime = 'image/jpeg';
-        if (fs.existsSync(diskAuthMeta)) {
-          const meta = JSON.parse(fs.readFileSync(diskAuthMeta, 'utf-8'));
-          if (meta.mimeType) mime = meta.mimeType;
-        }
-        res.setHeader('Content-Type', mime);
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-        return res.send(buf);
-      } catch (e) {}
-    }
-
-    // 3. Fallback para a imagem padrão og-image.jpg em public/
+    // 1. Card oficial OpenGraph 1200x630 com o logotipo da MVRJ CONTÁBIL
     const defaultOgPath = path.join(process.cwd(), 'public', 'og-image.jpg');
     if (fs.existsSync(defaultOgPath)) {
       res.setHeader('Content-Type', 'image/jpeg');
       res.setHeader('Cache-Control', 'public, max-age=3600');
       return res.sendFile(defaultOgPath);
+    }
+
+    // 2. Fallback para logo raster salvo no storage (caso exista)
+    const diskLogoPath = resolveStorageReadPath(path.join('assets', 'company-logo.img'));
+    const diskLogoMeta = resolveStorageReadPath(path.join('assets', 'company-logo.meta.json'));
+    if (diskLogoPath && diskLogoMeta) {
+      try {
+        const meta = JSON.parse(fs.readFileSync(diskLogoMeta, 'utf-8'));
+        if (meta.mimeType && meta.mimeType !== 'image/svg+xml') {
+          const buf = fs.readFileSync(diskLogoPath);
+          res.setHeader('Content-Type', meta.mimeType);
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          return res.send(buf);
+        }
+      } catch (e) {}
     }
 
     return res.status(404).send('Not Found');
@@ -8087,6 +8244,10 @@ async function startServer() {
             return match;
           });
 
+        html = html.replace(
+          /<link rel="canonical" href="[^"]*" \/>/,
+          `<link rel="canonical" href="${baseUrl}${req.originalUrl}" />`
+        );
         html = html.replace(
           /<meta property="og:url" content="[^"]*" \/>/,
           `<meta property="og:url" content="${baseUrl}${req.originalUrl}" />`

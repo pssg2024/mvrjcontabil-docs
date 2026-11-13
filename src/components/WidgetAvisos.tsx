@@ -16,7 +16,7 @@ import {
   Radio
 } from 'lucide-react';
 import { AvisoItem, UserProfile } from '../types';
-import { fetchAvisos, deleteAviso, subscribeAvisosRealtime, DEFAULT_AVISOS } from '../lib/avisos-service';
+import { fetchAvisos, deleteAviso, subscribeAvisosRealtime } from '../lib/avisos-service';
 import { ModalNovoAviso } from './ModalNovoAviso';
 import { ModalConfirmarSenhaExclusao } from './ModalConfirmarSenhaExclusao';
 
@@ -31,7 +31,7 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
   isAdmin = false,
   variant = 'responsive',
 }) => {
-  const [avisos, setAvisos] = useState<AvisoItem[]>(DEFAULT_AVISOS);
+  const [avisos, setAvisos] = useState<AvisoItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -77,8 +77,9 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
 
     async function loadData() {
       const items = await fetchAvisos();
-      if (isMounted && items && items.length > 0) {
+      if (isMounted && Array.isArray(items)) {
         setAvisos(items);
+        setCurrentIndex(0);
       }
       if (isMounted) setIsLoading(false);
     }
@@ -101,9 +102,9 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
       (deletedId) => {
         setAvisos((prev) => {
           const next = prev.filter((a) => a.id !== deletedId);
+          setCurrentIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
           return next;
         });
-        setCurrentIndex(0);
       }
     );
 
@@ -307,8 +308,8 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
             <h4 className="text-sm sm:text-base font-extrabold text-white leading-snug line-clamp-2 tracking-tight group-hover/title:text-[#DFB76C] transition-colors">
               {currentAviso.titulo}
             </h4>
-            <p className="text-blue-100/75 text-xs line-clamp-2 leading-relaxed">
-              {currentAviso.conteudo}
+            <p className="text-blue-100/80 text-xs line-clamp-2 leading-relaxed">
+              {currentAviso.mensagem || (currentAviso as any).conteudo || ''}
             </p>
           </div>
 
@@ -402,6 +403,12 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
             )}
           </div>
         </>
+      ) : isLoading ? (
+        <div className="flex flex-col items-center justify-center text-center p-3 my-auto space-y-2 relative z-10 animate-pulse">
+          <div className="w-24 h-4 rounded-md bg-white/10" />
+          <div className="w-48 h-4 rounded-md bg-white/15" />
+          <div className="w-64 h-3 rounded-md bg-white/10" />
+        </div>
       ) : (
         <div className="flex flex-col items-center justify-center text-center p-3 my-auto space-y-2 relative z-10">
           <BellRing className="w-6 h-6 text-blue-200/50" />
@@ -490,7 +497,7 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
 
             {/* Conteúdo Completo */}
             <div className="bg-[#0B1736]/70 border border-slate-800/80 rounded-xl p-4 text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
-              {currentAviso.conteudo}
+              {currentAviso.mensagem || (currentAviso as any).conteudo || ''}
             </div>
 
             {/* Navegação entre comunicados (1/2) dentro da tela aberta */}
@@ -559,7 +566,7 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
           avisos={avisos}
           initialTab={modalInitialTab}
           onAvisoCreated={(newAviso) => {
-            setAvisos((prev) => [newAviso, ...prev]);
+            setAvisos((prev) => [newAviso, ...prev.filter((a) => a.id !== newAviso.id)]);
             setCurrentIndex(0);
           }}
           onAvisoUpdated={(updated) => {
@@ -574,8 +581,11 @@ export const WidgetAvisos: React.FC<WidgetAvisosProps> = ({
             });
           }}
           onAvisoDeleted={(id) => {
-            setAvisos((prev) => prev.filter((a) => a.id !== id));
-            setCurrentIndex(0);
+            setAvisos((prev) => {
+              const next = prev.filter((a) => a.id !== id);
+              setCurrentIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
+              return next;
+            });
           }}
         />
       )}
