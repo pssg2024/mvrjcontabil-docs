@@ -1,1 +1,3584 @@
-[]
+[
+  {
+    "id": "993724ce-ab24-4215-8371-728fa1e18aa1",
+    "parent_id": "22fb13d9-1cc8-47ca-8639-f4c7631e90a2",
+    "name": "DAS",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:07:12.832078+00:00",
+    "updated_at": "2026-11-12T01:07:12.72+00:00"
+  },
+  {
+    "id": "2d891adb-8a6b-440b-83e0-f8637d3c525f",
+    "parent_id": "22fb13d9-1cc8-47ca-8639-f4c7631e90a2",
+    "name": "Declaração",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:07:12.195849+00:00",
+    "updated_at": "2026-11-12T01:07:12.086+00:00"
+  },
+  {
+    "id": "4702ae38-99c2-4a36-923e-1dea9d312fd2",
+    "parent_id": "22ba7823-684a-42e8-bfd2-46626f9646b5",
+    "name": "2021",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:59.147167+00:00",
+    "updated_at": "2026-11-12T01:06:59.009+00:00"
+  },
+  {
+    "id": "35dbdd67-9847-4298-9b07-5dcc0179a254",
+    "parent_id": "22ba7823-684a-42e8-bfd2-46626f9646b5",
+    "name": "2022",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:58.501316+00:00",
+    "updated_at": "2026-11-12T01:06:58.395+00:00"
+  },
+  {
+    "id": "91f494e5-5196-4e2b-a5ad-08f7f091771b",
+    "parent_id": "22ba7823-684a-42e8-bfd2-46626f9646b5",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:57.872422+00:00",
+    "updated_at": "2026-11-12T01:06:57.768+00:00"
+  },
+  {
+    "id": "22fb13d9-1cc8-47ca-8639-f4c7631e90a2",
+    "parent_id": "934e1b4f-c01d-488f-bd6f-a530c3d97392",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:57.262133+00:00",
+    "updated_at": "2026-11-12T01:06:57.14+00:00"
+  },
+  {
+    "id": "321ba95b-eea3-4f29-b5d6-af10f8a24ea4",
+    "parent_id": "c36c34b1-ad42-47ff-8246-7cf081af8558",
+    "name": "Certificado digital",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:56.516116+00:00",
+    "updated_at": "2026-11-12T01:06:56.408+00:00"
+  },
+  {
+    "id": "e8c6b44b-1541-47ab-9d4c-37dd78cba414",
+    "parent_id": "4b05597e-ba93-4197-a099-97c77e96288d",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:15.659041+00:00",
+    "updated_at": "2026-11-12T01:06:15.545+00:00"
+  },
+  {
+    "id": "080c66ed-489b-4c13-b88f-eb1cc8bd0960",
+    "parent_id": "539a5832-6a13-4592-ad3f-ffee1f0d4f03",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:14.645751+00:00",
+    "updated_at": "2026-11-12T01:06:14.435+00:00"
+  },
+  {
+    "id": "22ba7823-684a-42e8-bfd2-46626f9646b5",
+    "parent_id": "539a5832-6a13-4592-ad3f-ffee1f0d4f03",
+    "name": "PGDAS",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:13.822586+00:00",
+    "updated_at": "2026-11-12T01:06:13.711+00:00"
+  },
+  {
+    "id": "934e1b4f-c01d-488f-bd6f-a530c3d97392",
+    "parent_id": "86dce040-61b7-4155-beb4-d9b666ecde3c",
+    "name": "PGDAS",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:13.182444+00:00",
+    "updated_at": "2026-11-12T01:06:13.068+00:00"
+  },
+  {
+    "id": "967c51f0-a459-4066-9b1f-47b845619682",
+    "parent_id": "3e591141-7c29-4289-bcfd-d41cd8327125",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:12.570677+00:00",
+    "updated_at": "2026-11-12T01:06:12.454+00:00"
+  },
+  {
+    "id": "c36c34b1-ad42-47ff-8246-7cf081af8558",
+    "parent_id": "e263563d-a215-4364-9415-ef2e75a6f460",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:11.862536+00:00",
+    "updated_at": "2026-11-12T01:06:11.727+00:00"
+  },
+  {
+    "id": "13478b58-cbad-49b9-b25f-f3dc4bcd6944",
+    "parent_id": "e263563d-a215-4364-9415-ef2e75a6f460",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:06:11.167359+00:00",
+    "updated_at": "2026-11-12T01:06:11.041+00:00"
+  },
+  {
+    "id": "25b34bcd-cfc2-44cd-a3a8-d5b73235e2a4",
+    "parent_id": "53d95b05-2625-46c4-abd7-e2920328163d",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:50.271537+00:00",
+    "updated_at": "2026-11-12T01:05:50.133+00:00"
+  },
+  {
+    "id": "6aa7df83-94a6-4c57-aa1b-dd2ba0414e3d",
+    "parent_id": "b2549503-8f1a-430b-a7e7-f68bf5f6f959",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:48.902267+00:00",
+    "updated_at": "2026-11-12T01:05:48.713+00:00"
+  },
+  {
+    "id": "42ebce29-9171-4436-a832-73243698b9f0",
+    "parent_id": "92104ebf-616b-49db-913a-760fed4f0ddb",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:48.166357+00:00",
+    "updated_at": "2026-11-12T01:05:48.053+00:00"
+  },
+  {
+    "id": "4b05597e-ba93-4197-a099-97c77e96288d",
+    "parent_id": "d964c76d-a1a7-4a3b-9af1-76205fd0b803",
+    "name": "NFs",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:47.531842+00:00",
+    "updated_at": "2026-11-12T01:05:47.431+00:00"
+  },
+  {
+    "id": "539a5832-6a13-4592-ad3f-ffee1f0d4f03",
+    "parent_id": "d964c76d-a1a7-4a3b-9af1-76205fd0b803",
+    "name": "Relatorio fiscal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:46.690791+00:00",
+    "updated_at": "2026-11-12T01:05:46.557+00:00"
+  },
+  {
+    "id": "86dce040-61b7-4155-beb4-d9b666ecde3c",
+    "parent_id": "d964c76d-a1a7-4a3b-9af1-76205fd0b803",
+    "name": "SIMPLES",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:46.009652+00:00",
+    "updated_at": "2026-11-12T01:05:45.9+00:00"
+  },
+  {
+    "id": "3e591141-7c29-4289-bcfd-d41cd8327125",
+    "parent_id": "d964c76d-a1a7-4a3b-9af1-76205fd0b803",
+    "name": "Situação Fiscal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:45.372288+00:00",
+    "updated_at": "2026-11-12T01:05:45.259+00:00"
+  },
+  {
+    "id": "e263563d-a215-4364-9415-ef2e75a6f460",
+    "parent_id": "766b09f0-a12f-431e-b138-5385affec7e6",
+    "name": "Certificado digital",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:44.292534+00:00",
+    "updated_at": "2026-11-12T01:05:44.18+00:00"
+  },
+  {
+    "id": "ebdd6f3f-716f-466f-b52b-93685715e44c",
+    "parent_id": "e9a999de-4160-43d1-9f12-0180a3a17071",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:43.624556+00:00",
+    "updated_at": "2026-11-12T01:05:43.508+00:00"
+  },
+  {
+    "id": "53d95b05-2625-46c4-abd7-e2920328163d",
+    "parent_id": "691603f9-baf0-476c-a965-ce06201a54c7",
+    "name": "Balanços",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:33.029826+00:00",
+    "updated_at": "2026-11-12T01:05:32.905+00:00"
+  },
+  {
+    "id": "b2549503-8f1a-430b-a7e7-f68bf5f6f959",
+    "parent_id": "691603f9-baf0-476c-a965-ce06201a54c7",
+    "name": "Caixa postal e-cac",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:32.352491+00:00",
+    "updated_at": "2026-11-12T01:05:32.245+00:00"
+  },
+  {
+    "id": "68837358-aa75-4888-9b17-58d3ae1a745e",
+    "parent_id": "691603f9-baf0-476c-a965-ce06201a54c7",
+    "name": "Extratos",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:31.714195+00:00",
+    "updated_at": "2026-11-12T01:05:31.602+00:00"
+  },
+  {
+    "id": "5e8e3c75-bee7-4bc8-ac3d-924b527884d3",
+    "parent_id": "691603f9-baf0-476c-a965-ce06201a54c7",
+    "name": "Prefeitura",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:31.064724+00:00",
+    "updated_at": "2026-11-12T01:05:30.949+00:00"
+  },
+  {
+    "id": "92104ebf-616b-49db-913a-760fed4f0ddb",
+    "parent_id": "691603f9-baf0-476c-a965-ce06201a54c7",
+    "name": "Situação fiscal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:30.439118+00:00",
+    "updated_at": "2026-11-12T01:05:30.232+00:00"
+  },
+  {
+    "id": "d09e8a35-6eea-4c97-b189-4d2370689adc",
+    "parent_id": "5d6cd923-1172-41e3-b4a3-874d447b9682",
+    "name": "3ª Alteração Contratual",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:29.085474+00:00",
+    "updated_at": "2026-11-12T01:05:28.979+00:00"
+  },
+  {
+    "id": "3cbe27f8-dac9-4184-9ec4-1676f604ce45",
+    "parent_id": "5d6cd923-1172-41e3-b4a3-874d447b9682",
+    "name": "Contrato",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:28.43302+00:00",
+    "updated_at": "2026-11-12T01:05:28.33+00:00"
+  },
+  {
+    "id": "d964c76d-a1a7-4a3b-9af1-76205fd0b803",
+    "parent_id": "9e8de3ef-9c46-44bd-86b5-d6bb0e58bbfa",
+    "name": "Fiscal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:27.780095+00:00",
+    "updated_at": "2026-11-12T01:05:27.669+00:00"
+  },
+  {
+    "id": "e9be78c9-6ed0-45a5-87f5-86cd75458f95",
+    "parent_id": "9e8de3ef-9c46-44bd-86b5-d6bb0e58bbfa",
+    "name": "Legalização",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:27.098926+00:00",
+    "updated_at": "2026-11-12T01:05:26.975+00:00"
+  },
+  {
+    "id": "766b09f0-a12f-431e-b138-5385affec7e6",
+    "parent_id": "349c4794-2d4c-42e0-b5e4-29aa36de9226",
+    "name": "Administrativo",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:26.414321+00:00",
+    "updated_at": "2026-11-12T01:05:26.302+00:00"
+  },
+  {
+    "id": "e9a999de-4160-43d1-9f12-0180a3a17071",
+    "parent_id": "349c4794-2d4c-42e0-b5e4-29aa36de9226",
+    "name": "Declaração IRPF",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:25.766085+00:00",
+    "updated_at": "2026-11-12T01:05:25.653+00:00"
+  },
+  {
+    "id": "691603f9-baf0-476c-a965-ce06201a54c7",
+    "parent_id": "349c4794-2d4c-42e0-b5e4-29aa36de9226",
+    "name": "FISCAL",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:23.524731+00:00",
+    "updated_at": "2026-11-12T01:05:23.41+00:00"
+  },
+  {
+    "id": "66745d3c-a41e-42d9-ac82-496a6d23a295",
+    "parent_id": "349c4794-2d4c-42e0-b5e4-29aa36de9226",
+    "name": "Importação",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:22.793626+00:00",
+    "updated_at": "2026-11-12T01:05:22.683+00:00"
+  },
+  {
+    "id": "5d6cd923-1172-41e3-b4a3-874d447b9682",
+    "parent_id": "349c4794-2d4c-42e0-b5e4-29aa36de9226",
+    "name": "Legalização",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:22.087358+00:00",
+    "updated_at": "2026-11-12T01:05:21.984+00:00"
+  },
+  {
+    "id": "9e8de3ef-9c46-44bd-86b5-d6bb0e58bbfa",
+    "parent_id": "349c4794-2d4c-42e0-b5e4-29aa36de9226",
+    "name": "VINICIUS - MEI",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:21.427998+00:00",
+    "updated_at": "2026-11-12T01:05:21.316+00:00"
+  },
+  {
+    "id": "349c4794-2d4c-42e0-b5e4-29aa36de9226",
+    "parent_id": null,
+    "name": "BRINCAR - Renata e Vinicius - valeria edmar",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T01:05:20.254438+00:00",
+    "updated_at": "2026-11-12T01:05:20.121+00:00"
+  },
+  {
+    "id": "a4a48a3a-28d1-4e3f-8c34-b4f109a5f81b",
+    "parent_id": "26d46fc4-1b6a-4b56-ace5-bf4e90070a92",
+    "name": "2026",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:15.656769+00:00",
+    "updated_at": "2026-11-12T00:11:15.545+00:00"
+  },
+  {
+    "id": "cd07b38f-b0e4-44d2-a9ba-3c0c52123c54",
+    "parent_id": "199c6802-a176-4be6-b5bd-fdb703293273",
+    "name": "082021",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:14.999146+00:00",
+    "updated_at": "2026-11-12T00:11:14.898+00:00"
+  },
+  {
+    "id": "ef4df6c1-4c5c-4a3a-bb47-51eadc162835",
+    "parent_id": "30dff579-37c1-4cbe-a7e2-9c71e347af74",
+    "name": "DAS",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:14.372735+00:00",
+    "updated_at": "2026-11-12T00:11:14.259+00:00"
+  },
+  {
+    "id": "3727c2fe-5ddd-42e6-a07e-c5eaf5430d1b",
+    "parent_id": "30dff579-37c1-4cbe-a7e2-9c71e347af74",
+    "name": "Declaração",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:13.71803+00:00",
+    "updated_at": "2026-11-12T00:11:13.601+00:00"
+  },
+  {
+    "id": "4e0db3f4-abf9-4dbe-a13c-02aafe2259d9",
+    "parent_id": "30dff579-37c1-4cbe-a7e2-9c71e347af74",
+    "name": "Informe de rendimentos para MEI",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:13.09122+00:00",
+    "updated_at": "2026-11-12T00:11:12.973+00:00"
+  },
+  {
+    "id": "6cd7118e-eac0-44da-ae6a-c011e06df132",
+    "parent_id": "0d812b7e-5fc7-4117-a3c2-3029826a6056",
+    "name": "DAS",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:12.42161+00:00",
+    "updated_at": "2026-11-12T00:11:12.3+00:00"
+  },
+  {
+    "id": "eab35d63-b81a-438d-bc2b-a50974e6d92c",
+    "parent_id": "032be173-99c7-4ef6-917a-5faa79055200",
+    "name": "Optantes",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:11.741443+00:00",
+    "updated_at": "2026-11-12T00:11:11.607+00:00"
+  },
+  {
+    "id": "d87bf52e-5da9-4a6c-a185-3ee9152606f4",
+    "parent_id": "68a9de0a-d10e-4480-9768-7a6c362a933c",
+    "name": "2026",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:11.052396+00:00",
+    "updated_at": "2026-11-12T00:11:10.899+00:00"
+  },
+  {
+    "id": "26d46fc4-1b6a-4b56-ace5-bf4e90070a92",
+    "parent_id": "68a9de0a-d10e-4480-9768-7a6c362a933c",
+    "name": "Guias",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:10.381289+00:00",
+    "updated_at": "2026-11-12T00:11:10.275+00:00"
+  },
+  {
+    "id": "5fbc5b53-29b2-4319-b678-0a9c336da4d3",
+    "parent_id": "68a9de0a-d10e-4480-9768-7a6c362a933c",
+    "name": "Recibo 2022_2023",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:09.7284+00:00",
+    "updated_at": "2026-11-12T00:11:09.598+00:00"
+  },
+  {
+    "id": "4cb15b7b-e59a-4a4c-a395-5dd1d88ef546",
+    "parent_id": "3b647a87-b013-4ea8-9f95-cf98dbdb4d0d",
+    "name": "Declaração",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:08.960774+00:00",
+    "updated_at": "2026-11-12T00:11:08.851+00:00"
+  },
+  {
+    "id": "199c6802-a176-4be6-b5bd-fdb703293273",
+    "parent_id": "8076a9d7-9f3d-403b-b224-bf64b965e65c",
+    "name": "2021",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:08.299389+00:00",
+    "updated_at": "2026-11-12T00:11:08.171+00:00"
+  },
+  {
+    "id": "999bf9be-2965-4726-8525-7da73cd1b6e8",
+    "parent_id": "8076a9d7-9f3d-403b-b224-bf64b965e65c",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:06.496831+00:00",
+    "updated_at": "2026-11-12T00:11:06.395+00:00"
+  },
+  {
+    "id": "27fc79f0-bc4c-490a-b187-2c712bf11815",
+    "parent_id": "8076a9d7-9f3d-403b-b224-bf64b965e65c",
+    "name": "Despesas",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:05.881711+00:00",
+    "updated_at": "2026-11-12T00:11:05.75+00:00"
+  },
+  {
+    "id": "c3180919-5e94-494f-8f00-32c1c3ec2652",
+    "parent_id": "89f030ec-a569-4a4c-92d6-2875af59f735",
+    "name": "Inscrição estadual",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:05.201819+00:00",
+    "updated_at": "2026-11-12T00:11:05.057+00:00"
+  },
+  {
+    "id": "30dff579-37c1-4cbe-a7e2-9c71e347af74",
+    "parent_id": "dd90339c-6405-4b8f-9da8-594eef7e97ce",
+    "name": "2021",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:04.544011+00:00",
+    "updated_at": "2026-11-12T00:11:04.424+00:00"
+  },
+  {
+    "id": "0d812b7e-5fc7-4117-a3c2-3029826a6056",
+    "parent_id": "dd90339c-6405-4b8f-9da8-594eef7e97ce",
+    "name": "2022",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:03.895432+00:00",
+    "updated_at": "2026-11-12T00:11:03.78+00:00"
+  },
+  {
+    "id": "6330fd46-c117-4984-924e-55c3e40b5c27",
+    "parent_id": "dd90339c-6405-4b8f-9da8-594eef7e97ce",
+    "name": "2023",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:03.281365+00:00",
+    "updated_at": "2026-11-12T00:11:03.168+00:00"
+  },
+  {
+    "id": "d3c27fe4-ea78-4491-b23c-f39b62c36597",
+    "parent_id": "dd90339c-6405-4b8f-9da8-594eef7e97ce",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:01.779902+00:00",
+    "updated_at": "2026-11-12T00:11:01.663+00:00"
+  },
+  {
+    "id": "48b18ad8-9a95-4397-881f-16a113b00050",
+    "parent_id": "dd90339c-6405-4b8f-9da8-594eef7e97ce",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:01.132085+00:00",
+    "updated_at": "2026-11-12T00:11:00.999+00:00"
+  },
+  {
+    "id": "032be173-99c7-4ef6-917a-5faa79055200",
+    "parent_id": "dd90339c-6405-4b8f-9da8-594eef7e97ce",
+    "name": "2026",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:11:00.499457+00:00",
+    "updated_at": "2026-11-12T00:11:00.376+00:00"
+  },
+  {
+    "id": "b76d17c7-fc41-486c-8979-6d04d8415048",
+    "parent_id": "dd90339c-6405-4b8f-9da8-594eef7e97ce",
+    "name": "Código de acesso",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:59.789585+00:00",
+    "updated_at": "2026-11-12T00:10:59.673+00:00"
+  },
+  {
+    "id": "68a9de0a-d10e-4480-9768-7a6c362a933c",
+    "parent_id": "dd90339c-6405-4b8f-9da8-594eef7e97ce",
+    "name": "Parcelamento",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:59.065236+00:00",
+    "updated_at": "2026-11-12T00:10:58.941+00:00"
+  },
+  {
+    "id": "8522c66b-63db-4a69-91e4-cf1d8a683f3e",
+    "parent_id": "c1ed6d94-2c0b-48b1-8202-743b26f080d3",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:58.396872+00:00",
+    "updated_at": "2026-11-12T00:10:58.29+00:00"
+  },
+  {
+    "id": "8717a416-dd36-46fd-9009-f60a3f21761b",
+    "parent_id": "c1ed6d94-2c0b-48b1-8202-743b26f080d3",
+    "name": "2026",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:56.713739+00:00",
+    "updated_at": "2026-11-12T00:10:56.6+00:00"
+  },
+  {
+    "id": "0768b6b9-d355-4061-8876-1b7acdeb0917",
+    "parent_id": "4390ff74-735c-4329-a3d4-ebafd6ab7c8a",
+    "name": "2022",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:56.0646+00:00",
+    "updated_at": "2026-11-12T00:10:55.951+00:00"
+  },
+  {
+    "id": "3b647a87-b013-4ea8-9f95-cf98dbdb4d0d",
+    "parent_id": "4390ff74-735c-4329-a3d4-ebafd6ab7c8a",
+    "name": "2023",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:55.423994+00:00",
+    "updated_at": "2026-11-12T00:10:55.309+00:00"
+  },
+  {
+    "id": "3f64e7b6-65b2-490a-a394-553593e1e222",
+    "parent_id": "4390ff74-735c-4329-a3d4-ebafd6ab7c8a",
+    "name": "Adesão",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:54.788836+00:00",
+    "updated_at": "2026-11-12T00:10:54.673+00:00"
+  },
+  {
+    "id": "13411822-44e1-487c-b72d-010e4da86b69",
+    "parent_id": "4390ff74-735c-4329-a3d4-ebafd6ab7c8a",
+    "name": "Curriculum",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:54.125023+00:00",
+    "updated_at": "2026-11-12T00:10:54.018+00:00"
+  },
+  {
+    "id": "2412bfd5-7f6b-4c4b-adda-307d74601b9d",
+    "parent_id": "4390ff74-735c-4329-a3d4-ebafd6ab7c8a",
+    "name": "Documentos",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:53.510357+00:00",
+    "updated_at": "2026-11-12T00:10:53.374+00:00"
+  },
+  {
+    "id": "8076a9d7-9f3d-403b-b224-bf64b965e65c",
+    "parent_id": "4390ff74-735c-4329-a3d4-ebafd6ab7c8a",
+    "name": "Empresa livro caixa",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:52.183999+00:00",
+    "updated_at": "2026-11-12T00:10:51.871+00:00"
+  },
+  {
+    "id": "89f030ec-a569-4a4c-92d6-2875af59f735",
+    "parent_id": "4390ff74-735c-4329-a3d4-ebafd6ab7c8a",
+    "name": "LEGALIZAÇÃO",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:51.224354+00:00",
+    "updated_at": "2026-11-12T00:10:51.066+00:00"
+  },
+  {
+    "id": "dd90339c-6405-4b8f-9da8-594eef7e97ce",
+    "parent_id": "4390ff74-735c-4329-a3d4-ebafd6ab7c8a",
+    "name": "SIMPLES NACIONAL",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:50.222679+00:00",
+    "updated_at": "2026-11-12T00:10:50.036+00:00"
+  },
+  {
+    "id": "c1ed6d94-2c0b-48b1-8202-743b26f080d3",
+    "parent_id": "4390ff74-735c-4329-a3d4-ebafd6ab7c8a",
+    "name": "Situação Fiscal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:49.500785+00:00",
+    "updated_at": "2026-11-12T00:10:49.375+00:00"
+  },
+  {
+    "id": "4390ff74-735c-4329-a3d4-ebafd6ab7c8a",
+    "parent_id": "5676a127-de2f-4644-8ae7-4c2d94fc995f",
+    "name": "Carla Priscilla Beth",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:48.813794+00:00",
+    "updated_at": "2026-11-12T00:10:48.698+00:00"
+  },
+  {
+    "id": "5676a127-de2f-4644-8ae7-4c2d94fc995f",
+    "parent_id": null,
+    "name": "CARLA PRISCILLA - PENSÃO",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:10:47.69686+00:00",
+    "updated_at": "2026-11-12T00:10:47.465+00:00"
+  },
+  {
+    "id": "93d37eb5-60b5-4734-a9e9-f946ab256123",
+    "parent_id": "0316110b-8d18-4b73-9363-9593c7bae811",
+    "name": "092025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:50.429838+00:00",
+    "updated_at": "2026-11-12T00:04:50.327+00:00"
+  },
+  {
+    "id": "9a82f89b-c07f-4548-bf78-884a908f55af",
+    "parent_id": "0316110b-8d18-4b73-9363-9593c7bae811",
+    "name": "102025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:49.762834+00:00",
+    "updated_at": "2026-11-12T00:04:49.567+00:00"
+  },
+  {
+    "id": "1f1b151d-8584-418d-bef0-dd7cd942b01d",
+    "parent_id": "0316110b-8d18-4b73-9363-9593c7bae811",
+    "name": "112025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:48.535192+00:00",
+    "updated_at": "2026-11-12T00:04:48.39+00:00"
+  },
+  {
+    "id": "9cb95c47-b909-4549-89b9-519393a039a9",
+    "parent_id": "526ce415-56a5-45b2-afdb-71566808046d",
+    "name": "2023",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:47.843908+00:00",
+    "updated_at": "2026-11-12T00:04:47.721+00:00"
+  },
+  {
+    "id": "1331adad-a965-4606-b3b2-1b7a3dbfdf1b",
+    "parent_id": "526ce415-56a5-45b2-afdb-71566808046d",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:47.188202+00:00",
+    "updated_at": "2026-11-12T00:04:47.072+00:00"
+  },
+  {
+    "id": "fbb2c793-1619-4d06-8894-c10132ac4e38",
+    "parent_id": "526ce415-56a5-45b2-afdb-71566808046d",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:46.488336+00:00",
+    "updated_at": "2026-11-12T00:04:46.373+00:00"
+  },
+  {
+    "id": "5b5b2a41-2d6e-4a80-9685-8eeffb7526ce",
+    "parent_id": "526ce415-56a5-45b2-afdb-71566808046d",
+    "name": "2026",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:45.802197+00:00",
+    "updated_at": "2026-11-12T00:04:45.695+00:00"
+  },
+  {
+    "id": "0316110b-8d18-4b73-9363-9593c7bae811",
+    "parent_id": "82863e76-e5ac-4b14-adfa-2284d9e953c4",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:45.115249+00:00",
+    "updated_at": "2026-11-12T00:04:44.977+00:00"
+  },
+  {
+    "id": "31113101-7ab6-48e8-85af-a119d698746f",
+    "parent_id": "7091ccff-3e3b-4310-b1a4-4680c1962b54",
+    "name": "2026",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:43.827424+00:00",
+    "updated_at": "2026-11-12T00:04:43.701+00:00"
+  },
+  {
+    "id": "0005ba33-0f7a-4501-8c3e-8de3932a8b70",
+    "parent_id": "60adb461-5ddd-4d92-a989-d04c77d83718",
+    "name": "Divida ativa",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:43.136623+00:00",
+    "updated_at": "2026-11-12T00:04:43.006+00:00"
+  },
+  {
+    "id": "526ce415-56a5-45b2-afdb-71566808046d",
+    "parent_id": "60adb461-5ddd-4d92-a989-d04c77d83718",
+    "name": "Guias Das",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:42.42787+00:00",
+    "updated_at": "2026-11-12T00:04:42.307+00:00"
+  },
+  {
+    "id": "82863e76-e5ac-4b14-adfa-2284d9e953c4",
+    "parent_id": "60adb461-5ddd-4d92-a989-d04c77d83718",
+    "name": "NF",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:41.68825+00:00",
+    "updated_at": "2026-11-12T00:04:41.58+00:00"
+  },
+  {
+    "id": "e56a7a2b-b4d2-4b12-88e2-fda529fd346a",
+    "parent_id": "60adb461-5ddd-4d92-a989-d04c77d83718",
+    "name": "Parcelamento",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:41.048287+00:00",
+    "updated_at": "2026-11-12T00:04:40.906+00:00"
+  },
+  {
+    "id": "8414e68f-5502-4219-af81-c1dd19701818",
+    "parent_id": "60adb461-5ddd-4d92-a989-d04c77d83718",
+    "name": "Parcelamento 2",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:40.367621+00:00",
+    "updated_at": "2026-11-12T00:04:40.255+00:00"
+  },
+  {
+    "id": "f07ded6d-503e-4543-bb35-04ee1dc3dd9d",
+    "parent_id": "4c5efd77-0ea3-4e6d-8e47-7edd89bc54d9",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:39.711124+00:00",
+    "updated_at": "2026-11-12T00:04:39.605+00:00"
+  },
+  {
+    "id": "dc36b126-e431-4922-b9ab-e74056fb657e",
+    "parent_id": "4c5efd77-0ea3-4e6d-8e47-7edd89bc54d9",
+    "name": "2026",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:39.022702+00:00",
+    "updated_at": "2026-11-12T00:04:38.89+00:00"
+  },
+  {
+    "id": "51e94a0b-0fb2-433a-ba51-3fb8a31e7e33",
+    "parent_id": "7bc0c8a4-32c5-4d95-a7be-409b40a5fcdc",
+    "name": "Endereço Novo",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:38.305415+00:00",
+    "updated_at": "2026-11-12T00:04:38.186+00:00"
+  },
+  {
+    "id": "7091ccff-3e3b-4310-b1a4-4680c1962b54",
+    "parent_id": "d5bee07b-2709-473d-8630-3614b5fd497b",
+    "name": "Extratos",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:36.790562+00:00",
+    "updated_at": "2026-11-12T00:04:36.675+00:00"
+  },
+  {
+    "id": "d99df223-a45f-4084-b676-f568fe6187d1",
+    "parent_id": "d5bee07b-2709-473d-8630-3614b5fd497b",
+    "name": "Receita",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:36.0345+00:00",
+    "updated_at": "2026-11-12T00:04:35.924+00:00"
+  },
+  {
+    "id": "60adb461-5ddd-4d92-a989-d04c77d83718",
+    "parent_id": "d5bee07b-2709-473d-8630-3614b5fd497b",
+    "name": "SIMPLES",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:35.37905+00:00",
+    "updated_at": "2026-11-12T00:04:35.27+00:00"
+  },
+  {
+    "id": "4c5efd77-0ea3-4e6d-8e47-7edd89bc54d9",
+    "parent_id": "d5bee07b-2709-473d-8630-3614b5fd497b",
+    "name": "Situação Fiscal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:34.749659+00:00",
+    "updated_at": "2026-11-12T00:04:34.61+00:00"
+  },
+  {
+    "id": "7bc0c8a4-32c5-4d95-a7be-409b40a5fcdc",
+    "parent_id": "724cc66e-432a-4723-a766-f6bbf2869962",
+    "name": "CNPJ",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:34.055224+00:00",
+    "updated_at": "2026-11-12T00:04:33.94+00:00"
+  },
+  {
+    "id": "f000f9d0-b0b4-43bf-a64e-a0ff970b4144",
+    "parent_id": "fc42dd0b-775b-42e3-94c8-e83756e7afcd",
+    "name": "Cadastur de guia",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:33.385951+00:00",
+    "updated_at": "2026-11-12T00:04:33.28+00:00"
+  },
+  {
+    "id": "164d68f4-2348-489e-93e8-b6e836555eac",
+    "parent_id": "fc42dd0b-775b-42e3-94c8-e83756e7afcd",
+    "name": "Relatorio fiscal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:31.849803+00:00",
+    "updated_at": "2026-11-12T00:04:31.721+00:00"
+  },
+  {
+    "id": "402b3d79-261e-4ad9-b665-d41e280aef71",
+    "parent_id": "50027c7f-ceea-4799-854a-4f0537100d65",
+    "name": "Cadastur",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:31.192022+00:00",
+    "updated_at": "2026-11-12T00:04:31.053+00:00"
+  },
+  {
+    "id": "b2881562-0a23-4c6e-8bfb-8ff3d222450c",
+    "parent_id": "50027c7f-ceea-4799-854a-4f0537100d65",
+    "name": "CNPJ",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:30.48834+00:00",
+    "updated_at": "2026-11-12T00:04:30.369+00:00"
+  },
+  {
+    "id": "d5bee07b-2709-473d-8630-3614b5fd497b",
+    "parent_id": "50027c7f-ceea-4799-854a-4f0537100d65",
+    "name": "Fiscal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:29.830333+00:00",
+    "updated_at": "2026-11-12T00:04:29.71+00:00"
+  },
+  {
+    "id": "724cc66e-432a-4723-a766-f6bbf2869962",
+    "parent_id": "50027c7f-ceea-4799-854a-4f0537100d65",
+    "name": "Legalização",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:29.188211+00:00",
+    "updated_at": "2026-11-12T00:04:29.065+00:00"
+  },
+  {
+    "id": "fc42dd0b-775b-42e3-94c8-e83756e7afcd",
+    "parent_id": "50027c7f-ceea-4799-854a-4f0537100d65",
+    "name": "Pessoa física",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:28.434721+00:00",
+    "updated_at": "2026-11-12T00:04:28.327+00:00"
+  },
+  {
+    "id": "b26056e2-5601-4d20-9163-cc1717f1d494",
+    "parent_id": "50027c7f-ceea-4799-854a-4f0537100d65",
+    "name": "Senha gov",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:27.787551+00:00",
+    "updated_at": "2026-11-12T00:04:27.681+00:00"
+  },
+  {
+    "id": "50027c7f-ceea-4799-854a-4f0537100d65",
+    "parent_id": "df4826c7-e54d-40a4-84c4-29e53e0ce175",
+    "name": "Carol Passeios",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:26.280297+00:00",
+    "updated_at": "2026-11-12T00:04:26.123+00:00"
+  },
+  {
+    "id": "df4826c7-e54d-40a4-84c4-29e53e0ce175",
+    "parent_id": null,
+    "name": "CAROL PASSEIOS",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-12T00:04:25.543384+00:00",
+    "updated_at": "2026-11-12T00:04:25.385+00:00"
+  },
+  {
+    "id": "7a18d3d8-e466-4179-a200-6867fcaf77ff",
+    "parent_id": "3968e3b8-aab2-4947-8e1f-fb480a84c75f",
+    "name": "Negociação",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:19.92602+00:00",
+    "updated_at": "2026-11-11T23:58:19.816+00:00"
+  },
+  {
+    "id": "b2cb40c4-2f09-466b-8944-3a04c3ff5c79",
+    "parent_id": "3968e3b8-aab2-4947-8e1f-fb480a84c75f",
+    "name": "Parcelamento anterior",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:19.272265+00:00",
+    "updated_at": "2026-11-11T23:58:19.167+00:00"
+  },
+  {
+    "id": "ad5c1887-2cd0-4c60-827f-a5f8d9ff8fcc",
+    "parent_id": "3968e3b8-aab2-4947-8e1f-fb480a84c75f",
+    "name": "Parcelamento atual",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:18.52652+00:00",
+    "updated_at": "2026-11-11T23:58:18.418+00:00"
+  },
+  {
+    "id": "8de0ca13-6d30-455c-b8cb-2678bd7e4ecf",
+    "parent_id": "d11c9df8-c710-4041-9019-e7eca40b1ab7",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:17.873079+00:00",
+    "updated_at": "2026-11-11T23:58:17.77+00:00"
+  },
+  {
+    "id": "3968e3b8-aab2-4947-8e1f-fb480a84c75f",
+    "parent_id": "d11c9df8-c710-4041-9019-e7eca40b1ab7",
+    "name": "Parcelamento anterior",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:16.389019+00:00",
+    "updated_at": "2026-11-11T23:58:16.182+00:00"
+  },
+  {
+    "id": "483872c7-e88b-456c-8700-7c92725f4ca1",
+    "parent_id": "d9eb9faa-07ee-44ab-8c4b-d04cee6b34e1",
+    "name": "092025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:15.547055+00:00",
+    "updated_at": "2026-11-11T23:58:15.445+00:00"
+  },
+  {
+    "id": "0c287ad7-56f0-46af-9bfe-e60036d8ea3e",
+    "parent_id": "6be5bfb9-ce49-4886-8f2d-c69b4265e5e8",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:14.945852+00:00",
+    "updated_at": "2026-11-11T23:58:14.832+00:00"
+  },
+  {
+    "id": "8ed3b8bb-4d55-4f81-98c7-0a784a8f00a4",
+    "parent_id": "381fdf95-ef27-4eda-9dcd-55fca0037de4",
+    "name": "Certificado Pessoa física",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:14.286992+00:00",
+    "updated_at": "2026-11-11T23:58:14.173+00:00"
+  },
+  {
+    "id": "d11c9df8-c710-4041-9019-e7eca40b1ab7",
+    "parent_id": "f38d931e-ee97-474a-bc81-9ccf41c4858f",
+    "name": "Parcelamento",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:04.061285+00:00",
+    "updated_at": "2026-11-11T23:58:03.96+00:00"
+  },
+  {
+    "id": "696720b6-d98b-4196-b32b-aecd2b0fe6f9",
+    "parent_id": "f93b3435-42d0-4e08-b616-4ae9334b00bd",
+    "name": "2023",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:03.395396+00:00",
+    "updated_at": "2026-11-11T23:58:03.268+00:00"
+  },
+  {
+    "id": "18d86ff3-58bb-4494-a5cf-5222d439c0d4",
+    "parent_id": "f93b3435-42d0-4e08-b616-4ae9334b00bd",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:02.704948+00:00",
+    "updated_at": "2026-11-11T23:58:02.59+00:00"
+  },
+  {
+    "id": "d9eb9faa-07ee-44ab-8c4b-d04cee6b34e1",
+    "parent_id": "f93b3435-42d0-4e08-b616-4ae9334b00bd",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:01.892728+00:00",
+    "updated_at": "2026-11-11T23:58:01.776+00:00"
+  },
+  {
+    "id": "b240bfa0-96d0-4e02-8093-560db49f155c",
+    "parent_id": "f93b3435-42d0-4e08-b616-4ae9334b00bd",
+    "name": "Cod. Acesso",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:01.130521+00:00",
+    "updated_at": "2026-11-11T23:58:01.015+00:00"
+  },
+  {
+    "id": "6be5bfb9-ce49-4886-8f2d-c69b4265e5e8",
+    "parent_id": "55396af8-26f3-4dfc-97d4-bbfa62ca8bef",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:58:00.510499+00:00",
+    "updated_at": "2026-11-11T23:58:00.405+00:00"
+  },
+  {
+    "id": "4e2b00c4-544c-4d8b-b6d0-da6f53ab965f",
+    "parent_id": "55396af8-26f3-4dfc-97d4-bbfa62ca8bef",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:59.878387+00:00",
+    "updated_at": "2026-11-11T23:57:59.768+00:00"
+  },
+  {
+    "id": "528b5fe4-4bc5-41e3-8967-3fda911e0088",
+    "parent_id": "5f6db69e-8a05-43d1-bf37-5471fb102907",
+    "name": "Envio de documentos",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:58.831623+00:00",
+    "updated_at": "2026-11-11T23:57:58.715+00:00"
+  },
+  {
+    "id": "43d50d82-bbac-4e4c-97c1-0e2bc1f8d7b1",
+    "parent_id": "b280c374-3ca7-4fe2-9ad0-6c1ad13f2a94",
+    "name": "2023",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:58.093811+00:00",
+    "updated_at": "2026-11-11T23:57:57.977+00:00"
+  },
+  {
+    "id": "381fdf95-ef27-4eda-9dcd-55fca0037de4",
+    "parent_id": "b280c374-3ca7-4fe2-9ad0-6c1ad13f2a94",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:56.668212+00:00",
+    "updated_at": "2026-11-11T23:57:56.559+00:00"
+  },
+  {
+    "id": "f38d931e-ee97-474a-bc81-9ccf41c4858f",
+    "parent_id": "27d88ecc-9029-46d5-9446-00aae51e6da3",
+    "name": "Parcelamento",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:53.743183+00:00",
+    "updated_at": "2026-11-11T23:57:53.623+00:00"
+  },
+  {
+    "id": "f93b3435-42d0-4e08-b616-4ae9334b00bd",
+    "parent_id": "27d88ecc-9029-46d5-9446-00aae51e6da3",
+    "name": "SIMPLES NACIONAL",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:53.116165+00:00",
+    "updated_at": "2026-11-11T23:57:53.006+00:00"
+  },
+  {
+    "id": "55396af8-26f3-4dfc-97d4-bbfa62ca8bef",
+    "parent_id": "27d88ecc-9029-46d5-9446-00aae51e6da3",
+    "name": "Situação fiscal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:51.626238+00:00",
+    "updated_at": "2026-11-11T23:57:51.523+00:00"
+  },
+  {
+    "id": "93f24dac-d57b-4186-b84c-10ca7d18c753",
+    "parent_id": "3f057cd2-73e8-4045-bc80-8a957e4070c8",
+    "name": "Alteração contratual finalizada",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:50.984865+00:00",
+    "updated_at": "2026-11-11T23:57:50.882+00:00"
+  },
+  {
+    "id": "9c2945e5-b850-4fcd-90c3-d1c89df76882",
+    "parent_id": "3f057cd2-73e8-4045-bc80-8a957e4070c8",
+    "name": "Documentos mãe",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:50.37246+00:00",
+    "updated_at": "2026-11-11T23:57:50.254+00:00"
+  },
+  {
+    "id": "bec20a6a-f8b0-485d-9292-482ff1d13ef3",
+    "parent_id": "3f057cd2-73e8-4045-bc80-8a957e4070c8",
+    "name": "Endereço",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:49.134412+00:00",
+    "updated_at": "2026-11-11T23:57:49.015+00:00"
+  },
+  {
+    "id": "5f6db69e-8a05-43d1-bf37-5471fb102907",
+    "parent_id": "3f057cd2-73e8-4045-bc80-8a957e4070c8",
+    "name": "Prefeitura",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:48.279432+00:00",
+    "updated_at": "2026-11-11T23:57:48.178+00:00"
+  },
+  {
+    "id": "cd1e4fde-5732-4d56-98e5-062642236960",
+    "parent_id": "8fee4eba-9cc7-46a3-977c-7e707a0e7dc6",
+    "name": "Adesão",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:47.584434+00:00",
+    "updated_at": "2026-11-11T23:57:47.465+00:00"
+  },
+  {
+    "id": "b280c374-3ca7-4fe2-9ad0-6c1ad13f2a94",
+    "parent_id": "8fee4eba-9cc7-46a3-977c-7e707a0e7dc6",
+    "name": "Certificado digital",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:46.562423+00:00",
+    "updated_at": "2026-11-11T23:57:46.452+00:00"
+  },
+  {
+    "id": "27d88ecc-9029-46d5-9446-00aae51e6da3",
+    "parent_id": "8fee4eba-9cc7-46a3-977c-7e707a0e7dc6",
+    "name": "FISCAL",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:45.220878+00:00",
+    "updated_at": "2026-11-11T23:57:45.103+00:00"
+  },
+  {
+    "id": "3f057cd2-73e8-4045-bc80-8a957e4070c8",
+    "parent_id": "8fee4eba-9cc7-46a3-977c-7e707a0e7dc6",
+    "name": "LEGALIZAÇÃO",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:44.401253+00:00",
+    "updated_at": "2026-11-11T23:57:44.29+00:00"
+  },
+  {
+    "id": "8fee4eba-9cc7-46a3-977c-7e707a0e7dc6",
+    "parent_id": "9eccc6f4-d223-455e-8f75-a27788b4a585",
+    "name": "Central Pés",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:43.696967+00:00",
+    "updated_at": "2026-11-11T23:57:43.586+00:00"
+  },
+  {
+    "id": "9eccc6f4-d223-455e-8f75-a27788b4a585",
+    "parent_id": "ca81bc49-c205-430e-a7ca-acf3cf84a690",
+    "name": "Central Pés - Edmar",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:43.019696+00:00",
+    "updated_at": "2026-11-11T23:57:42.91+00:00"
+  },
+  {
+    "id": "ca81bc49-c205-430e-a7ca-acf3cf84a690",
+    "parent_id": null,
+    "name": "CENTRAL PÉS",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:57:42.316608+00:00",
+    "updated_at": "2026-11-11T23:57:42.176+00:00"
+  },
+  {
+    "id": "13caf7b6-3001-45af-ac3c-a2ec1ac6cee0",
+    "parent_id": "3ae45d2d-cd84-4675-9cec-4e5ac688dfd9",
+    "name": "Declaração",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:34.02043+00:00",
+    "updated_at": "2026-11-11T23:52:33.905+00:00"
+  },
+  {
+    "id": "cf2b8a9e-3653-4dc5-bd97-462301e18fb0",
+    "parent_id": "76c66dfe-3b07-4a68-8cb2-77c9d19c8b84",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:33.36712+00:00",
+    "updated_at": "2026-11-11T23:52:33.262+00:00"
+  },
+  {
+    "id": "2dae618e-41e0-4bb1-a818-b8d68ada9226",
+    "parent_id": "2828d8b2-698e-4fe5-8934-bcc4fb525b29",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:30.289614+00:00",
+    "updated_at": "2026-11-11T23:52:30.189+00:00"
+  },
+  {
+    "id": "de756e70-bb70-4ff0-bd71-fb26a2787518",
+    "parent_id": "2828d8b2-698e-4fe5-8934-bcc4fb525b29",
+    "name": "2026",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:29.644653+00:00",
+    "updated_at": "2026-11-11T23:52:29.522+00:00"
+  },
+  {
+    "id": "109b129e-5760-4ff3-82e3-aec5500c34d6",
+    "parent_id": "751e312e-35cf-485b-9743-d5a5ba1eb7aa",
+    "name": "2025",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:28.784505+00:00",
+    "updated_at": "2026-11-11T23:52:28.609+00:00"
+  },
+  {
+    "id": "3ae45d2d-cd84-4675-9cec-4e5ac688dfd9",
+    "parent_id": "751e312e-35cf-485b-9743-d5a5ba1eb7aa",
+    "name": "2026",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:28.048061+00:00",
+    "updated_at": "2026-11-11T23:52:27.923+00:00"
+  },
+  {
+    "id": "8cb7ca64-8ec1-4687-96e4-9017a696f8b2",
+    "parent_id": "751e312e-35cf-485b-9743-d5a5ba1eb7aa",
+    "name": "Código de acesso",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:27.392061+00:00",
+    "updated_at": "2026-11-11T23:52:27.289+00:00"
+  },
+  {
+    "id": "76c66dfe-3b07-4a68-8cb2-77c9d19c8b84",
+    "parent_id": "751e312e-35cf-485b-9743-d5a5ba1eb7aa",
+    "name": "PGDAS",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:26.360703+00:00",
+    "updated_at": "2026-11-11T23:52:26.113+00:00"
+  },
+  {
+    "id": "d7fdf201-8dcf-4b50-bf82-c91f1bef8384",
+    "parent_id": "343d7359-7da0-4cc0-90cb-9afbaffd10e3",
+    "name": "2026",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:22.708411+00:00",
+    "updated_at": "2026-11-11T23:52:22.598+00:00"
+  },
+  {
+    "id": "02b23d2a-1889-4c70-8407-059ef55f41b0",
+    "parent_id": "4752c4ab-0c62-41fe-9d30-4cb5411000de",
+    "name": "2024",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:21.879251+00:00",
+    "updated_at": "2026-11-11T23:52:21.766+00:00"
+  },
+  {
+    "id": "2828d8b2-698e-4fe5-8934-bcc4fb525b29",
+    "parent_id": "4752c4ab-0c62-41fe-9d30-4cb5411000de",
+    "name": "Guias",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:21.025683+00:00",
+    "updated_at": "2026-11-11T23:52:20.895+00:00"
+  },
+  {
+    "id": "751e312e-35cf-485b-9743-d5a5ba1eb7aa",
+    "parent_id": "4752c4ab-0c62-41fe-9d30-4cb5411000de",
+    "name": "SIMPLES",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:20.36093+00:00",
+    "updated_at": "2026-11-11T23:52:20.247+00:00"
+  },
+  {
+    "id": "0e6bbb2c-023f-4bd1-8dae-e318ce217b10",
+    "parent_id": "daa5c633-a164-4c24-834d-577f46161b62",
+    "name": "dados",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:19.705757+00:00",
+    "updated_at": "2026-11-11T23:52:19.599+00:00"
+  },
+  {
+    "id": "0cbf0591-6a37-4892-9ed9-fc2dbce1d91a",
+    "parent_id": "4c499970-44e4-41c0-910f-57d22dc4f234",
+    "name": "dados",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:19.011239+00:00",
+    "updated_at": "2026-11-11T23:52:18.909+00:00"
+  },
+  {
+    "id": "343d7359-7da0-4cc0-90cb-9afbaffd10e3",
+    "parent_id": "4c499970-44e4-41c0-910f-57d22dc4f234",
+    "name": "FINANCEIRO",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:17.6523+00:00",
+    "updated_at": "2026-11-11T23:52:17.543+00:00"
+  },
+  {
+    "id": "4752c4ab-0c62-41fe-9d30-4cb5411000de",
+    "parent_id": "4c499970-44e4-41c0-910f-57d22dc4f234",
+    "name": "Fiscal",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:17.000853+00:00",
+    "updated_at": "2026-11-11T23:52:16.879+00:00"
+  },
+  {
+    "id": "daa5c633-a164-4c24-834d-577f46161b62",
+    "parent_id": "4c499970-44e4-41c0-910f-57d22dc4f234",
+    "name": "Legalização",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:16.282649+00:00",
+    "updated_at": "2026-11-11T23:52:16.108+00:00"
+  },
+  {
+    "id": "4c499970-44e4-41c0-910f-57d22dc4f234",
+    "parent_id": "61de26f0-04d3-4b57-bfa2-8055241ba7aa",
+    "name": "DEU MATCH",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:15.556327+00:00",
+    "updated_at": "2026-11-11T23:52:15.445+00:00"
+  },
+  {
+    "id": "61de26f0-04d3-4b57-bfa2-8055241ba7aa",
+    "parent_id": null,
+    "name": "DEU MATCH - IVANIA - MEI",
+    "sector": "Departamento Pessoal",
+    "created_by": null,
+    "created_at": "2026-11-11T23:52:14.896079+00:00",
+    "updated_at": "2026-11-11T23:52:14.773+00:00"
+  },
+  {
+    "id": "7869e826-9db1-41a7-99a7-e46c3b0834f6",
+    "parent_id": "a79a1865-4f95-43cd-9635-b976cc30a7c9",
+    "name": "Legalização",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:08:07.96819+00:00",
+    "updated_at": "2026-11-11T23:08:07.608+00:00"
+  },
+  {
+    "id": "a79a1865-4f95-43cd-9635-b976cc30a7c9",
+    "parent_id": "b74b4955-7725-451c-b8c9-6d410331f23a",
+    "name": "Ana Maria cruz",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:08:03.552236+00:00",
+    "updated_at": "2026-11-11T23:08:03.204+00:00"
+  },
+  {
+    "id": "8ee3b9e1-6848-435d-bdd5-1179a6c87f6c",
+    "parent_id": "b74b4955-7725-451c-b8c9-6d410331f23a",
+    "name": "Ivania",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:08:02.665675+00:00",
+    "updated_at": "2026-11-11T23:08:02.35+00:00"
+  },
+  {
+    "id": "b74b4955-7725-451c-b8c9-6d410331f23a",
+    "parent_id": null,
+    "name": "DOMESTICAS",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:08:01.723448+00:00",
+    "updated_at": "2026-11-11T23:08:01.344+00:00"
+  },
+  {
+    "id": "250fc75d-e218-44e0-895d-f7e3c10d7576",
+    "parent_id": "f37fa182-3a22-44af-9ef8-308a6dce67cf",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:35.258115+00:00",
+    "updated_at": "2026-11-11T23:00:34.54+00:00"
+  },
+  {
+    "id": "77ed8288-8c2a-43ea-bbc0-59da30c37f46",
+    "parent_id": "f37fa182-3a22-44af-9ef8-308a6dce67cf",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:33.578518+00:00",
+    "updated_at": "2026-11-11T23:00:33.251+00:00"
+  },
+  {
+    "id": "f86146d3-bb86-46ab-a0de-a48eab14843b",
+    "parent_id": "e675da40-1c63-4934-8616-671619c4cf96",
+    "name": "Faturamento",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:32.703044+00:00",
+    "updated_at": "2026-11-11T23:00:32.369+00:00"
+  },
+  {
+    "id": "f37fa182-3a22-44af-9ef8-308a6dce67cf",
+    "parent_id": "e675da40-1c63-4934-8616-671619c4cf96",
+    "name": "SIMPLES",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:31.813681+00:00",
+    "updated_at": "2026-11-11T23:00:31.391+00:00"
+  },
+  {
+    "id": "eb187684-812d-421c-8ff5-707c87c51788",
+    "parent_id": "5fe23c19-c64c-41a5-831d-05cfd827744d",
+    "name": "CNPJ - ATIVIDADE SECUNDÁRIA",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:30.844579+00:00",
+    "updated_at": "2026-11-11T23:00:30.461+00:00"
+  },
+  {
+    "id": "770e026f-c386-4326-b635-f1a4cf8d2860",
+    "parent_id": "c4136757-164d-4c25-9d87-ec74a58938fb",
+    "name": "LEGALIZAÇÃO",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:29.761625+00:00",
+    "updated_at": "2026-11-11T23:00:28.996+00:00"
+  },
+  {
+    "id": "92ac6298-9723-4bf0-8936-2b45cdf8a6b8",
+    "parent_id": "0f13d766-52d1-47b1-8597-f1b76c549e8c",
+    "name": "Adesaõ",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:28.007862+00:00",
+    "updated_at": "2026-11-11T23:00:26.241+00:00"
+  },
+  {
+    "id": "558e1217-1f76-4987-8316-2a124757ac8a",
+    "parent_id": "0f13d766-52d1-47b1-8597-f1b76c549e8c",
+    "name": "Comprovante de abertura do MEI",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:24.358884+00:00",
+    "updated_at": "2026-11-11T23:00:23.314+00:00"
+  },
+  {
+    "id": "0fc974bf-9c5b-4ea9-acf5-643b39b9f85d",
+    "parent_id": "0f13d766-52d1-47b1-8597-f1b76c549e8c",
+    "name": "Documentos para imposto de renda",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:22.694272+00:00",
+    "updated_at": "2026-11-11T23:00:22.312+00:00"
+  },
+  {
+    "id": "4955ad81-134c-4296-bea4-bb2a3510296f",
+    "parent_id": "0f13d766-52d1-47b1-8597-f1b76c549e8c",
+    "name": "Faturamento",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:21.252825+00:00",
+    "updated_at": "2026-11-11T23:00:20.808+00:00"
+  },
+  {
+    "id": "e675da40-1c63-4934-8616-671619c4cf96",
+    "parent_id": "0f13d766-52d1-47b1-8597-f1b76c549e8c",
+    "name": "FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:20.121407+00:00",
+    "updated_at": "2026-11-11T23:00:19.609+00:00"
+  },
+  {
+    "id": "5fe23c19-c64c-41a5-831d-05cfd827744d",
+    "parent_id": "0f13d766-52d1-47b1-8597-f1b76c549e8c",
+    "name": "LEGALIZAÇÃO",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:18.740277+00:00",
+    "updated_at": "2026-11-11T23:00:18.038+00:00"
+  },
+  {
+    "id": "c4136757-164d-4c25-9d87-ec74a58938fb",
+    "parent_id": "0f13d766-52d1-47b1-8597-f1b76c549e8c",
+    "name": "Rafael",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:17.016245+00:00",
+    "updated_at": "2026-11-11T23:00:16.285+00:00"
+  },
+  {
+    "id": "0f13d766-52d1-47b1-8597-f1b76c549e8c",
+    "parent_id": "920a2e15-fe48-40ce-b170-271c97b81714",
+    "name": "Espaço Harmonia - Isabel - Edmar",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:15.34261+00:00",
+    "updated_at": "2026-11-11T23:00:14.843+00:00"
+  },
+  {
+    "id": "920a2e15-fe48-40ce-b170-271c97b81714",
+    "parent_id": null,
+    "name": "ESPAÇO HARMONIA - ISABEL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T23:00:12.690036+00:00",
+    "updated_at": "2026-11-11T23:00:12.242+00:00"
+  },
+  {
+    "id": "a1367bc0-ad6d-41ad-b96a-d628b0558d2f",
+    "parent_id": "73d38889-7a99-4aa7-b1f4-8f826f3dfe8f",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:39.020716+00:00",
+    "updated_at": "2026-11-11T22:54:38.688+00:00"
+  },
+  {
+    "id": "6fa09b8f-75bd-4947-bfd4-4b65e4481036",
+    "parent_id": "a96f5953-1dc4-422b-bd76-cb419101cc3f",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:38.161085+00:00",
+    "updated_at": "2026-11-11T22:54:37.821+00:00"
+  },
+  {
+    "id": "f5b5ad86-c048-40c1-939d-fa9830e314c7",
+    "parent_id": "a96f5953-1dc4-422b-bd76-cb419101cc3f",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:37.255086+00:00",
+    "updated_at": "2026-11-11T22:54:36.91+00:00"
+  },
+  {
+    "id": "73d38889-7a99-4aa7-b1f4-8f826f3dfe8f",
+    "parent_id": "3bc64195-a47f-4cd0-8134-56e7691bf7ce",
+    "name": "Guias",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:36.366826+00:00",
+    "updated_at": "2026-11-11T22:54:36.027+00:00"
+  },
+  {
+    "id": "ec2b71c9-95ec-4892-b87d-14794996663d",
+    "parent_id": "b9c8b65e-0ab9-40fa-82d4-ad4d85f6234e",
+    "name": "Parcelamento",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:35.49729+00:00",
+    "updated_at": "2026-11-11T22:54:35.17+00:00"
+  },
+  {
+    "id": "a96f5953-1dc4-422b-bd76-cb419101cc3f",
+    "parent_id": "dc0eb48c-7dd0-474f-a55b-e86d5b5aba05",
+    "name": "Guias",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:34.561636+00:00",
+    "updated_at": "2026-11-11T22:54:34.243+00:00"
+  },
+  {
+    "id": "3bc64195-a47f-4cd0-8134-56e7691bf7ce",
+    "parent_id": "3605f14e-7d33-4d5d-8687-5fa67dcc096c",
+    "name": "DAS",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:31.537105+00:00",
+    "updated_at": "2026-11-11T22:54:31.205+00:00"
+  },
+  {
+    "id": "71da56de-2c48-4a93-a93f-fa44e8b56bad",
+    "parent_id": "3605f14e-7d33-4d5d-8687-5fa67dcc096c",
+    "name": "Guias",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:30.638735+00:00",
+    "updated_at": "2026-11-11T22:54:30.299+00:00"
+  },
+  {
+    "id": "b9c8b65e-0ab9-40fa-82d4-ad4d85f6234e",
+    "parent_id": "5843b4ce-17a7-4704-afad-4ef88b182567",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:29.763942+00:00",
+    "updated_at": "2026-11-11T22:54:29.427+00:00"
+  },
+  {
+    "id": "5a0f98d9-3953-41d2-9d2c-8ea423402e72",
+    "parent_id": "0dbab5fb-b3b3-4aac-8186-99073747ae15",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:28.86065+00:00",
+    "updated_at": "2026-11-11T22:54:28.536+00:00"
+  },
+  {
+    "id": "dc0eb48c-7dd0-474f-a55b-e86d5b5aba05",
+    "parent_id": "3966a322-d753-412d-9ad1-1ea132ee2c06",
+    "name": "DAS",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:28.022785+00:00",
+    "updated_at": "2026-11-11T22:54:27.688+00:00"
+  },
+  {
+    "id": "3605f14e-7d33-4d5d-8687-5fa67dcc096c",
+    "parent_id": "3966a322-d753-412d-9ad1-1ea132ee2c06",
+    "name": "Parcelamento",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:27.134789+00:00",
+    "updated_at": "2026-11-11T22:54:26.791+00:00"
+  },
+  {
+    "id": "756e99d4-1fe7-4a65-b195-e3cbaf7e562c",
+    "parent_id": "8981a6b6-e51e-4671-a9e3-aab54412fa03",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:26.259669+00:00",
+    "updated_at": "2026-11-11T22:54:25.96+00:00"
+  },
+  {
+    "id": "5843b4ce-17a7-4704-afad-4ef88b182567",
+    "parent_id": "92c86dda-dbcf-4639-a379-aac8dc48f1b8",
+    "name": "Divida Ativa - Pessoa Física",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:25.405813+00:00",
+    "updated_at": "2026-11-11T22:54:25.087+00:00"
+  },
+  {
+    "id": "0dbab5fb-b3b3-4aac-8186-99073747ae15",
+    "parent_id": "92c86dda-dbcf-4639-a379-aac8dc48f1b8",
+    "name": "Situaçao fiscal",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:24.524512+00:00",
+    "updated_at": "2026-11-11T22:54:24.159+00:00"
+  },
+  {
+    "id": "3966a322-d753-412d-9ad1-1ea132ee2c06",
+    "parent_id": "d4839502-6985-41b5-b899-9f87133a62cc",
+    "name": "SIMPLES",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:23.620792+00:00",
+    "updated_at": "2026-11-11T22:54:23.287+00:00"
+  },
+  {
+    "id": "8981a6b6-e51e-4671-a9e3-aab54412fa03",
+    "parent_id": "d4839502-6985-41b5-b899-9f87133a62cc",
+    "name": "Situação Fiscal",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:22.731197+00:00",
+    "updated_at": "2026-11-11T22:54:22.393+00:00"
+  },
+  {
+    "id": "c04f32a7-52c8-4eef-a3d4-8fd95004d4a1",
+    "parent_id": "d4839502-6985-41b5-b899-9f87133a62cc",
+    "name": "Termo de adesão",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:21.866196+00:00",
+    "updated_at": "2026-11-11T22:54:21.546+00:00"
+  },
+  {
+    "id": "92c86dda-dbcf-4639-a379-aac8dc48f1b8",
+    "parent_id": "8924c57d-8515-4568-a019-45d2f4adf187",
+    "name": "FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:20.984565+00:00",
+    "updated_at": "2026-11-11T22:54:20.662+00:00"
+  },
+  {
+    "id": "d4839502-6985-41b5-b899-9f87133a62cc",
+    "parent_id": "8f6c499d-a8fc-497a-b9ed-1dd03b8633e0",
+    "name": "FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:20.12061+00:00",
+    "updated_at": "2026-11-11T22:54:19.789+00:00"
+  },
+  {
+    "id": "aa7c685d-5a5f-4d3c-86e8-e8de80b4b37a",
+    "parent_id": "8f6c499d-a8fc-497a-b9ed-1dd03b8633e0",
+    "name": "LEGALIZAÇÃO",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:19.213307+00:00",
+    "updated_at": "2026-11-11T22:54:18.856+00:00"
+  },
+  {
+    "id": "8924c57d-8515-4568-a019-45d2f4adf187",
+    "parent_id": "8f6c499d-a8fc-497a-b9ed-1dd03b8633e0",
+    "name": "PESSOA FISICA",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:17.660317+00:00",
+    "updated_at": "2026-11-11T22:54:16.539+00:00"
+  },
+  {
+    "id": "8f6c499d-a8fc-497a-b9ed-1dd03b8633e0",
+    "parent_id": "90e4b234-2c17-43b8-90cc-324843bbcd2f",
+    "name": "Felipe - AGNIT",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:15.755105+00:00",
+    "updated_at": "2026-11-11T22:54:15.421+00:00"
+  },
+  {
+    "id": "90e4b234-2c17-43b8-90cc-324843bbcd2f",
+    "parent_id": null,
+    "name": "FELIPE - FV",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:54:14.896735+00:00",
+    "updated_at": "2026-11-11T22:54:14.316+00:00"
+  },
+  {
+    "id": "487c7eab-1f7b-431d-ac72-4cef3da2d977",
+    "parent_id": "77f758e0-374d-4f09-b877-da318e101021",
+    "name": "DOCUMENTO_ID",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:53:16.697691+00:00",
+    "updated_at": "2026-11-11T22:53:16.322+00:00"
+  },
+  {
+    "id": "77f758e0-374d-4f09-b877-da318e101021",
+    "parent_id": null,
+    "name": "GERSON LYRA_",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:53:15.76397+00:00",
+    "updated_at": "2026-11-11T22:53:15.43+00:00"
+  },
+  {
+    "id": "804f8ad7-3fc0-4e45-913e-cd6af90ca841",
+    "parent_id": "9d169b59-527b-4082-9a07-b6610e8d01e9",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:52:05.025696+00:00",
+    "updated_at": "2026-11-11T22:52:04.687+00:00"
+  },
+  {
+    "id": "9d169b59-527b-4082-9a07-b6610e8d01e9",
+    "parent_id": "6f2a6e46-f76c-4508-99a1-344254d6e7f2",
+    "name": "Certificado digital",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:52:04.148517+00:00",
+    "updated_at": "2026-11-11T22:52:03.771+00:00"
+  },
+  {
+    "id": "275a5681-4d8a-4c04-afaa-28c8497d143d",
+    "parent_id": "7a1641b6-880e-4081-9b6b-dd4b7f6de957",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:52:03.19496+00:00",
+    "updated_at": "2026-11-11T22:52:02.894+00:00"
+  },
+  {
+    "id": "6f2a6e46-f76c-4508-99a1-344254d6e7f2",
+    "parent_id": "135b4e4b-db9d-41f0-926e-80a088f5dcb9",
+    "name": "Administrativo",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:52:02.348759+00:00",
+    "updated_at": "2026-11-11T22:52:02.021+00:00"
+  },
+  {
+    "id": "7a1641b6-880e-4081-9b6b-dd4b7f6de957",
+    "parent_id": "135b4e4b-db9d-41f0-926e-80a088f5dcb9",
+    "name": "Fiscal",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:52:01.465766+00:00",
+    "updated_at": "2026-11-11T22:52:01.145+00:00"
+  },
+  {
+    "id": "9fa527d6-4b7d-4fd7-90b1-eca29af33c69",
+    "parent_id": "135b4e4b-db9d-41f0-926e-80a088f5dcb9",
+    "name": "Legalizaçao",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:52:00.575609+00:00",
+    "updated_at": "2026-11-11T22:52:00.263+00:00"
+  },
+  {
+    "id": "135b4e4b-db9d-41f0-926e-80a088f5dcb9",
+    "parent_id": "4a66b1a3-a847-4109-90ec-6209894dc22e",
+    "name": "JV SERVIÇOS DE INFORMATICA",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:51:59.720256+00:00",
+    "updated_at": "2026-11-11T22:51:59.349+00:00"
+  },
+  {
+    "id": "4a66b1a3-a847-4109-90ec-6209894dc22e",
+    "parent_id": null,
+    "name": "JV INFORMÁTICA_",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:51:58.732268+00:00",
+    "updated_at": "2026-11-11T22:51:58.4+00:00"
+  },
+  {
+    "id": "1f688034-e7dc-49b3-a3fa-9d9cbbf7c24d",
+    "parent_id": "2119db20-57bf-46cf-bde0-31dc57f014e9",
+    "name": "Novo Regin, cumprindo exigencia",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:33:01.772462+00:00",
+    "updated_at": "2026-11-11T22:33:01.443+00:00"
+  },
+  {
+    "id": "2119db20-57bf-46cf-bde0-31dc57f014e9",
+    "parent_id": "f05c3e25-e2f3-4187-bf32-1c4929a7095c",
+    "name": "Exigencia",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:33:00.888235+00:00",
+    "updated_at": "2026-11-11T22:33:00.546+00:00"
+  },
+  {
+    "id": "ca4b2e96-3d8c-4efa-aa56-6f0d6de58053",
+    "parent_id": "f05c3e25-e2f3-4187-bf32-1c4929a7095c",
+    "name": "Não concluido",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:33:00.029475+00:00",
+    "updated_at": "2026-11-11T22:32:59.692+00:00"
+  },
+  {
+    "id": "3f389975-67d4-4cb5-98f6-0861d7cef5df",
+    "parent_id": "e109fbb9-c6f2-49fb-9916-5870ca76f6fd",
+    "name": "Bombeiro",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:59.17515+00:00",
+    "updated_at": "2026-11-11T22:32:58.804+00:00"
+  },
+  {
+    "id": "6f211abf-5081-40f0-a03f-0b371e65d007",
+    "parent_id": "e109fbb9-c6f2-49fb-9916-5870ca76f6fd",
+    "name": "INEA",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:58.23769+00:00",
+    "updated_at": "2026-11-11T22:32:57.892+00:00"
+  },
+  {
+    "id": "738acc21-d3a2-4d4e-b487-61bf9ed2775f",
+    "parent_id": "e109fbb9-c6f2-49fb-9916-5870ca76f6fd",
+    "name": "Prefeitura",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:57.401862+00:00",
+    "updated_at": "2026-11-11T22:32:57.07+00:00"
+  },
+  {
+    "id": "a1c541ee-2134-4cb1-b64d-d4e021d02384",
+    "parent_id": "e109fbb9-c6f2-49fb-9916-5870ca76f6fd",
+    "name": "SECRETARIA DE FAZENDO DO RJ",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:56.534232+00:00",
+    "updated_at": "2026-11-11T22:32:56.211+00:00"
+  },
+  {
+    "id": "f05c3e25-e2f3-4187-bf32-1c4929a7095c",
+    "parent_id": "0a64ad16-cb33-45e3-bcbf-03a2563cae55",
+    "name": "Cumprindo exigencia",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:55.678931+00:00",
+    "updated_at": "2026-11-11T22:32:55.347+00:00"
+  },
+  {
+    "id": "162533bd-e995-46de-bbee-74ef3e3df374",
+    "parent_id": "b19618f2-2a8c-47dc-aa22-c6db243cc6fb",
+    "name": "Novo Regin, cumprindo exigencia",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:54.85132+00:00",
+    "updated_at": "2026-11-11T22:32:54.524+00:00"
+  },
+  {
+    "id": "67a1cf4d-d6ce-435b-8615-692cce82f726",
+    "parent_id": "83c923c9-341b-46b3-a9a9-f9e20e938374",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:53.992643+00:00",
+    "updated_at": "2026-11-11T22:32:53.666+00:00"
+  },
+  {
+    "id": "45f67e4f-67fb-476f-9f55-4d5603518e85",
+    "parent_id": "1225e08f-670f-4508-af89-86fa13864b2b",
+    "name": "Prefeitura",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:53.134245+00:00",
+    "updated_at": "2026-11-11T22:32:52.813+00:00"
+  },
+  {
+    "id": "e109fbb9-c6f2-49fb-9916-5870ca76f6fd",
+    "parent_id": "ff8395e2-f3e8-4026-a41a-d5dee24be2df",
+    "name": "Contrato Social",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:52.285203+00:00",
+    "updated_at": "2026-11-11T22:32:51.95+00:00"
+  },
+  {
+    "id": "0a64ad16-cb33-45e3-bcbf-03a2563cae55",
+    "parent_id": "ff8395e2-f3e8-4026-a41a-d5dee24be2df",
+    "name": "Exigencia",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:51.433011+00:00",
+    "updated_at": "2026-11-11T22:32:51.098+00:00"
+  },
+  {
+    "id": "b19618f2-2a8c-47dc-aa22-c6db243cc6fb",
+    "parent_id": "ff8395e2-f3e8-4026-a41a-d5dee24be2df",
+    "name": "Não concluído",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:50.582424+00:00",
+    "updated_at": "2026-11-11T22:32:50.266+00:00"
+  },
+  {
+    "id": "0c2f64da-3889-4b98-a893-5f5b38b577f4",
+    "parent_id": "8df664ac-29f1-43a5-b2d3-ab3146978465",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:49.748377+00:00",
+    "updated_at": "2026-11-11T22:32:49.361+00:00"
+  },
+  {
+    "id": "6f893b41-a80a-40bb-98e9-372111b45e0c",
+    "parent_id": "92bd726b-9b27-4e72-a759-012745f4d094",
+    "name": "Inscrição estadual",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:47.851194+00:00",
+    "updated_at": "2026-11-11T22:32:47.141+00:00"
+  },
+  {
+    "id": "83c923c9-341b-46b3-a9a9-f9e20e938374",
+    "parent_id": "92bd726b-9b27-4e72-a759-012745f4d094",
+    "name": "SIMPLES",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:46.52899+00:00",
+    "updated_at": "2026-11-11T22:32:46.06+00:00"
+  },
+  {
+    "id": "1225e08f-670f-4508-af89-86fa13864b2b",
+    "parent_id": "ddb06173-19ba-4277-a0cf-011a6dc4336e",
+    "name": "Redesim",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:45.40492+00:00",
+    "updated_at": "2026-11-11T22:32:45.079+00:00"
+  },
+  {
+    "id": "ff8395e2-f3e8-4026-a41a-d5dee24be2df",
+    "parent_id": "ddb06173-19ba-4277-a0cf-011a6dc4336e",
+    "name": "Requerimento de Empresário",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:44.505849+00:00",
+    "updated_at": "2026-11-11T22:32:44.183+00:00"
+  },
+  {
+    "id": "8df664ac-29f1-43a5-b2d3-ab3146978465",
+    "parent_id": "d85e7a8e-b577-4919-8f4c-3c701215dcd9",
+    "name": "Certificado digital",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:43.650542+00:00",
+    "updated_at": "2026-11-11T22:32:43.331+00:00"
+  },
+  {
+    "id": "1da9ce9b-22cb-46f7-9be8-d2db82caa781",
+    "parent_id": "99dd149b-1e67-4da9-a33d-e95fddaab798",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:39.68+00:00",
+    "updated_at": "2026-11-11T22:32:39.067+00:00"
+  },
+  {
+    "id": "894de705-9e24-43a9-ab7b-cfb645be8630",
+    "parent_id": "ac92621d-732a-4b44-a929-c9072d176554",
+    "name": "Documentos",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:38.563174+00:00",
+    "updated_at": "2026-11-11T22:32:38.261+00:00"
+  },
+  {
+    "id": "92bd726b-9b27-4e72-a759-012745f4d094",
+    "parent_id": "ac92621d-732a-4b44-a929-c9072d176554",
+    "name": "Fiscal",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:37.711996+00:00",
+    "updated_at": "2026-11-11T22:32:37.385+00:00"
+  },
+  {
+    "id": "ddb06173-19ba-4277-a0cf-011a6dc4336e",
+    "parent_id": "ac92621d-732a-4b44-a929-c9072d176554",
+    "name": "Junta Comercial",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:36.884178+00:00",
+    "updated_at": "2026-11-11T22:32:36.526+00:00"
+  },
+  {
+    "id": "d85e7a8e-b577-4919-8f4c-3c701215dcd9",
+    "parent_id": "e33d040c-91fb-4ea6-be0b-54e04e0d4c22",
+    "name": "Administrativo",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:35.943334+00:00",
+    "updated_at": "2026-11-11T22:32:35.595+00:00"
+  },
+  {
+    "id": "99dd149b-1e67-4da9-a33d-e95fddaab798",
+    "parent_id": "e33d040c-91fb-4ea6-be0b-54e04e0d4c22",
+    "name": "Fiscal",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:34.135049+00:00",
+    "updated_at": "2026-11-11T22:32:33.74+00:00"
+  },
+  {
+    "id": "ac92621d-732a-4b44-a929-c9072d176554",
+    "parent_id": "e33d040c-91fb-4ea6-be0b-54e04e0d4c22",
+    "name": "Legalizaçao",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:33.158252+00:00",
+    "updated_at": "2026-11-11T22:32:32.806+00:00"
+  },
+  {
+    "id": "e33d040c-91fb-4ea6-be0b-54e04e0d4c22",
+    "parent_id": "d99ca776-b017-44ba-b6a0-82ee1793d0a3",
+    "name": "Leandro Hidráulica",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:32.208575+00:00",
+    "updated_at": "2026-11-11T22:32:31.869+00:00"
+  },
+  {
+    "id": "d99ca776-b017-44ba-b6a0-82ee1793d0a3",
+    "parent_id": null,
+    "name": "LEANDRO - HIDRO HOUSE",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:32:31.271053+00:00",
+    "updated_at": "2026-11-11T22:32:30.907+00:00"
+  },
+  {
+    "id": "b942e8af-93b6-425a-a965-d9d11467691b",
+    "parent_id": "0cbd42e3-ded7-4df9-a47a-e0704377e6f8",
+    "name": "10 03",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:41.31645+00:00",
+    "updated_at": "2026-11-11T22:25:40.995+00:00"
+  },
+  {
+    "id": "4fad81cf-3839-4b25-9cc9-28fc2da00221",
+    "parent_id": "0cbd42e3-ded7-4df9-a47a-e0704377e6f8",
+    "name": "23 03",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:40.452631+00:00",
+    "updated_at": "2026-11-11T22:25:40.136+00:00"
+  },
+  {
+    "id": "a0396fe5-f144-431b-a66e-4eeee270b4d4",
+    "parent_id": "b8b88472-224d-41e7-ac88-10128b1c8074",
+    "name": "04 03",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:39.590549+00:00",
+    "updated_at": "2026-11-11T22:25:39.268+00:00"
+  },
+  {
+    "id": "51f9cfce-fbb9-4cd7-83dc-ae35b249dd87",
+    "parent_id": "b8b88472-224d-41e7-ac88-10128b1c8074",
+    "name": "17 03",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:38.728369+00:00",
+    "updated_at": "2026-11-11T22:25:38.412+00:00"
+  },
+  {
+    "id": "a320e4cb-78f1-4b54-9cf9-3db878143f49",
+    "parent_id": "d8e96178-f22f-4d89-9406-8b3f401adabc",
+    "name": "Substituida",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:37.883403+00:00",
+    "updated_at": "2026-11-11T22:25:37.555+00:00"
+  },
+  {
+    "id": "0cbd42e3-ded7-4df9-a47a-e0704377e6f8",
+    "parent_id": "b6adf9f7-a97c-4b46-8ea2-4b2c48d59232",
+    "name": "Bravus",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:37.040823+00:00",
+    "updated_at": "2026-11-11T22:25:36.737+00:00"
+  },
+  {
+    "id": "b8b88472-224d-41e7-ac88-10128b1c8074",
+    "parent_id": "b6adf9f7-a97c-4b46-8ea2-4b2c48d59232",
+    "name": "ServRio",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:36.218069+00:00",
+    "updated_at": "2026-11-11T22:25:35.865+00:00"
+  },
+  {
+    "id": "cfea2faa-52e4-44bc-8121-e66d665c0ae2",
+    "parent_id": "325d422b-ca64-4d83-96e7-e88ca9201d30",
+    "name": "20 04 2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:35.347881+00:00",
+    "updated_at": "2026-11-11T22:25:35.024+00:00"
+  },
+  {
+    "id": "b1096954-16bd-45bf-8be0-92e92975ebbf",
+    "parent_id": "b72e5ba0-938b-42dd-a891-2dc7ecaaf0e5",
+    "name": "06 05 26",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:34.513828+00:00",
+    "updated_at": "2026-11-11T22:25:34.168+00:00"
+  },
+  {
+    "id": "22f485bd-1d17-4942-88b0-cd3ce8ef6312",
+    "parent_id": "b72e5ba0-938b-42dd-a891-2dc7ecaaf0e5",
+    "name": "20 05 26",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:33.636946+00:00",
+    "updated_at": "2026-11-11T22:25:33.282+00:00"
+  },
+  {
+    "id": "08537494-ae94-4c5e-85fb-9c249488c69d",
+    "parent_id": "e7af0536-f4ac-4d02-926b-8a97323241e8",
+    "name": "03 06 2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:32.712016+00:00",
+    "updated_at": "2026-11-11T22:25:32.37+00:00"
+  },
+  {
+    "id": "2c89862e-7462-411f-ae00-9cd4ad0efb8e",
+    "parent_id": "e7af0536-f4ac-4d02-926b-8a97323241e8",
+    "name": "15 06 2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:31.801625+00:00",
+    "updated_at": "2026-11-11T22:25:31.494+00:00"
+  },
+  {
+    "id": "3639247a-27b5-4e78-b219-6e1fa8bf05c3",
+    "parent_id": "e7af0536-f4ac-4d02-926b-8a97323241e8",
+    "name": "29 06 26",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:30.96329+00:00",
+    "updated_at": "2026-11-11T22:25:30.626+00:00"
+  },
+  {
+    "id": "3d776bfd-7909-4183-8c36-003200f0b091",
+    "parent_id": "603c9cd5-4bbd-469a-913b-f4504701991e",
+    "name": "13 07 26",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:30.091491+00:00",
+    "updated_at": "2026-11-11T22:25:29.767+00:00"
+  },
+  {
+    "id": "314a6321-ca58-4e87-bf06-17eea4eae668",
+    "parent_id": "1e313e9e-a575-4476-95de-0a52ee56d4d7",
+    "name": "10 08 26",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:29.260265+00:00",
+    "updated_at": "2026-11-11T22:25:28.865+00:00"
+  },
+  {
+    "id": "d8e96178-f22f-4d89-9406-8b3f401adabc",
+    "parent_id": "1e313e9e-a575-4476-95de-0a52ee56d4d7",
+    "name": "18 08 26",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:28.347379+00:00",
+    "updated_at": "2026-11-11T22:25:28.035+00:00"
+  },
+  {
+    "id": "99bd5d71-f1c2-43fb-8040-b127c1eb4659",
+    "parent_id": "1e313e9e-a575-4476-95de-0a52ee56d4d7",
+    "name": "24 08 26",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:27.482469+00:00",
+    "updated_at": "2026-11-11T22:25:27.15+00:00"
+  },
+  {
+    "id": "0b10c844-3aae-4baa-b73f-9fe5a5f75ef3",
+    "parent_id": "998632ff-e9eb-403a-918e-66e227febdec",
+    "name": "08 09 26",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:25.477665+00:00",
+    "updated_at": "2026-11-11T22:25:25.147+00:00"
+  },
+  {
+    "id": "d468fae8-3487-4534-a12f-f36560db00eb",
+    "parent_id": "b93e368a-add2-4f5c-ada1-bc14cf3cb5cf",
+    "name": "07 10 26",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:24.619361+00:00",
+    "updated_at": "2026-11-11T22:25:24.286+00:00"
+  },
+  {
+    "id": "d530e37d-1604-4a3d-a00d-a6696e73f8ce",
+    "parent_id": "0310a5ce-e312-4e26-95cc-75aa736a25a3",
+    "name": "022026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:23.77569+00:00",
+    "updated_at": "2026-11-11T22:25:23.444+00:00"
+  },
+  {
+    "id": "b6adf9f7-a97c-4b46-8ea2-4b2c48d59232",
+    "parent_id": "0310a5ce-e312-4e26-95cc-75aa736a25a3",
+    "name": "032026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:22.928912+00:00",
+    "updated_at": "2026-11-11T22:25:22.594+00:00"
+  },
+  {
+    "id": "325d422b-ca64-4d83-96e7-e88ca9201d30",
+    "parent_id": "0310a5ce-e312-4e26-95cc-75aa736a25a3",
+    "name": "042026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:22.053633+00:00",
+    "updated_at": "2026-11-11T22:25:21.73+00:00"
+  },
+  {
+    "id": "b72e5ba0-938b-42dd-a891-2dc7ecaaf0e5",
+    "parent_id": "0310a5ce-e312-4e26-95cc-75aa736a25a3",
+    "name": "052026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:21.22072+00:00",
+    "updated_at": "2026-11-11T22:25:20.888+00:00"
+  },
+  {
+    "id": "e7af0536-f4ac-4d02-926b-8a97323241e8",
+    "parent_id": "0310a5ce-e312-4e26-95cc-75aa736a25a3",
+    "name": "062026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:20.382165+00:00",
+    "updated_at": "2026-11-11T22:25:20.068+00:00"
+  },
+  {
+    "id": "603c9cd5-4bbd-469a-913b-f4504701991e",
+    "parent_id": "0310a5ce-e312-4e26-95cc-75aa736a25a3",
+    "name": "072026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:19.558439+00:00",
+    "updated_at": "2026-11-11T22:25:19.141+00:00"
+  },
+  {
+    "id": "1e313e9e-a575-4476-95de-0a52ee56d4d7",
+    "parent_id": "0310a5ce-e312-4e26-95cc-75aa736a25a3",
+    "name": "082026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:18.632431+00:00",
+    "updated_at": "2026-11-11T22:25:18.281+00:00"
+  },
+  {
+    "id": "998632ff-e9eb-403a-918e-66e227febdec",
+    "parent_id": "0310a5ce-e312-4e26-95cc-75aa736a25a3",
+    "name": "092026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:17.728844+00:00",
+    "updated_at": "2026-11-11T22:25:17.409+00:00"
+  },
+  {
+    "id": "b93e368a-add2-4f5c-ada1-bc14cf3cb5cf",
+    "parent_id": "0310a5ce-e312-4e26-95cc-75aa736a25a3",
+    "name": "102026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:16.435356+00:00",
+    "updated_at": "2026-11-11T22:25:16.116+00:00"
+  },
+  {
+    "id": "9ade425d-5028-4d2e-9b27-5828f6ea3a2d",
+    "parent_id": "d612a6c0-926b-4952-9491-d1358fc5a15f",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:15.583748+00:00",
+    "updated_at": "2026-11-11T22:25:15.255+00:00"
+  },
+  {
+    "id": "0310a5ce-e312-4e26-95cc-75aa736a25a3",
+    "parent_id": "f6be1889-2b55-4faa-99a8-41a99d874b50",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:14.706334+00:00",
+    "updated_at": "2026-11-11T22:25:14.376+00:00"
+  },
+  {
+    "id": "d612a6c0-926b-4952-9491-d1358fc5a15f",
+    "parent_id": "15615176-0eba-4182-bcf9-3c19f4424018",
+    "name": "PGDAS",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:13.808155+00:00",
+    "updated_at": "2026-11-11T22:25:13.474+00:00"
+  },
+  {
+    "id": "15795617-f3db-4d17-858d-c7e5ad077f01",
+    "parent_id": "8e9013bb-ff78-4f67-a847-cce7871b8f7f",
+    "name": "2024",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:12.911205+00:00",
+    "updated_at": "2026-11-11T22:25:12.596+00:00"
+  },
+  {
+    "id": "1d7e8bcb-a960-497f-9d13-24c1c852a6f8",
+    "parent_id": "8e9013bb-ff78-4f67-a847-cce7871b8f7f",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:12.033695+00:00",
+    "updated_at": "2026-11-11T22:25:11.678+00:00"
+  },
+  {
+    "id": "f4bfc4c8-0154-4d5f-9f9b-ddb892dd6e13",
+    "parent_id": "43b45e01-bdf4-48a3-968c-fb7a9dcc4290",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:11.177411+00:00",
+    "updated_at": "2026-11-11T22:25:10.836+00:00"
+  },
+  {
+    "id": "f6be1889-2b55-4faa-99a8-41a99d874b50",
+    "parent_id": "f49d57b5-bdfd-4a90-a391-505bf2f852de",
+    "name": "Nfs",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:10.303974+00:00",
+    "updated_at": "2026-11-11T22:25:09.956+00:00"
+  },
+  {
+    "id": "15615176-0eba-4182-bcf9-3c19f4424018",
+    "parent_id": "f49d57b5-bdfd-4a90-a391-505bf2f852de",
+    "name": "SIMPLES",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:09.355579+00:00",
+    "updated_at": "2026-11-11T22:25:09.015+00:00"
+  },
+  {
+    "id": "8e9013bb-ff78-4f67-a847-cce7871b8f7f",
+    "parent_id": "faeb7404-1581-4e0a-84b1-22a5bbc4ecf4",
+    "name": "IRPF",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:08.454471+00:00",
+    "updated_at": "2026-11-11T22:25:08.067+00:00"
+  },
+  {
+    "id": "43b45e01-bdf4-48a3-968c-fb7a9dcc4290",
+    "parent_id": "e9f62072-6e08-4301-acaa-38de88f58e75",
+    "name": "FINANCEIRO",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:07.533304+00:00",
+    "updated_at": "2026-11-11T22:25:07.165+00:00"
+  },
+  {
+    "id": "f49d57b5-bdfd-4a90-a391-505bf2f852de",
+    "parent_id": "e9f62072-6e08-4301-acaa-38de88f58e75",
+    "name": "FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:06.565361+00:00",
+    "updated_at": "2026-11-11T22:25:06.223+00:00"
+  },
+  {
+    "id": "faeb7404-1581-4e0a-84b1-22a5bbc4ecf4",
+    "parent_id": "e9f62072-6e08-4301-acaa-38de88f58e75",
+    "name": "LEGALIZAÇÃO",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:05.697751+00:00",
+    "updated_at": "2026-11-11T22:25:05.356+00:00"
+  },
+  {
+    "id": "e9f62072-6e08-4301-acaa-38de88f58e75",
+    "parent_id": "73845cd2-d73f-498f-b680-a4666f58154b",
+    "name": "Matheus -",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:04.809235+00:00",
+    "updated_at": "2026-11-11T22:25:04.449+00:00"
+  },
+  {
+    "id": "73845cd2-d73f-498f-b680-a4666f58154b",
+    "parent_id": null,
+    "name": "MATHEUS - MEI_",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:25:03.872176+00:00",
+    "updated_at": "2026-11-11T22:25:03.34+00:00"
+  },
+  {
+    "id": "38b348a2-d931-4768-a54b-422fd2bfa377",
+    "parent_id": "20ba3e78-f390-43c9-8541-3e7663673347",
+    "name": "122024",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:29.143236+00:00",
+    "updated_at": "2026-11-11T22:17:28.783+00:00"
+  },
+  {
+    "id": "92ad48da-7584-4e9b-8892-c700f8e35fb3",
+    "parent_id": "b9fd7f50-d652-4eec-a9d5-5a1dc23cc4c9",
+    "name": "11 06 2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:28.279096+00:00",
+    "updated_at": "2026-11-11T22:17:27.928+00:00"
+  },
+  {
+    "id": "20ba3e78-f390-43c9-8541-3e7663673347",
+    "parent_id": "2b0ee251-cff8-48bc-8101-700c41007206",
+    "name": "2024",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:27.427528+00:00",
+    "updated_at": "2026-11-11T22:17:27.1+00:00"
+  },
+  {
+    "id": "4d92599b-4210-4168-ae61-8218808c23bd",
+    "parent_id": "6f42209b-518e-4299-8890-0da5440cd43c",
+    "name": "2024",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:26.561804+00:00",
+    "updated_at": "2026-11-11T22:17:26.241+00:00"
+  },
+  {
+    "id": "d112d12c-44f0-438f-8b77-d3911445deef",
+    "parent_id": "6f42209b-518e-4299-8890-0da5440cd43c",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:25.665348+00:00",
+    "updated_at": "2026-11-11T22:17:25.34+00:00"
+  },
+  {
+    "id": "070ca931-d60e-4eec-828b-1f5765668d27",
+    "parent_id": "953da2f6-53a0-4221-9185-b9b21151bfa8",
+    "name": "122024",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:24.814755+00:00",
+    "updated_at": "2026-11-11T22:17:24.487+00:00"
+  },
+  {
+    "id": "24e22d18-6354-4043-91e8-7b319df6ac57",
+    "parent_id": "caed703c-d080-4dd7-b046-38b149a6b3ff",
+    "name": "072025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:23.960355+00:00",
+    "updated_at": "2026-11-11T22:17:23.624+00:00"
+  },
+  {
+    "id": "081dcfc8-f422-4688-af58-4e9a0d1f9d19",
+    "parent_id": "caed703c-d080-4dd7-b046-38b149a6b3ff",
+    "name": "082025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:23.07595+00:00",
+    "updated_at": "2026-11-11T22:17:22.735+00:00"
+  },
+  {
+    "id": "b9e9ee5f-767f-40bb-9833-7a5bb77dc2e0",
+    "parent_id": "caed703c-d080-4dd7-b046-38b149a6b3ff",
+    "name": "092025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:22.233485+00:00",
+    "updated_at": "2026-11-11T22:17:21.89+00:00"
+  },
+  {
+    "id": "b9fd7f50-d652-4eec-a9d5-5a1dc23cc4c9",
+    "parent_id": "31156f46-55d9-4492-ba4d-c235ffe26da6",
+    "name": "062026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:21.336711+00:00",
+    "updated_at": "2026-11-11T22:17:21.021+00:00"
+  },
+  {
+    "id": "225b2eb9-b43a-42d0-b861-e5478ea552ee",
+    "parent_id": "5660bc83-5b0f-41be-ad22-2ee237f5cc2f",
+    "name": "Declaração",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:20.513507+00:00",
+    "updated_at": "2026-11-11T22:17:20.177+00:00"
+  },
+  {
+    "id": "01e53953-2ba8-467c-9e6f-5a1ed405f2b2",
+    "parent_id": "dff88233-4153-4652-aa56-4681bf0e0a74",
+    "name": "Declaração",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:19.60118+00:00",
+    "updated_at": "2026-11-11T22:17:19.263+00:00"
+  },
+  {
+    "id": "b2f04d23-9c8b-4de0-a29d-409fc3c74373",
+    "parent_id": "dff88233-4153-4652-aa56-4681bf0e0a74",
+    "name": "Parcelamento 11 2024 a 12 2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:18.762915+00:00",
+    "updated_at": "2026-11-11T22:17:18.431+00:00"
+  },
+  {
+    "id": "0d1ba398-52a0-48dc-8a77-828c38a56f73",
+    "parent_id": "047feacd-78f9-4c1a-9532-2877a4126b49",
+    "name": "Código de Acesso",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:17.88597+00:00",
+    "updated_at": "2026-11-11T22:17:17.567+00:00"
+  },
+  {
+    "id": "2b0ee251-cff8-48bc-8101-700c41007206",
+    "parent_id": "047feacd-78f9-4c1a-9532-2877a4126b49",
+    "name": "NOTA FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:16.361678+00:00",
+    "updated_at": "2026-11-11T22:17:15.593+00:00"
+  },
+  {
+    "id": "02b4f751-13da-41d3-b824-3da6c674e040",
+    "parent_id": "047feacd-78f9-4c1a-9532-2877a4126b49",
+    "name": "OPTANTE",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:15.084591+00:00",
+    "updated_at": "2026-11-11T22:17:14.748+00:00"
+  },
+  {
+    "id": "6f42209b-518e-4299-8890-0da5440cd43c",
+    "parent_id": "047feacd-78f9-4c1a-9532-2877a4126b49",
+    "name": "PGDAS",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:14.242292+00:00",
+    "updated_at": "2026-11-11T22:17:13.897+00:00"
+  },
+  {
+    "id": "4aa0255c-855c-428f-ab66-951d81fcb20b",
+    "parent_id": "ab11bb6b-b1c5-4fec-bdd3-7436c46ce9b9",
+    "name": "Documentos",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:13.37163+00:00",
+    "updated_at": "2026-11-11T22:17:13.035+00:00"
+  },
+  {
+    "id": "953da2f6-53a0-4221-9185-b9b21151bfa8",
+    "parent_id": "d211bf01-2fbd-4af7-abbe-c423be56af64",
+    "name": "2024",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:12.495915+00:00",
+    "updated_at": "2026-11-11T22:17:12.123+00:00"
+  },
+  {
+    "id": "caed703c-d080-4dd7-b046-38b149a6b3ff",
+    "parent_id": "d211bf01-2fbd-4af7-abbe-c423be56af64",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:11.589959+00:00",
+    "updated_at": "2026-11-11T22:17:11.262+00:00"
+  },
+  {
+    "id": "31156f46-55d9-4492-ba4d-c235ffe26da6",
+    "parent_id": "d211bf01-2fbd-4af7-abbe-c423be56af64",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:10.744324+00:00",
+    "updated_at": "2026-11-11T22:17:10.419+00:00"
+  },
+  {
+    "id": "b39d6941-a2d9-4d6f-b9b1-99062d609854",
+    "parent_id": "f806d4dd-3dd1-4057-9829-31fefb31daf4",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:09.846533+00:00",
+    "updated_at": "2026-11-11T22:17:09.513+00:00"
+  },
+  {
+    "id": "a76a04a9-8bb5-41db-82e2-32452ab2060b",
+    "parent_id": "a55d9120-0fae-497b-8a33-0a0df6e0f4aa",
+    "name": "2024",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:08.999457+00:00",
+    "updated_at": "2026-11-11T22:17:08.635+00:00"
+  },
+  {
+    "id": "5660bc83-5b0f-41be-ad22-2ee237f5cc2f",
+    "parent_id": "a55d9120-0fae-497b-8a33-0a0df6e0f4aa",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:08.137335+00:00",
+    "updated_at": "2026-11-11T22:17:07.795+00:00"
+  },
+  {
+    "id": "dff88233-4153-4652-aa56-4681bf0e0a74",
+    "parent_id": "a55d9120-0fae-497b-8a33-0a0df6e0f4aa",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:07.26712+00:00",
+    "updated_at": "2026-11-11T22:17:06.914+00:00"
+  },
+  {
+    "id": "047feacd-78f9-4c1a-9532-2877a4126b49",
+    "parent_id": "3b6ad523-9395-4972-a530-444720060f83",
+    "name": "FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:06.399182+00:00",
+    "updated_at": "2026-11-11T22:17:06.06+00:00"
+  },
+  {
+    "id": "030075e7-dee4-44dc-bfbe-adccabce24dd",
+    "parent_id": "3b6ad523-9395-4972-a530-444720060f83",
+    "name": "FORNECEDORES",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:05.276639+00:00",
+    "updated_at": "2026-11-11T22:17:04.954+00:00"
+  },
+  {
+    "id": "ab11bb6b-b1c5-4fec-bdd3-7436c46ce9b9",
+    "parent_id": "3b6ad523-9395-4972-a530-444720060f83",
+    "name": "LEGALIZAÇÃO",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:04.445286+00:00",
+    "updated_at": "2026-11-11T22:17:04.119+00:00"
+  },
+  {
+    "id": "3cf26a5c-f086-4dbf-90a6-f3b2821cfee6",
+    "parent_id": "f9763eb3-07b0-4ac5-8e2a-3a75a946d4da",
+    "name": "Adesão",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:03.587085+00:00",
+    "updated_at": "2026-11-11T22:17:03.241+00:00"
+  },
+  {
+    "id": "5c1422f9-1cae-4ce7-a5fa-db5af0f6002b",
+    "parent_id": "f9763eb3-07b0-4ac5-8e2a-3a75a946d4da",
+    "name": "Código de Acesso",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:02.713058+00:00",
+    "updated_at": "2026-11-11T22:17:02.387+00:00"
+  },
+  {
+    "id": "d211bf01-2fbd-4af7-abbe-c423be56af64",
+    "parent_id": "f9763eb3-07b0-4ac5-8e2a-3a75a946d4da",
+    "name": "NOTA FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:17:01.864134+00:00",
+    "updated_at": "2026-11-11T22:17:01.396+00:00"
+  },
+  {
+    "id": "4b502e62-e080-40b6-b3a7-10eb78c10c89",
+    "parent_id": "f9763eb3-07b0-4ac5-8e2a-3a75a946d4da",
+    "name": "OPTANTE",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:16:59.86166+00:00",
+    "updated_at": "2026-11-11T22:16:59.277+00:00"
+  },
+  {
+    "id": "f806d4dd-3dd1-4057-9829-31fefb31daf4",
+    "parent_id": "f9763eb3-07b0-4ac5-8e2a-3a75a946d4da",
+    "name": "Parcelamento",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:16:58.730113+00:00",
+    "updated_at": "2026-11-11T22:16:58.39+00:00"
+  },
+  {
+    "id": "a55d9120-0fae-497b-8a33-0a0df6e0f4aa",
+    "parent_id": "f9763eb3-07b0-4ac5-8e2a-3a75a946d4da",
+    "name": "PGDAS",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:16:57.857169+00:00",
+    "updated_at": "2026-11-11T22:16:57.499+00:00"
+  },
+  {
+    "id": "ed46a42e-0c4d-41ce-92dd-78c787025cef",
+    "parent_id": "3fa30bae-41d7-4656-b6b9-0412d96da52f",
+    "name": "Documentos",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:16:56.979794+00:00",
+    "updated_at": "2026-11-11T22:16:56.658+00:00"
+  },
+  {
+    "id": "3b6ad523-9395-4972-a530-444720060f83",
+    "parent_id": "c511cf8a-fc50-435a-a5b3-5ba14de98c0c",
+    "name": "Ana Cláudia",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:16:56.134757+00:00",
+    "updated_at": "2026-11-11T22:16:55.808+00:00"
+  },
+  {
+    "id": "f9763eb3-07b0-4ac5-8e2a-3a75a946d4da",
+    "parent_id": "c511cf8a-fc50-435a-a5b3-5ba14de98c0c",
+    "name": "FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:16:55.283761+00:00",
+    "updated_at": "2026-11-11T22:16:54.938+00:00"
+  },
+  {
+    "id": "15b488b7-f287-44ac-9517-29979e898288",
+    "parent_id": "c511cf8a-fc50-435a-a5b3-5ba14de98c0c",
+    "name": "FORNECEDORES",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:16:54.412702+00:00",
+    "updated_at": "2026-11-11T22:16:54.076+00:00"
+  },
+  {
+    "id": "3fa30bae-41d7-4656-b6b9-0412d96da52f",
+    "parent_id": "c511cf8a-fc50-435a-a5b3-5ba14de98c0c",
+    "name": "LEGALIZAÇÃO",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:16:53.506595+00:00",
+    "updated_at": "2026-11-11T22:16:53.13+00:00"
+  },
+  {
+    "id": "c511cf8a-fc50-435a-a5b3-5ba14de98c0c",
+    "parent_id": "1e08d52c-4953-428b-85f9-b977f6c65c9d",
+    "name": "RA REPAROS",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:16:52.57394+00:00",
+    "updated_at": "2026-11-11T22:16:52.218+00:00"
+  },
+  {
+    "id": "1e08d52c-4953-428b-85f9-b977f6c65c9d",
+    "parent_id": null,
+    "name": "R A REPAROS -FLAVIO",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:16:51.689171+00:00",
+    "updated_at": "2026-11-11T22:16:51.358+00:00"
+  },
+  {
+    "id": "9c559700-3658-47b7-b87d-d05ca7c1e06a",
+    "parent_id": "cd623509-0a93-473a-bae1-cf9f9f0f839a",
+    "name": "Exigencia",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:39.182671+00:00",
+    "updated_at": "2026-11-11T22:10:38.788+00:00"
+  },
+  {
+    "id": "e3ba411d-0790-403a-9f76-260a18f622b3",
+    "parent_id": "74e1e529-35ae-4b27-8448-f20ec4fd4dba",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:38.246611+00:00",
+    "updated_at": "2026-11-11T22:10:37.942+00:00"
+  },
+  {
+    "id": "0528cde8-baa5-4339-8373-15fc8906e5b4",
+    "parent_id": "5ee17d1f-a483-48f3-ab25-23eb1cab5bff",
+    "name": "Contrato Social da Junta",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:37.39093+00:00",
+    "updated_at": "2026-11-11T22:10:37.029+00:00"
+  },
+  {
+    "id": "ca562320-468f-4c8d-b0cd-c35638770070",
+    "parent_id": "5ee17d1f-a483-48f3-ab25-23eb1cab5bff",
+    "name": "Licenciamento",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:36.485487+00:00",
+    "updated_at": "2026-11-11T22:10:36.152+00:00"
+  },
+  {
+    "id": "cd623509-0a93-473a-bae1-cf9f9f0f839a",
+    "parent_id": "5ee17d1f-a483-48f3-ab25-23eb1cab5bff",
+    "name": "Redesim",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:35.591213+00:00",
+    "updated_at": "2026-11-11T22:10:35.254+00:00"
+  },
+  {
+    "id": "344abe80-0d0e-4989-8177-aecad456d204",
+    "parent_id": "51eaff88-4589-4d31-bb8d-a8feab1cae0b",
+    "name": "Deferimento",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:34.706486+00:00",
+    "updated_at": "2026-11-11T22:10:34.342+00:00"
+  },
+  {
+    "id": "74e1e529-35ae-4b27-8448-f20ec4fd4dba",
+    "parent_id": "ba369850-2c76-47dd-b187-fb6059b3d7fe",
+    "name": "Certificado digital",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:33.076722+00:00",
+    "updated_at": "2026-11-11T22:10:32.708+00:00"
+  },
+  {
+    "id": "5ee17d1f-a483-48f3-ab25-23eb1cab5bff",
+    "parent_id": "0083b2c1-7d00-4764-a115-0eef7b7d7e3a",
+    "name": "Redesim",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:32.150651+00:00",
+    "updated_at": "2026-11-11T22:10:31.648+00:00"
+  },
+  {
+    "id": "51eaff88-4589-4d31-bb8d-a8feab1cae0b",
+    "parent_id": "3f845e76-bc7e-4c7d-bda4-8e8ac793d4db",
+    "name": "SIMPLES",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:31.113338+00:00",
+    "updated_at": "2026-11-11T22:10:30.786+00:00"
+  },
+  {
+    "id": "ba369850-2c76-47dd-b187-fb6059b3d7fe",
+    "parent_id": "f6fdd64b-ac4f-4f2c-9ae3-b7897368bf37",
+    "name": "Administrativo",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:30.211939+00:00",
+    "updated_at": "2026-11-11T22:10:29.871+00:00"
+  },
+  {
+    "id": "0083b2c1-7d00-4764-a115-0eef7b7d7e3a",
+    "parent_id": "f6fdd64b-ac4f-4f2c-9ae3-b7897368bf37",
+    "name": "Contrato Social",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:29.316955+00:00",
+    "updated_at": "2026-11-11T22:10:28.969+00:00"
+  },
+  {
+    "id": "3f845e76-bc7e-4c7d-bda4-8e8ac793d4db",
+    "parent_id": "f6fdd64b-ac4f-4f2c-9ae3-b7897368bf37",
+    "name": "FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:28.395348+00:00",
+    "updated_at": "2026-11-11T22:10:28.049+00:00"
+  },
+  {
+    "id": "1ad3bfde-5b82-4328-a7c0-7a3447e98b6e",
+    "parent_id": "f6fdd64b-ac4f-4f2c-9ae3-b7897368bf37",
+    "name": "Legalização",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:27.507443+00:00",
+    "updated_at": "2026-11-11T22:10:27.158+00:00"
+  },
+  {
+    "id": "f6fdd64b-ac4f-4f2c-9ae3-b7897368bf37",
+    "parent_id": null,
+    "name": "RSB Consultoria - Raphael - filho Isabel Espaço harmonia",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:10:26.544772+00:00",
+    "updated_at": "2026-11-11T22:10:26.208+00:00"
+  },
+  {
+    "id": "8235e94e-6a2a-4214-9c26-324457543339",
+    "parent_id": "55ad3bcd-ea05-4437-a861-9178db66a942",
+    "name": "DOC EMPRESA",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:06:35.510511+00:00",
+    "updated_at": "2026-11-11T22:06:35.155+00:00"
+  },
+  {
+    "id": "e6864d0f-d485-4f9c-8e1c-2abaf6b50c99",
+    "parent_id": "55ad3bcd-ea05-4437-a861-9178db66a942",
+    "name": "PROCESSO ABERTURA",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:06:34.611088+00:00",
+    "updated_at": "2026-11-11T22:06:34.281+00:00"
+  },
+  {
+    "id": "55ad3bcd-ea05-4437-a861-9178db66a942",
+    "parent_id": null,
+    "name": "SOLDINVEST",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T22:06:33.677427+00:00",
+    "updated_at": "2026-11-11T22:06:33.324+00:00"
+  },
+  {
+    "id": "de4512d2-5e71-48a0-b605-ea0fb14254d5",
+    "parent_id": "1ce777c7-80e8-46b7-b5e1-11aa3d26407e",
+    "name": "Boleto avulso para abertura",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:34.532964+00:00",
+    "updated_at": "2026-11-11T21:57:34.22+00:00"
+  },
+  {
+    "id": "888d0890-c569-4996-882c-a96f426de797",
+    "parent_id": "1ce777c7-80e8-46b7-b5e1-11aa3d26407e",
+    "name": "Bombeiro",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:33.702059+00:00",
+    "updated_at": "2026-11-11T21:57:33.365+00:00"
+  },
+  {
+    "id": "2c9bdf97-e557-40a8-bc53-8c23c9f9be9e",
+    "parent_id": "1ce777c7-80e8-46b7-b5e1-11aa3d26407e",
+    "name": "Exigencia",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:32.784725+00:00",
+    "updated_at": "2026-11-11T21:57:32.459+00:00"
+  },
+  {
+    "id": "a230199b-d4b6-4f2a-9702-3ee6497cf198",
+    "parent_id": "1ce777c7-80e8-46b7-b5e1-11aa3d26407e",
+    "name": "Inscrição estadual",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:31.854092+00:00",
+    "updated_at": "2026-11-11T21:57:29.89+00:00"
+  },
+  {
+    "id": "6fe284de-22ad-4fb2-a9b9-92d4c5137c29",
+    "parent_id": "1ce777c7-80e8-46b7-b5e1-11aa3d26407e",
+    "name": "Secretaria da Fazenda",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:29.363235+00:00",
+    "updated_at": "2026-11-11T21:57:29.018+00:00"
+  },
+  {
+    "id": "0df8427f-f0a2-41a2-83b1-c1c2558a74e9",
+    "parent_id": "e432c1e0-5857-4a52-982b-18a14f9b192e",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:28.499263+00:00",
+    "updated_at": "2026-11-11T21:57:28.187+00:00"
+  },
+  {
+    "id": "49cc3c4f-ede0-446b-a308-62d1dbb2db7b",
+    "parent_id": "6083e0d1-d44e-49de-a717-375da497d6aa",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:24.957554+00:00",
+    "updated_at": "2026-11-11T21:57:24.602+00:00"
+  },
+  {
+    "id": "240135c2-f18c-4c58-bd9c-1eb22be39ea3",
+    "parent_id": "8800457f-1758-4427-ae00-492e7c6ffcaf",
+    "name": "2024",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:24.01176+00:00",
+    "updated_at": "2026-11-11T21:57:23.708+00:00"
+  },
+  {
+    "id": "81fffcf5-6353-44df-9873-f895ffd4f7a9",
+    "parent_id": "8800457f-1758-4427-ae00-492e7c6ffcaf",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:23.166315+00:00",
+    "updated_at": "2026-11-11T21:57:22.84+00:00"
+  },
+  {
+    "id": "1ce777c7-80e8-46b7-b5e1-11aa3d26407e",
+    "parent_id": "c92ec4d0-fad7-4d74-8700-693e692dbca2",
+    "name": "Regin - 2",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:21.991933+00:00",
+    "updated_at": "2026-11-11T21:57:21.658+00:00"
+  },
+  {
+    "id": "f08100aa-2589-4cc0-aa9c-2744f2e8a6d0",
+    "parent_id": "c8fb0ee7-82cf-40ee-a747-e4e5b67a1c54",
+    "name": "Bombeiro",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:20.00228+00:00",
+    "updated_at": "2026-11-11T21:57:19.66+00:00"
+  },
+  {
+    "id": "ce3ef44b-8659-4ed2-a2ef-bbc81ec3c498",
+    "parent_id": "c8fb0ee7-82cf-40ee-a747-e4e5b67a1c54",
+    "name": "Inscriçao estadual",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:19.073552+00:00",
+    "updated_at": "2026-11-11T21:57:18.762+00:00"
+  },
+  {
+    "id": "fb678c6f-9628-4712-99b7-ae3e9663cf79",
+    "parent_id": "c8fb0ee7-82cf-40ee-a747-e4e5b67a1c54",
+    "name": "SEcretaria de Fazenda",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:18.154418+00:00",
+    "updated_at": "2026-11-11T21:57:17.827+00:00"
+  },
+  {
+    "id": "9ea65dcd-3276-4673-9e79-0fe81f2018dd",
+    "parent_id": "c8fb0ee7-82cf-40ee-a747-e4e5b67a1c54",
+    "name": "Urbanismo",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:17.264919+00:00",
+    "updated_at": "2026-11-11T21:57:16.909+00:00"
+  },
+  {
+    "id": "17a25ea4-d130-4ac2-b2d6-306bc7f243ac",
+    "parent_id": "15fcac71-79ec-46b8-b383-c456deb932e7",
+    "name": "Boleto avulso para abertura",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:16.359977+00:00",
+    "updated_at": "2026-11-11T21:57:15.551+00:00"
+  },
+  {
+    "id": "1f533ffb-9af9-4b2e-8959-45d3a11c0166",
+    "parent_id": "15fcac71-79ec-46b8-b383-c456deb932e7",
+    "name": "Bombeiro",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:14.252678+00:00",
+    "updated_at": "2026-11-11T21:57:13.898+00:00"
+  },
+  {
+    "id": "6d954089-4155-458f-96dc-41d324c7ae16",
+    "parent_id": "15fcac71-79ec-46b8-b383-c456deb932e7",
+    "name": "DBE",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:13.382857+00:00",
+    "updated_at": "2026-11-11T21:57:13+00:00"
+  },
+  {
+    "id": "84ccfbf7-5eb7-4b2f-a597-5f16522e4c9d",
+    "parent_id": "15fcac71-79ec-46b8-b383-c456deb932e7",
+    "name": "Inscrição estadual",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:12.461941+00:00",
+    "updated_at": "2026-11-11T21:57:12.141+00:00"
+  },
+  {
+    "id": "ef4a23ae-d9c5-440f-b4bf-9287ddae9a71",
+    "parent_id": "15fcac71-79ec-46b8-b383-c456deb932e7",
+    "name": "Secretaria da Fazenda",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:11.589633+00:00",
+    "updated_at": "2026-11-11T21:57:11.263+00:00"
+  },
+  {
+    "id": "e432c1e0-5857-4a52-982b-18a14f9b192e",
+    "parent_id": "a71e2a11-4306-4b66-9c26-9a7b40d6de5b",
+    "name": "Certificado digital",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:10.657574+00:00",
+    "updated_at": "2026-11-11T21:57:10.248+00:00"
+  },
+  {
+    "id": "6083e0d1-d44e-49de-a717-375da497d6aa",
+    "parent_id": "18c72ced-a9eb-4bda-b87c-7de96179b1bf",
+    "name": "Certidões",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:07.00794+00:00",
+    "updated_at": "2026-11-11T21:57:06.67+00:00"
+  },
+  {
+    "id": "b923b5dd-d0e0-42bb-b6ca-699ce992157e",
+    "parent_id": "18c72ced-a9eb-4bda-b87c-7de96179b1bf",
+    "name": "Prefeitura",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:06.13828+00:00",
+    "updated_at": "2026-11-11T21:57:05.838+00:00"
+  },
+  {
+    "id": "8800457f-1758-4427-ae00-492e7c6ffcaf",
+    "parent_id": "18c72ced-a9eb-4bda-b87c-7de96179b1bf",
+    "name": "Situação fiscal",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:05.322115+00:00",
+    "updated_at": "2026-11-11T21:57:05.005+00:00"
+  },
+  {
+    "id": "0acae48d-0377-41a1-8d11-28290a95ba47",
+    "parent_id": "7c006041-beb4-4afc-90cb-6b61f868be8b",
+    "name": "3ª Alteração Contratual",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:04.454684+00:00",
+    "updated_at": "2026-11-11T21:57:03.942+00:00"
+  },
+  {
+    "id": "a841d699-3775-4ff5-9d15-56b16b8fd717",
+    "parent_id": "7c006041-beb4-4afc-90cb-6b61f868be8b",
+    "name": "CNPJ",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:02.610029+00:00",
+    "updated_at": "2026-11-11T21:57:02.31+00:00"
+  },
+  {
+    "id": "556fd40f-db50-440c-b87c-6f505dc7b3a3",
+    "parent_id": "7c006041-beb4-4afc-90cb-6b61f868be8b",
+    "name": "Contrato",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:01.739052+00:00",
+    "updated_at": "2026-11-11T21:57:01.421+00:00"
+  },
+  {
+    "id": "68f76424-afe6-41e8-b4be-db088b362fee",
+    "parent_id": "7c006041-beb4-4afc-90cb-6b61f868be8b",
+    "name": "Documentos",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:57:00.904847+00:00",
+    "updated_at": "2026-11-11T21:57:00.552+00:00"
+  },
+  {
+    "id": "c92ec4d0-fad7-4d74-8700-693e692dbca2",
+    "parent_id": "7c006041-beb4-4afc-90cb-6b61f868be8b",
+    "name": "Junta Comercial",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:56:59.988775+00:00",
+    "updated_at": "2026-11-11T21:56:59.671+00:00"
+  },
+  {
+    "id": "2804f0a3-fd58-4dcd-b0fc-3eacbd069002",
+    "parent_id": "7c006041-beb4-4afc-90cb-6b61f868be8b",
+    "name": "Prefeitura",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:56:59.102032+00:00",
+    "updated_at": "2026-11-11T21:56:58.781+00:00"
+  },
+  {
+    "id": "c8fb0ee7-82cf-40ee-a747-e4e5b67a1c54",
+    "parent_id": "7c006041-beb4-4afc-90cb-6b61f868be8b",
+    "name": "Regin",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:56:57.366711+00:00",
+    "updated_at": "2026-11-11T21:56:57.027+00:00"
+  },
+  {
+    "id": "15fcac71-79ec-46b8-b383-c456deb932e7",
+    "parent_id": "7c006041-beb4-4afc-90cb-6b61f868be8b",
+    "name": "Regin - 2",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:56:56.454739+00:00",
+    "updated_at": "2026-11-11T21:56:56.098+00:00"
+  },
+  {
+    "id": "a71e2a11-4306-4b66-9c26-9a7b40d6de5b",
+    "parent_id": "631f7b42-2851-4bc6-99b5-cd223cdbda36",
+    "name": "Administrativo",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:56:55.555915+00:00",
+    "updated_at": "2026-11-11T21:56:55.248+00:00"
+  },
+  {
+    "id": "18c72ced-a9eb-4bda-b87c-7de96179b1bf",
+    "parent_id": "631f7b42-2851-4bc6-99b5-cd223cdbda36",
+    "name": "FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:56:53.841936+00:00",
+    "updated_at": "2026-11-11T21:56:53.458+00:00"
+  },
+  {
+    "id": "7c006041-beb4-4afc-90cb-6b61f868be8b",
+    "parent_id": "631f7b42-2851-4bc6-99b5-cd223cdbda36",
+    "name": "Legalização",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:56:52.939801+00:00",
+    "updated_at": "2026-11-11T21:56:52.6+00:00"
+  },
+  {
+    "id": "631f7b42-2851-4bc6-99b5-cd223cdbda36",
+    "parent_id": null,
+    "name": "W A Construções - Amauri - construtora",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:56:51.042864+00:00",
+    "updated_at": "2026-11-11T21:56:50.74+00:00"
+  },
+  {
+    "id": "a67a8643-6914-45aa-8aee-45f19ec1b069",
+    "parent_id": "cf0a755b-9a90-42e3-99a1-90636904688a",
+    "name": "012026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:25.472989+00:00",
+    "updated_at": "2026-11-11T21:35:25.177+00:00"
+  },
+  {
+    "id": "e56014c3-5a91-404b-b800-42f222d58a2b",
+    "parent_id": "cf0a755b-9a90-42e3-99a1-90636904688a",
+    "name": "022026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:24.692775+00:00",
+    "updated_at": "2026-11-11T21:35:24.365+00:00"
+  },
+  {
+    "id": "ed81174f-a243-4d8a-ba36-ff6a463d09c3",
+    "parent_id": "cf0a755b-9a90-42e3-99a1-90636904688a",
+    "name": "032026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:23.858031+00:00",
+    "updated_at": "2026-11-11T21:35:23.532+00:00"
+  },
+  {
+    "id": "538a6457-d4e1-40b4-bb9c-28482f3c9ccd",
+    "parent_id": "cf0a755b-9a90-42e3-99a1-90636904688a",
+    "name": "042026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:23.068659+00:00",
+    "updated_at": "2026-11-11T21:35:22.769+00:00"
+  },
+  {
+    "id": "290d2f02-9830-46ed-be84-17eee07d34ca",
+    "parent_id": "cf0a755b-9a90-42e3-99a1-90636904688a",
+    "name": "052026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:22.304366+00:00",
+    "updated_at": "2026-11-11T21:35:21.999+00:00"
+  },
+  {
+    "id": "cf0a755b-9a90-42e3-99a1-90636904688a",
+    "parent_id": "e5316d16-231b-4924-9140-b7d2b2a168f4",
+    "name": "Extratos",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:21.5078+00:00",
+    "updated_at": "2026-11-11T21:35:21.208+00:00"
+  },
+  {
+    "id": "afcc7b2d-8c5b-41d7-9247-2092c99af605",
+    "parent_id": "766279b5-ae00-41b1-a243-a9b772f821e4",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:20.724106+00:00",
+    "updated_at": "2026-11-11T21:35:20.413+00:00"
+  },
+  {
+    "id": "2879f5ed-04ac-4d09-b42f-b6d75cdc2891",
+    "parent_id": "106336df-515d-4fa7-8e85-2c5cf42a0427",
+    "name": "DAS",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:19.934958+00:00",
+    "updated_at": "2026-11-11T21:35:19.631+00:00"
+  },
+  {
+    "id": "7af4a710-3db9-42e5-bdbc-b3b9505cb9fd",
+    "parent_id": "106336df-515d-4fa7-8e85-2c5cf42a0427",
+    "name": "Declaração",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:19.156072+00:00",
+    "updated_at": "2026-11-11T21:35:18.843+00:00"
+  },
+  {
+    "id": "a48a5e35-e003-49fe-b4da-4a672821f847",
+    "parent_id": "2aa395f4-fcaa-40ab-a5bc-0600791a4349",
+    "name": "DAS",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:18.369986+00:00",
+    "updated_at": "2026-11-11T21:35:17.694+00:00"
+  },
+  {
+    "id": "e5316d16-231b-4924-9140-b7d2b2a168f4",
+    "parent_id": "2aa395f4-fcaa-40ab-a5bc-0600791a4349",
+    "name": "Declaração",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:17.198988+00:00",
+    "updated_at": "2026-11-11T21:35:16.88+00:00"
+  },
+  {
+    "id": "72474467-c5bb-4616-ac01-963741bfacfc",
+    "parent_id": "6f83ae62-a84f-4376-84e4-13415bc7bea2",
+    "name": "Documentos",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:16.384674+00:00",
+    "updated_at": "2026-11-11T21:35:16.073+00:00"
+  },
+  {
+    "id": "766279b5-ae00-41b1-a243-a9b772f821e4",
+    "parent_id": "ce342e96-0682-4642-8c07-c4203a4fdff5",
+    "name": "Pagamentos",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:15.57125+00:00",
+    "updated_at": "2026-11-11T21:35:15.263+00:00"
+  },
+  {
+    "id": "06cdcdb2-e6f7-4489-9a6c-32d9dc69e67a",
+    "parent_id": "c41d81e5-aa2f-4ee4-b585-1e1fb64afa0f",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:14.724908+00:00",
+    "updated_at": "2026-11-11T21:35:14.39+00:00"
+  },
+  {
+    "id": "106336df-515d-4fa7-8e85-2c5cf42a0427",
+    "parent_id": "87daa8ab-4c7c-4e95-88ba-e657bffb0155",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:13.886347+00:00",
+    "updated_at": "2026-11-11T21:35:13.584+00:00"
+  },
+  {
+    "id": "2aa395f4-fcaa-40ab-a5bc-0600791a4349",
+    "parent_id": "87daa8ab-4c7c-4e95-88ba-e657bffb0155",
+    "name": "2026",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:13.099284+00:00",
+    "updated_at": "2026-11-11T21:35:12.77+00:00"
+  },
+  {
+    "id": "6f83ae62-a84f-4376-84e4-13415bc7bea2",
+    "parent_id": "5e6ac275-0e2b-4c6f-a9f5-2056e79630f9",
+    "name": "2025",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:12.28101+00:00",
+    "updated_at": "2026-11-11T21:35:11.946+00:00"
+  },
+  {
+    "id": "ce342e96-0682-4642-8c07-c4203a4fdff5",
+    "parent_id": "6456121c-bfb8-415b-95c6-447bc4be4809",
+    "name": "Administrativo",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:11.473209+00:00",
+    "updated_at": "2026-11-11T21:35:11.114+00:00"
+  },
+  {
+    "id": "c41d81e5-aa2f-4ee4-b585-1e1fb64afa0f",
+    "parent_id": "6456121c-bfb8-415b-95c6-447bc4be4809",
+    "name": "Extratos mensais",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:10.619254+00:00",
+    "updated_at": "2026-11-11T21:35:10.287+00:00"
+  },
+  {
+    "id": "87daa8ab-4c7c-4e95-88ba-e657bffb0155",
+    "parent_id": "6456121c-bfb8-415b-95c6-447bc4be4809",
+    "name": "FISCAL",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:09.801064+00:00",
+    "updated_at": "2026-11-11T21:35:09.464+00:00"
+  },
+  {
+    "id": "5e6ac275-0e2b-4c6f-a9f5-2056e79630f9",
+    "parent_id": "6456121c-bfb8-415b-95c6-447bc4be4809",
+    "name": "IRPF",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:08.989611+00:00",
+    "updated_at": "2026-11-11T21:35:08.605+00:00"
+  },
+  {
+    "id": "c9703429-c766-442f-827d-55080a91189c",
+    "parent_id": "6456121c-bfb8-415b-95c6-447bc4be4809",
+    "name": "LEGALIZAÇÃO",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:08.093822+00:00",
+    "updated_at": "2026-11-11T21:35:07.753+00:00"
+  },
+  {
+    "id": "6456121c-bfb8-415b-95c6-447bc4be4809",
+    "parent_id": null,
+    "name": "Wagner",
+    "sector": "Diretoria",
+    "created_by": null,
+    "created_at": "2026-11-11T21:35:07.193802+00:00",
+    "updated_at": "2026-11-11T21:35:06.837+00:00"
+  }
+]
