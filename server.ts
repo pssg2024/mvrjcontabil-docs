@@ -3,10 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import multer from 'multer';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadBucketCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadBucketCommand, HeadObjectCommand, PutBucketCorsCommand, GetBucketCorsCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createClient } from '@supabase/supabase-js';
-import { createServer as createViteServer } from 'vite';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { GoogleGenAI } from '@google/genai';
 import JSZip from 'jszip';
@@ -16,6 +15,9 @@ const app = express();
 // Port 3000 is strictly required in AI Studio sandboxed container.
 // On Render, Render sets RENDER=true and assigns a dynamic PORT (e.g. 10000).
 const PORT = process.env.RENDER ? (Number(process.env.PORT) || 3000) : 3000;
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY);
+const SEED_STORAGE_DIR = path.join(process.cwd(), 'storage');
+const STORAGE_BASE_DIR = IS_SERVERLESS ? path.join('/tmp', 'mvrj-storage') : SEED_STORAGE_DIR;
 
 // Multer configured with memoryStorage for direct streaming to Cloudflare R2
 // NEVER writes files to local server directories (e.g. ./uploads, ./public/uploads, /tmp)
@@ -119,6 +121,40 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
+// Helper: Auto-configura CORS no bucket Cloudflare R2 para uploads/downloads diretos via Presigned URLs
+let r2CorsConfigured = false;
+async function ensureR2BucketCors(force = false): Promise<{ configured: boolean; message: string }> {
+  if (r2CorsConfigured && !force) {
+    return { configured: true, message: 'CORS já configurado nesta sessão' };
+  }
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) {
+    return { configured: false, message: 'R2 não configurado' };
+  }
+  try {
+    await client.send(new PutBucketCorsCommand({
+      Bucket: bucketName,
+      CORSConfiguration: {
+        CORSRules: [
+          {
+            AllowedOrigins: ['*'],
+            AllowedMethods: ['GET', 'PUT', 'POST', 'HEAD'],
+            AllowedHeaders: ['*'],
+            ExposeHeaders: ['ETag', 'Content-Length', 'Content-Type', 'Content-Disposition'],
+            MaxAgeSeconds: 86400,
+          },
+        ],
+      },
+    }));
+    r2CorsConfigured = true;
+    console.log(`[R2 CORS] Política CORS aplicada automaticamente no bucket ${bucketName}`);
+    return { configured: true, message: `CORS configurado no bucket ${bucketName}` };
+  } catch (err: any) {
+    console.warn('[R2 CORS Aviso]', err?.message || err);
+    return { configured: false, message: err?.message || 'Erro ao aplicar CORS no R2' };
+  }
+}
+
 // 2. R2 Configuration Status
 app.get('/api/r2/status', (req: Request, res: Response) => {
   const { isConfigured, bucketName } = getR2Client();
@@ -127,8 +163,16 @@ app.get('/api/r2/status', (req: Request, res: Response) => {
     bucketName,
     endpoint: process.env.R2_ENDPOINT || (process.env.R2_ACCOUNT_ID ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : 'https://<ACCOUNT_ID>.r2.cloudflarestorage.com'),
     mode: isConfigured ? 'PRODUCTION_CLOUDFLARE_R2' : 'SECURE_SANDBOX_SIMULATION',
+    directPresignedEnabled: isConfigured,
+    corsConfigured: r2CorsConfigured,
     supportedMimes: ['application/pdf', 'image/webp', 'image/png', 'image/jpeg', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
   });
+});
+
+// 2.1 Manual / On-demand R2 CORS setup endpoint
+app.post('/api/r2/configure-cors', async (req: Request, res: Response) => {
+  const result = await ensureR2BucketCors(true);
+  return res.status(result.configured ? 200 : 400).json(result);
 });
 
 // Helper to check if storage quota limit is reached (Cloudflare R2 is elastic without artificial hard blocking)
@@ -172,15 +216,16 @@ app.post('/api/r2/presigned-upload', async (req: Request, res: Response) => {
     const { client, bucketName, isConfigured } = getR2Client();
 
     if (isConfigured && client) {
-      // GERAÇÃO REAL DE PRESIGNED URL COM AWS S3 SDK PARA CLOUDFLARE R2
+      // Garante CORS no R2 na primeira requisição se ainda não verificado
+      if (!r2CorsConfigured) {
+        await ensureR2BucketCors().catch(() => {});
+      }
+
+      // GERAÇÃO REAL DE PRESIGNED URL COM AWS S3 SDK PARA CLOUDFLARE R2 (Upload direto Browser -> R2)
       const command = new PutObjectCommand({
         Bucket: bucketName,
         Key: storageKey,
         ContentType: mimeType,
-        Metadata: {
-          'uploaded-by': req.headers['x-user-id']?.toString() || 'anonymous',
-          'client-name': 'MVRJCONTABIL-GED',
-        },
       });
 
       // URL pré-assinada válida por 15 minutos (900 segundos)
@@ -190,7 +235,7 @@ app.post('/api/r2/presigned-upload', async (req: Request, res: Response) => {
         storageKey,
         uploadUrl: presignedPutUrl,
         expiresInSeconds: 900,
-        provider: 'Cloudflare R2 (S3 API)',
+        provider: 'Cloudflare R2 (S3 API Direct)',
         isSimulation: false,
       });
     }
@@ -252,7 +297,17 @@ function detectMimeType(fileNameOrKey: string, fallbackMime?: string): string {
   }
 }
 
-// Helper to stream R2 object directly to response or fallback to memory store
+// Helper to format Content-Disposition cleanly for browsers
+function buildContentDisposition(disposition: 'inline' | 'attachment', fileName: string): string {
+  const safeAscii = fileName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, '_')
+    .replace(/["\\]/g, '_');
+  return `${disposition}; filename="${safeAscii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
+
+// Helper to redirect directly to Cloudflare R2 Presigned URL (0 server bandwidth) or fallback to memory store
 async function streamR2Object(
   storageKey: string,
   fileName: string,
@@ -262,32 +317,28 @@ async function streamR2Object(
 ) {
   const { client, bucketName, isConfigured } = getR2Client();
   const cleanMime = detectMimeType(fileName || storageKey, mimeType);
+  const effectiveName = fileName || path.basename(storageKey);
 
   if (isConfigured && client) {
     try {
-      const command = new GetObjectCommand({
+      // Verifica apenas o cabeçalho no R2 (0 bytes de tráfego) e redireciona (302) direto para o bucket R2
+      await client.send(new HeadObjectCommand({
         Bucket: bucketName,
         Key: storageKey,
+      }));
+
+      const getCommand = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: storageKey,
+        ResponseContentDisposition: buildContentDisposition(disposition, effectiveName),
+        ResponseContentType: cleanMime !== 'application/octet-stream' ? cleanMime : undefined,
       });
-      const r2Response = await client.send(command);
 
-      if (r2Response.Body) {
-        const finalMime = (cleanMime !== 'application/octet-stream')
-          ? cleanMime
-          : (r2Response.ContentType || 'application/octet-stream');
-
-        res.setHeader('Content-Type', finalMime);
-        res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName || path.basename(storageKey))}"`);
-        if (r2Response.ContentLength) {
-          res.setHeader('Content-Length', r2Response.ContentLength);
-        }
-        res.setHeader('Cache-Control', 'public, max-age=86400');
-
-        const stream = r2Response.Body as NodeJS.ReadableStream;
-        return stream.pipe(res);
-      }
+      const presignedGetUrl = await getSignedUrl(client, getCommand, { expiresIn: 3600 });
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      return res.redirect(302, presignedGetUrl);
     } catch (s3Err: any) {
-      console.warn(`[R2 Stream] Objeto ${storageKey} não encontrado no R2 (${s3Err.message}), verificando cache local`);
+      console.warn(`[R2 Redirect] Objeto ${storageKey} não encontrado no R2 (${s3Err.message}), verificando cache local`);
     }
   }
 
@@ -295,7 +346,7 @@ async function streamR2Object(
   const cached = inMemoryFileStore.get(storageKey);
   if (cached) {
     res.setHeader('Content-Type', cleanMime !== 'application/octet-stream' ? cleanMime : (cached.mimeType || 'application/octet-stream'));
-    res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName || cached.name || path.basename(storageKey))}"`);
+    res.setHeader('Content-Disposition', buildContentDisposition(disposition, fileName || cached.name || path.basename(storageKey)));
     res.setHeader('Content-Length', cached.buffer.length);
     res.setHeader('Cache-Control', 'public, max-age=86400');
     return res.send(cached.buffer);
@@ -304,7 +355,7 @@ async function streamR2Object(
   return res.status(404).json({ error: 'Arquivo não encontrado no Cloudflare R2' });
 }
 
-// 4. Generate Presigned GET URL for Secure Download/Preview (7 days expiration with resilient proxy fallback)
+// 4. Generate Presigned GET URL for Secure Download/Preview (Direct Browser <-> Cloudflare R2, zero server bandwidth)
 app.post('/api/r2/presigned-download', async (req: Request, res: Response) => {
   try {
     const { storageKey, fileName, inline } = req.body;
@@ -321,28 +372,31 @@ app.post('/api/r2/presigned-download', async (req: Request, res: Response) => {
 
     if (isConfigured && client) {
       try {
+        if (!r2CorsConfigured) {
+          await ensureR2BucketCors().catch(() => {});
+        }
         const disposition = inline ? 'inline' : 'attachment';
         const cleanMime = detectMimeType(effectiveFileName);
         const command = new GetObjectCommand({
           Bucket: bucketName,
           Key: storageKey,
-          ResponseContentDisposition: `${disposition}; filename="${encodeURIComponent(effectiveFileName)}"`,
+          ResponseContentDisposition: buildContentDisposition(disposition, effectiveFileName),
           ResponseContentType: cleanMime !== 'application/octet-stream' ? cleanMime : undefined,
         });
 
-        // 7 dias de expiração (604800 segundos) para prevenir expiração prematura
+        // 7 dias de expiração (604800 segundos) - link direto ao Cloudflare R2 sem passar banda pelo servidor
         const presignedGetUrl = await getSignedUrl(client, command, { expiresIn: 604800 });
 
         return res.json({
-          downloadUrl: inline ? serverProxyUrl : presignedGetUrl,
+          downloadUrl: presignedGetUrl,
           directR2Url: presignedGetUrl,
           serverProxyUrl,
           expiresInSeconds: 604800,
-          provider: 'Cloudflare R2 (S3 API)',
+          provider: 'Cloudflare R2 (S3 API Direct)',
           isSimulation: false,
         });
       } catch (signErr: any) {
-        console.warn('[R2 Presigned Download] Fallback para servidor streaming proxy:', signErr.message);
+        console.warn('[R2 Presigned Download] Fallback para servidor redirect:', signErr.message);
       }
     }
 
@@ -765,7 +819,7 @@ app.post(['/api/sped/upload', '/api/integrations/sped-upload'], (req, res, next)
     let savedToDisk = false;
     let localDiskPath = '';
     try {
-      const spedDir = path.join(process.cwd(), 'storage', 'sped_uploads');
+      const spedDir = path.join(STORAGE_BASE_DIR, 'sped_uploads');
       if (!fs.existsSync(spedDir)) {
         fs.mkdirSync(spedDir, { recursive: true });
       }
@@ -1099,7 +1153,7 @@ app.post('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
 
     // Salvar também em cache em disco local para persistência permanente entre reinicializações
     try {
-      const avatarDiskPath = path.join(process.cwd(), 'storage', 'avatars', `${userId}.webp`);
+      const avatarDiskPath = path.join(STORAGE_BASE_DIR, 'avatars', `${userId}.webp`);
       const dir = path.dirname(avatarDiskPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(avatarDiskPath, buffer);
@@ -1228,7 +1282,7 @@ app.get('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
     }
 
     // 2. Verificar cache permanente em disco local
-    const avatarDiskPath = path.join(process.cwd(), 'storage', 'avatars', `${userId}.webp`);
+    const avatarDiskPath = path.join(STORAGE_BASE_DIR, 'avatars', `${userId}.webp`);
     if (fs.existsSync(avatarDiskPath)) {
       try {
         const diskBuf = fs.readFileSync(avatarDiskPath);
@@ -1301,7 +1355,7 @@ app.delete('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
     // 1. Remover do cache local em memória e em disco
     inMemoryFileStore.delete(storageKey);
     try {
-      const avatarDiskPath = path.join(process.cwd(), 'storage', 'avatars', `${userId}.webp`);
+      const avatarDiskPath = path.join(STORAGE_BASE_DIR, 'avatars', `${userId}.webp`);
       if (fs.existsSync(avatarDiskPath)) fs.unlinkSync(avatarDiskPath);
     } catch (e) {}
 
@@ -1387,7 +1441,7 @@ app.delete('/api/r2/avatar/:userId', async (req: Request, res: Response) => {
 // ==============================================================================
 // 10. PROFILES MANAGEMENT (Supabase + Local Disk Persistence)
 // ==============================================================================
-const PROFILES_FILE = path.join(process.cwd(), 'storage', 'profiles.json');
+const PROFILES_FILE = path.join(STORAGE_BASE_DIR, 'profiles.json');
 
 interface StoredProfile {
   id: string;
@@ -1514,7 +1568,7 @@ interface DeletedUserRecord {
   deleted_at: string;
 }
 
-const DELETED_USERS_FILE = path.join(process.cwd(), 'storage', 'deleted_users.json');
+const DELETED_USERS_FILE = path.join(STORAGE_BASE_DIR, 'deleted_users.json');
 const R2_DELETED_USERS_KEY = 'system/deleted_users.json';
 let persistedDeletedUsers: DeletedUserRecord[] = [];
 
@@ -2221,10 +2275,10 @@ app.get('/api/system/status', async (req: Request, res: Response) => {
 // ==============================================================================
 // 12.5 FOLDERS & FILES PERSISTENCE (Supabase + Local Disk + Cloudflare R2)
 // ==============================================================================
-const FOLDERS_FILE = path.join(process.cwd(), 'storage', 'folders.json');
-const FILES_FILE = path.join(process.cwd(), 'storage', 'files.json');
-const DELETED_FILES_FILE = path.join(process.cwd(), 'storage', 'deleted_files.json');
-const DELETED_FOLDERS_FILE = path.join(process.cwd(), 'storage', 'deleted_folders.json');
+const FOLDERS_FILE = path.join(STORAGE_BASE_DIR, 'folders.json');
+const FILES_FILE = path.join(STORAGE_BASE_DIR, 'files.json');
+const DELETED_FILES_FILE = path.join(STORAGE_BASE_DIR, 'deleted_files.json');
+const DELETED_FOLDERS_FILE = path.join(STORAGE_BASE_DIR, 'deleted_folders.json');
 const R2_FOLDERS_KEY = 'system/folders.json';
 const R2_FILES_KEY = 'system/files.json';
 const R2_DELETED_FILES_KEY = 'system/deleted_files.json';
@@ -2280,7 +2334,7 @@ let deletedFoldersLoaded = false;
 // ==============================================================================
 // 12.55 LIXEIRA & BACKUP DE SEGURANÇA (Supabase + Local Disk + Cloudflare R2)
 // ==============================================================================
-const TRASH_FILE = path.join(process.cwd(), 'storage', 'trash.json');
+const TRASH_FILE = path.join(STORAGE_BASE_DIR, 'trash.json');
 const R2_TRASH_KEY = 'system/trash.json';
 
 interface TrashItem {
@@ -2372,8 +2426,8 @@ async function fetchR2Trash(): Promise<TrashItem[]> {
 // ==============================================================================
 // 12.6 COMPANIES & INVOICES PERSISTENCE (Supabase + Local Disk + Cloudflare R2)
 // ==============================================================================
-const COMPANIES_FILE = path.join(process.cwd(), 'storage', 'companies.json');
-const INVOICES_FILE = path.join(process.cwd(), 'storage', 'invoices.json');
+const COMPANIES_FILE = path.join(STORAGE_BASE_DIR, 'companies.json');
+const INVOICES_FILE = path.join(STORAGE_BASE_DIR, 'invoices.json');
 
 let persistedCompanies: any[] = [];
 let companiesLoaded = false;
@@ -2414,7 +2468,9 @@ function loadPersistedCompanies() {
         }
 
         // Cacheia o buffer físico do certificado A1 na memória
-        const certDiskPath = path.join(process.cwd(), 'storage', 'certificates', 'BAR E DEPOSITO E COMERCIO DO RENATINHO LTDA_59143345000147.pfx');
+        const certDiskPath = fs.existsSync(path.join(STORAGE_BASE_DIR, 'certificates', 'BAR E DEPOSITO E COMERCIO DO RENATINHO LTDA_59143345000147.pfx'))
+          ? path.join(STORAGE_BASE_DIR, 'certificates', 'BAR E DEPOSITO E COMERCIO DO RENATINHO LTDA_59143345000147.pfx')
+          : path.join(SEED_STORAGE_DIR, 'certificates', 'BAR E DEPOSITO E COMERCIO DO RENATINHO LTDA_59143345000147.pfx');
         if (fs.existsSync(certDiskPath)) {
           const certBuf = fs.readFileSync(certDiskPath);
           inMemoryFileStore.set('certificates/comp-renatinho/BAR_E_DEPOSITO_E_COMERCIO_DO_RENATINHO_LTDA_59143345000147.pfx', {
@@ -2700,7 +2756,7 @@ function extractCertificateMetadata(buffer: Buffer, password = ''): {
   serial_number: string;
   status: 'valid' | 'expiring_soon' | 'expired';
 } {
-  const tempPfx = path.join(process.cwd(), 'storage', 'certificates', `temp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.pfx`);
+  const tempPfx = path.join(STORAGE_BASE_DIR, 'certificates', `temp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.pfx`);
   try {
     const dir = path.dirname(tempPfx);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -5050,7 +5106,7 @@ app.get('/api/sefaz/status-servicos', (req: Request, res: Response) => {
 });
 
 // 2. Metadados do Certificado Digital A1 de uma Empresa
-app.get('/api/sefaz/companies/:id/certificate-info', (req: Request, res: Response) => {
+app.get('/api/sefaz/companies/:id/certificate-info', async (req: Request, res: Response) => {
   try {
     const companyId = req.params.id;
     loadPersistedCompanies();
@@ -5067,14 +5123,37 @@ app.get('/api/sefaz/companies/:id/certificate-info', (req: Request, res: Respons
       });
     }
 
-    // Tenta ler o arquivo físico do certificado
-    const certPath = path.join(process.cwd(), 'storage', 'certificates', company.certificate_filename || 'certificado.pfx');
+    // Tenta ler o arquivo físico do certificado (STORAGE_BASE_DIR -> SEED_STORAGE_DIR -> Memória -> Cloudflare R2)
+    const certName = company.certificate_filename || 'certificado.pfx';
+    const certPathPrimary = path.join(STORAGE_BASE_DIR, 'certificates', certName);
+    const certPathSeed = path.join(SEED_STORAGE_DIR, 'certificates', certName);
     let certBuffer: Buffer | null = null;
 
-    if (fs.existsSync(certPath)) {
-      certBuffer = fs.readFileSync(certPath);
+    if (fs.existsSync(certPathPrimary)) {
+      certBuffer = fs.readFileSync(certPathPrimary);
+    } else if (fs.existsSync(certPathSeed)) {
+      certBuffer = fs.readFileSync(certPathSeed);
     } else if (company.certificate_storage_key && inMemoryFileStore.has(company.certificate_storage_key)) {
       certBuffer = inMemoryFileStore.get(company.certificate_storage_key)!.buffer;
+    } else if (company.certificate_storage_key) {
+      const { client, bucketName, isConfigured } = getR2Client();
+      if (isConfigured && client) {
+        try {
+          const r2Res = await client.send(new GetObjectCommand({ Bucket: bucketName, Key: company.certificate_storage_key }));
+          if (r2Res.Body) {
+            const chunks: Buffer[] = [];
+            for await (const chunk of r2Res.Body as any) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            certBuffer = Buffer.concat(chunks);
+            inMemoryFileStore.set(company.certificate_storage_key, {
+              buffer: certBuffer,
+              mimeType: 'application/x-pkcs12',
+              name: certName,
+            });
+          }
+        } catch {}
+      }
     }
 
     if (certBuffer) {
@@ -5156,8 +5235,8 @@ app.post('/api/sefaz/companies/:id/upload-certificate', upload.single('certifica
 
     const company = persistedCompanies[compIdx];
 
-    // 2. Salva arquivo localmente em storage/certificates
-    const certDir = path.join(process.cwd(), 'storage', 'certificates');
+    // 2. Salva arquivo localmente em STORAGE_BASE_DIR/certificates
+    const certDir = path.join(STORAGE_BASE_DIR, 'certificates');
     if (!fs.existsSync(certDir)) fs.mkdirSync(certDir, { recursive: true });
 
     const cleanFileName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -6881,8 +6960,8 @@ interface ServerSiteBackgroundConfig {
   updatedBy?: string;
 }
 
-const SETTINGS_FILE = path.join(process.cwd(), 'storage', 'system_settings.json');
-const ASSETS_DIR = path.join(process.cwd(), 'storage', 'assets');
+const SETTINGS_FILE = path.join(STORAGE_BASE_DIR, 'system_settings.json');
+const ASSETS_DIR = path.join(STORAGE_BASE_DIR, 'assets');
 const R2_SETTINGS_KEY = 'system/settings.json';
 
 let siteBackgroundConfig: ServerSiteBackgroundConfig = {
@@ -7887,81 +7966,85 @@ DIRETRIZES DE RESPOSTA:
 });
 
 // ==============================================================================
-// VITE DEV / PRODUCTION MIDDLEWARE
+// Rota dedicada para Open Graph og-image.jpg (registrada no app principal para funcionar em Serverless/Vercel também)
+const handleOgImage = async (req: Request, res: Response) => {
+  try {
+    const bgStorageKey = 'system/site-background.img';
+
+    // 1. Tenta a imagem de fundo do site (site-background.img)
+    const cachedBg = inMemoryFileStore.get(bgStorageKey);
+    if (cachedBg && cachedBg.buffer) {
+      res.setHeader('Content-Type', cachedBg.mimeType || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(cachedBg.buffer);
+    }
+    const diskBgPath = path.join(ASSETS_DIR, 'site-background.img');
+    const diskBgMeta = path.join(ASSETS_DIR, 'site-background.meta.json');
+    if (fs.existsSync(diskBgPath)) {
+      try {
+        const buf = fs.readFileSync(diskBgPath);
+        let mime = 'image/jpeg';
+        if (fs.existsSync(diskBgMeta)) {
+          const meta = JSON.parse(fs.readFileSync(diskBgMeta, 'utf-8'));
+          if (meta.mimeType) mime = meta.mimeType;
+        }
+        res.setHeader('Content-Type', mime);
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.send(buf);
+      } catch (e) {}
+    }
+
+    // 2. Tenta a imagem de login / header (auth-header.img)
+    const diskAuthPath = path.join(ASSETS_DIR, 'auth-header.img');
+    const diskAuthMeta = path.join(ASSETS_DIR, 'auth-header.meta.json');
+    if (fs.existsSync(diskAuthPath)) {
+      try {
+        const buf = fs.readFileSync(diskAuthPath);
+        let mime = 'image/jpeg';
+        if (fs.existsSync(diskAuthMeta)) {
+          const meta = JSON.parse(fs.readFileSync(diskAuthMeta, 'utf-8'));
+          if (meta.mimeType) mime = meta.mimeType;
+        }
+        res.setHeader('Content-Type', mime);
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.send(buf);
+      } catch (e) {}
+    }
+
+    // 3. Fallback para a imagem padrão og-image.jpg em public/
+    const defaultOgPath = path.join(process.cwd(), 'public', 'og-image.jpg');
+    if (fs.existsSync(defaultOgPath)) {
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.sendFile(defaultOgPath);
+    }
+
+    return res.status(404).send('Not Found');
+  } catch (err) {
+    const defaultOgPath = path.join(process.cwd(), 'public', 'og-image.jpg');
+    if (fs.existsSync(defaultOgPath)) {
+      return res.sendFile(defaultOgPath);
+    }
+    return res.status(500).send('Error');
+  }
+};
+
+app.get('/og-image.jpg', handleOgImage);
+app.get('/api/og-image', handleOgImage);
+
+// ==============================================================================
+// VITE DEV / PRODUCTION MIDDLEWARE (Local / Render; Vercel serve o frontend estático no CDN)
 // ==============================================================================
 
 async function startServer() {
-  // Sincroniza configurações e assets do Cloudflare R2 na inicialização
-  try {
-    await syncPersistedSettingsWithR2();
-  } catch (syncErr: any) {
-    console.warn('[Startup Sync Aviso]', syncErr.message);
-  }
-
-  // Rota dedicada para Open Graph og-image.jpg (prioriza a imagem de fundo personalizada do site ou do login)
-  app.get('/og-image.jpg', async (req: Request, res: Response) => {
-    try {
-      const bgStorageKey = 'system/site-background.img';
-
-      // 1. Tenta a imagem de fundo do site (site-background.img)
-      const cachedBg = inMemoryFileStore.get(bgStorageKey);
-      if (cachedBg && cachedBg.buffer) {
-        res.setHeader('Content-Type', cachedBg.mimeType || 'image/jpeg');
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-        return res.send(cachedBg.buffer);
-      }
-      const diskBgPath = path.join(ASSETS_DIR, 'site-background.img');
-      const diskBgMeta = path.join(ASSETS_DIR, 'site-background.meta.json');
-      if (fs.existsSync(diskBgPath)) {
-        try {
-          const buf = fs.readFileSync(diskBgPath);
-          let mime = 'image/jpeg';
-          if (fs.existsSync(diskBgMeta)) {
-            const meta = JSON.parse(fs.readFileSync(diskBgMeta, 'utf-8'));
-            if (meta.mimeType) mime = meta.mimeType;
-          }
-          res.setHeader('Content-Type', mime);
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-          return res.send(buf);
-        } catch (e) {}
-      }
-
-      // 2. Tenta a imagem de login / header (auth-header.img)
-      const diskAuthPath = path.join(ASSETS_DIR, 'auth-header.img');
-      const diskAuthMeta = path.join(ASSETS_DIR, 'auth-header.meta.json');
-      if (fs.existsSync(diskAuthPath)) {
-        try {
-          const buf = fs.readFileSync(diskAuthPath);
-          let mime = 'image/jpeg';
-          if (fs.existsSync(diskAuthMeta)) {
-            const meta = JSON.parse(fs.readFileSync(diskAuthMeta, 'utf-8'));
-            if (meta.mimeType) mime = meta.mimeType;
-          }
-          res.setHeader('Content-Type', mime);
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-          return res.send(buf);
-        } catch (e) {}
-      }
-
-      // 3. Fallback para a imagem padrão og-image.jpg em public/
-      const defaultOgPath = path.join(process.cwd(), 'public', 'og-image.jpg');
-      if (fs.existsSync(defaultOgPath)) {
-        res.setHeader('Content-Type', 'image/jpeg');
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-        return res.sendFile(defaultOgPath);
-      }
-
-      return res.status(404).send('Not Found');
-    } catch (err) {
-      const defaultOgPath = path.join(process.cwd(), 'public', 'og-image.jpg');
-      if (fs.existsSync(defaultOgPath)) {
-        return res.sendFile(defaultOgPath);
-      }
-      return res.status(500).send('Error');
-    }
+  // Sincroniza configurações e CORS do Cloudflare R2 em segundo plano para não atrasar o boot do servidor
+  syncPersistedSettingsWithR2().catch((syncErr: any) => {
+    console.warn('[Startup Sync Aviso]', syncErr?.message || syncErr);
   });
+  ensureR2BucketCors().catch(() => {});
 
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -7981,7 +8064,7 @@ async function startServer() {
     app.get('*', (req: Request, res: Response) => {
       try {
         const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-        const host = req.get('host') || 'mvrjcontabil-docs.onrender.com';
+        const host = req.get('host') || 'mvrjcontabil-docs.vercel.app';
         const baseUrl = `${protocol}://${host}`;
 
         let html = cachedIndexHtml;
@@ -8028,4 +8111,9 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!IS_SERVERLESS) {
+  startServer();
+}
+
+export { app };
+export default app;

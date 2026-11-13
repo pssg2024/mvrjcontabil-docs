@@ -100,9 +100,9 @@ export async function uploadViaServerDirect(
 }
 
 /**
- * Uploads the optimized file to Cloudflare R2.
- * Uses the resilient backend endpoint with auto-retries and background sync
- * to completely eliminate browser CORS restrictions and upload drops.
+ * Uploads the optimized file directly from the browser to Cloudflare R2 via Presigned PUT URL
+ * so zero file bandwidth passes through the backend server.
+ * Falls back to the server endpoint only in local sandbox mode or for small files if CORS fails.
  */
 export async function uploadToPresignedUrl(
   uploadUrl: string,
@@ -112,18 +112,18 @@ export async function uploadToPresignedUrl(
   storageKey?: string,
   fileName?: string
 ): Promise<void> {
-  // Upload direto e resiliente pelo servidor GED se chave e nome estiverem disponíveis
-  if (storageKey && fileName) {
+  const isExternalR2Url = uploadUrl.startsWith('http://') || uploadUrl.startsWith('https://');
+  const SERVERLESS_FALLBACK_MAX_BYTES = 4 * 1024 * 1024; // 4 MB safety limit for serverless fallback
+
+  // Em modo sandbox local (sem credenciais R2), usa o endpoint local do servidor
+  if (!isExternalR2Url && storageKey && fileName) {
     return uploadViaServerDirect(fileBlob, storageKey, mimeType, fileName, onProgress);
   }
 
   return new Promise((resolve, reject) => {
-    // If the presigned URL is a relative API mock/local url, handle it directly or via server
-    const isExternalR2Url = uploadUrl.startsWith('http://') || uploadUrl.startsWith('https://');
-
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', uploadUrl, true);
-    xhr.setRequestHeader('Content-Type', mimeType);
+    xhr.setRequestHeader('Content-Type', mimeType || 'application/octet-stream');
 
     if (xhr.upload && onProgress) {
       xhr.upload.onprogress = (event) => {
@@ -138,28 +138,24 @@ export async function uploadToPresignedUrl(
       if (xhr.status >= 200 && xhr.status < 300) {
         if (onProgress) onProgress(100);
         resolve();
-      } else {
-        // If R2 rejects direct PUT (e.g. 403 CORS or permissions), fallback to backend
-        if (storageKey && fileName) {
-          console.warn(`[Storage Service] Upload direto no R2 retornou ${xhr.status}. Acionando fallback resiliente via servidor...`);
-          uploadViaServerDirect(fileBlob, storageKey, mimeType, fileName, onProgress)
-            .then(resolve)
-            .catch(reject);
-        } else {
-          reject(new Error(`Falha no upload para o R2. Status HTTP: ${xhr.status} ${xhr.statusText}`));
-        }
-      }
-    };
-
-    xhr.onerror = () => {
-      // CORS block from browser or network error during direct PUT to Cloudflare R2
-      if (storageKey && fileName) {
-        console.info('[Storage Service] Upload direto ao Cloudflare R2 encontrou restrição CORS do navegador. Concluindo envio via canal direto do servidor...');
+      } else if (storageKey && fileName && fileBlob.size <= SERVERLESS_FALLBACK_MAX_BYTES) {
+        console.warn(`[Storage Service] Upload direto no R2 retornou ${xhr.status}. Usando fallback do servidor (<4MB)...`);
         uploadViaServerDirect(fileBlob, storageKey, mimeType, fileName, onProgress)
           .then(resolve)
           .catch(reject);
       } else {
-        reject(new Error('Erro de conexão durante o envio para o Cloudflare R2'));
+        reject(new Error(`Falha no upload direto para o Cloudflare R2 (HTTP ${xhr.status}). Verifique a configuração de CORS do bucket R2.`));
+      }
+    };
+
+    xhr.onerror = () => {
+      if (storageKey && fileName && fileBlob.size <= SERVERLESS_FALLBACK_MAX_BYTES) {
+        console.info('[Storage Service] CORS ou rede bloqueou PUT direto ao R2. Usando fallback para arquivo <= 4MB...');
+        uploadViaServerDirect(fileBlob, storageKey, mimeType, fileName, onProgress)
+          .then(resolve)
+          .catch(reject);
+      } else {
+        reject(new Error('Erro de conexão/CORS ao enviar diretamente para o Cloudflare R2. Libere o CORS (PUT/GET) no bucket R2.'));
       }
     };
 
