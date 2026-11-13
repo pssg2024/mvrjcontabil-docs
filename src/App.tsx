@@ -63,6 +63,7 @@ import {
   fetchSystemStatusFromApi,
   fetchProfilesFromApi
 } from './lib/storage-service';
+import { fetchInadimplenciaData, subscribeInadimplenciaSync } from './lib/inadimplencia-service';
 import { getSupabase } from './lib/supabase';
 
 export default function App() {
@@ -169,6 +170,8 @@ export default function App() {
 
   // Navigation & Modals
   const [activeView, setActiveView] = useState<'drive' | 'admin'>('drive');
+  const [adminInitialTab, setAdminInitialTab] = useState<'pending' | 'matrix' | 'users' | 'audit' | 'appearance' | 'inadimplencia'>('pending');
+  const [inadimplenciaCount, setInadimplenciaCount] = useState(0);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -237,6 +240,25 @@ export default function App() {
       }
     }).catch(() => {});
   }, []);
+
+  const refreshInadimplenciaCount = useCallback(() => {
+    fetchInadimplenciaData()
+      .then((data) => {
+        if (data?.summary) {
+          setInadimplenciaCount(data.summary.totalActiveCount || 0);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.sector !== 'Diretoria')) return;
+    refreshInadimplenciaCount();
+    const unsub = subscribeInadimplenciaSync(() => {
+      refreshInadimplenciaCount();
+    });
+    return unsub;
+  }, [currentUser, refreshInadimplenciaCount]);
 
   const handleNavigateHome = () => {
     setActiveView('drive');
@@ -1546,6 +1568,11 @@ export default function App() {
             activeView={activeView}
             onNavigate={(view, tab) => {
               setActiveView(view);
+              if (tab === 'users' || tab === 'audit' || tab === 'inadimplencia' || tab === 'pending') {
+                setAdminInitialTab(tab);
+              } else if (tab === 'mural') {
+                setAdminInitialTab('pending');
+              }
               if (tab) {
                 setTimeout(() => {
                   const targetTab = document.getElementById(`tab-admin-${tab}`);
@@ -1575,6 +1602,7 @@ export default function App() {
             onCloseMobile={() => setIsMobileSidebarOpen(false)}
             onOpenRecycleBin={() => setIsRecycleBinOpen(true)}
             trashCount={trashCount}
+            inadimplenciaCount={inadimplenciaCount}
           />
 
           {/* 2. Área de Conteúdo Principal à Direita */}
@@ -1675,6 +1703,12 @@ export default function App() {
                   auditLogs={auditLogs}
                   siteBackgroundConfig={siteBackgroundConfig}
                   authHeaderConfig={authHeaderConfig}
+                  initialTab={adminInitialTab}
+                  inadimplenciaCount={inadimplenciaCount}
+                  onInadimplenciaCountChange={setInadimplenciaCount}
+                  onInadimplenciaAuditLog={(action, targetId, details) => {
+                    logAudit(action, 'SETTINGS', targetId, details);
+                  }}
                   onUpdateSiteBackgroundConfig={(newConf) => {
                     setSiteBackgroundConfig(newConf);
                   }}

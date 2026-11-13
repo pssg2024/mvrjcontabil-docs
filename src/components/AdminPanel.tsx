@@ -20,8 +20,10 @@ import {
   Trash2,
   RefreshCw,
   Edit2,
-  Loader2
+  Loader2,
+  BadgeDollarSign
 } from 'lucide-react';
+import { InadimplenciaPanel } from './InadimplenciaPanel';
 import { UserAvatar } from './UserAvatar';
 import { 
   UserProfile, 
@@ -46,7 +48,10 @@ interface AdminPanelProps {
   auditLogs: AuditLog[];
   siteBackgroundConfig?: SiteBackgroundConfig;
   authHeaderConfig?: AuthHeaderConfig;
-  initialTab?: 'pending' | 'matrix' | 'users' | 'audit' | 'appearance';
+  initialTab?: 'pending' | 'matrix' | 'users' | 'audit' | 'appearance' | 'inadimplencia';
+  inadimplenciaCount?: number;
+  onInadimplenciaCountChange?: (count: number) => void;
+  onInadimplenciaAuditLog?: (action: 'INADIMPLENCIA_CREATED' | 'INADIMPLENCIA_PAYMENT' | 'INADIMPLENCIA_SETTLED' | 'INADIMPLENCIA_DELETED', targetId: string, details: Record<string, any>) => void;
   onApproveUser: (userId: string, role: UserRole, sector?: Sector) => void;
   onRejectUser: (userId: string) => void;
   onDeleteUser: (userId: string, userName?: string) => void;
@@ -68,6 +73,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   siteBackgroundConfig,
   authHeaderConfig,
   initialTab = 'pending',
+  inadimplenciaCount = 0,
+  onInadimplenciaCountChange,
+  onInadimplenciaAuditLog,
   onApproveUser,
   onRejectUser,
   onDeleteUser,
@@ -79,7 +87,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateAuthHeaderConfig,
   onAuditLog,
 }) => {
-  const [activeTab, setActiveTab] = useState<'pending' | 'matrix' | 'users' | 'audit' | 'appearance'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'pending' | 'matrix' | 'users' | 'audit' | 'appearance' | 'inadimplencia'>(initialTab);
+  React.useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
   const [selectedRoleForApproval, setSelectedRoleForApproval] = useState<Record<string, UserRole>>({});
   const [selectedSectorForApproval, setSelectedSectorForApproval] = useState<Record<string, Sector>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -268,6 +279,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         >
           <History className={`w-4 h-4 ${activeTab === 'audit' ? 'text-[#DFB76C] dark:text-slate-950' : 'text-slate-400'}`} />
           <span>Auditoria</span>
+        </button>
+
+        <button
+          id="tab-admin-inadimplencia"
+          onClick={() => setActiveTab('inadimplencia')}
+          className={`px-4 py-2 text-xs font-semibold flex items-center space-x-2 whitespace-nowrap transition-all rounded-xl cursor-pointer ${
+            activeTab === 'inadimplencia'
+              ? 'bg-[#1B357B] dark:bg-[#C59B4B] text-white dark:text-slate-950 shadow-sm'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <BadgeDollarSign className={`w-4 h-4 ${activeTab === 'inadimplencia' ? 'text-[#DFB76C] dark:text-slate-950' : 'text-rose-400'}`} />
+          <span>Inadimplência</span>
+          {inadimplenciaCount > 0 && (
+            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${activeTab === 'inadimplencia' ? 'bg-rose-600 text-white' : 'bg-rose-500 text-white'}`}>
+              {inadimplenciaCount}
+            </span>
+          )}
         </button>
 
         <button
@@ -740,6 +769,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             onAuditLog={onAuditLog}
           />
         </div>
+      )}
+
+      {/* TAB 6: CONTROLE DE INADIMPLÊNCIA & COBRANÇA */}
+      {activeTab === 'inadimplencia' && (
+        <InadimplenciaPanel
+          currentUser={currentUser}
+          profiles={profiles}
+          onCountChange={onInadimplenciaCountChange}
+          onAuditLog={onInadimplenciaAuditLog}
+        />
       )}
 
       {/* Rename Folder Modal (Admin) */}

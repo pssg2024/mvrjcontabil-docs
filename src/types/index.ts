@@ -102,7 +102,11 @@ export type AuditAction =
   | 'FOLDER_DELETE'
   | 'BACKGROUND_IMAGE_CHANGED'
   | 'AUTH_BANNER_CHANGED'
-  | 'USER_DELETED';
+  | 'USER_DELETED'
+  | 'INADIMPLENCIA_CREATED'
+  | 'INADIMPLENCIA_PAYMENT'
+  | 'INADIMPLENCIA_SETTLED'
+  | 'INADIMPLENCIA_DELETED';
 
 export interface TrashItem {
   id: string; // Unique trash identifier
@@ -311,6 +315,72 @@ export interface AvisoItem {
   autor_nome: string;
   ativo: boolean;
   created_at: string;
+}
+
+export type InadimplenciaClassificacao = 'Leve' | 'Moderada' | 'Alta' | 'Severa';
+export type InadimplenciaStatus = 'inadimplente' | 'quitado';
+export type InadimplenciaFormaPagamento =
+  | 'PIX'
+  | 'Boleto Bancário'
+  | 'Transferência / TED'
+  | 'Cartão'
+  | 'Dinheiro'
+  | 'Acordo Parcelado'
+  | 'Outro';
+
+export interface InadimplenciaPagamentoRegistro {
+  id: string;
+  data: string;
+  valor: number;
+  forma_pagamento: string;
+  comprovante_info?: string;
+  registrado_por: string;
+}
+
+export interface InadimplenciaItem {
+  id: string;
+  cliente_nome: string;
+  documento_cpf_cnpj?: string;
+  telefone: string;
+  email?: string;
+  descricao: string;
+  valor_total: number;
+  valor_pago: number;
+  valor_restante: number;
+  data_vencimento: string;
+  dias_em_atraso: number;
+  classificacao: InadimplenciaClassificacao;
+  classificacao_automatica: InadimplenciaClassificacao;
+  classificacao_manual?: boolean;
+  status: InadimplenciaStatus;
+  forma_pagamento?: InadimplenciaFormaPagamento | string;
+  dados_pagamento?: string;
+  observacoes?: string;
+  historico_pagamentos: InadimplenciaPagamentoRegistro[];
+  notificacao_automatica_gerada?: boolean;
+  data_entrada: string;
+  data_quitacao?: string;
+  criado_por: string;
+  updated_at: string;
+}
+
+export interface InadimplenciaSummary {
+  totalActiveCount: number;
+  totalSettledCount: number;
+  totalDebtAmount: number;
+  totalPaidActiveAmount: number;
+  totalSettledRecoveredAmount: number;
+  byClassification: Record<InadimplenciaClassificacao, number>;
+}
+
+export interface InadimplenciaAlertaAutomatico {
+  cliente_nome: string;
+  telefone: string;
+  classificacao: InadimplenciaClassificacao;
+  dias_em_atraso: number;
+  valor_restante: number;
+  mensagem: string;
+  timestamp: string;
 }
 
 // SEFAZ Web Services DF-e (NFe / CTe / NFSe) Types

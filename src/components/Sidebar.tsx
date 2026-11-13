@@ -21,7 +21,8 @@ import {
   FolderLock,
   X,
   CloudDownload,
-  Trash2
+  Trash2,
+  BadgeDollarSign
 } from 'lucide-react';
 import { UserProfile, StorageMetrics, AuthHeaderConfig } from '../types';
 import { UserAvatar } from './UserAvatar';
@@ -29,7 +30,7 @@ import { UserAvatar } from './UserAvatar';
 export interface SidebarProps {
   currentUser: UserProfile;
   activeView: 'drive' | 'admin';
-  onNavigate: (view: 'drive' | 'admin', adminTab?: 'users' | 'mural' | 'audit') => void;
+  onNavigate: (view: 'drive' | 'admin', adminTab?: 'pending' | 'users' | 'mural' | 'audit' | 'inadimplencia') => void;
   onNavigateHome: () => void;
   onOpenCompanyManager: () => void;
   onOpenCompanyModal: () => void;
@@ -42,6 +43,7 @@ export interface SidebarProps {
   onOpenBackgroundModal: () => void;
   onOpenRecycleBin?: () => void;
   trashCount?: number;
+  inadimplenciaCount?: number;
   onOpenSqlModal?: () => void;
   onOpenProfileModal: (tab?: 'profile' | 'security') => void;
   onLogout: () => void;
@@ -68,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenBackgroundModal,
   onOpenRecycleBin,
   trashCount = 0,
+  inadimplenciaCount = 0,
   onOpenSqlModal: _onOpenSqlModal,
   onOpenProfileModal,
   onLogout,
@@ -479,6 +482,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           strokeWidth={1.75} 
                         />
                         <span className="truncate">Mural de Avisos</span>
+                      </button>
+
+                      {/* Controle de Inadimplência */}
+                      <button
+                        type="button"
+                        id="sidebar-btn-admin-inadimplencia"
+                        onClick={() => handleLinkClick(() => onNavigate('admin', 'inadimplencia'))}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-rose-500/10 hover:text-rose-200 transition-colors cursor-pointer group text-left"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <BadgeDollarSign 
+                            className="w-4 h-4 text-rose-400 group-hover:text-rose-300 transition-colors shrink-0" 
+                            strokeWidth={1.75} 
+                          />
+                          <span className="truncate">Inadimplência</span>
+                        </div>
+                        {inadimplenciaCount > 0 && (
+                          <span className="px-1.5 py-0.2 bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[9px] font-bold rounded-full">
+                            {inadimplenciaCount}
+                          </span>
+                        )}
                       </button>
 
                       {/* Relatórios & Auditoria */}

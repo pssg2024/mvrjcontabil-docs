@@ -7130,6 +7130,542 @@ app.delete('/api/avisos/:id', async (req: Request, res: Response) => {
   }
 });
 
+// ==============================================================================
+// 20. CONTROLE DE INADIMPLÊNCIA E COBRANÇA (Cloudflare R2 + Disco Local)
+// ==============================================================================
+
+type InadimplenciaClassificacaoServer = 'Leve' | 'Moderada' | 'Alta' | 'Severa';
+
+interface InadimplenciaPagamentoServer {
+  id: string;
+  data: string;
+  valor: number;
+  forma_pagamento: string;
+  comprovante_info?: string;
+  registrado_por: string;
+}
+
+interface InadimplenciaServerItem {
+  id: string;
+  cliente_nome: string;
+  documento_cpf_cnpj?: string;
+  telefone: string;
+  email?: string;
+  descricao: string;
+  valor_total: number;
+  valor_pago: number;
+  valor_restante: number;
+  data_vencimento: string;
+  dias_em_atraso: number;
+  classificacao: InadimplenciaClassificacaoServer;
+  classificacao_automatica: InadimplenciaClassificacaoServer;
+  classificacao_manual?: boolean;
+  status: 'inadimplente' | 'quitado';
+  forma_pagamento?: string;
+  dados_pagamento?: string;
+  observacoes?: string;
+  historico_pagamentos: InadimplenciaPagamentoServer[];
+  notificacao_automatica_gerada?: boolean;
+  data_entrada: string;
+  data_quitacao?: string;
+  criado_por: string;
+  updated_at: string;
+}
+
+const INADIMPLENCIA_FILE = path.join(STORAGE_BASE_DIR, 'inadimplencia.json');
+const R2_INADIMPLENCIA_KEY = 'system/inadimplencia.json';
+
+let inMemoryInadimplencia: InadimplenciaServerItem[] = [];
+let inMemoryInadimplenciaInitialized = false;
+
+function roundCurrency(val: any): number {
+  const num = Number(val);
+  if (!Number.isFinite(num) || num < 0) return 0;
+  return Math.round(num * 100) / 100;
+}
+
+function calculateDaysOverdueServer(dueDateStr?: string): number {
+  if (!dueDateStr) return 0;
+  try {
+    const cleanDate = String(dueDateStr).slice(0, 10);
+    const parts = cleanDate.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return 0;
+    const dueUtc = Date.UTC(parts[0], parts[1] - 1, parts[2]);
+    const now = new Date();
+    const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.floor((todayUtc - dueUtc) / 86400000);
+    return diffDays > 0 ? diffDays : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function computeAutoClassificationServer(
+  diasEmAtraso: number,
+  valorRestante: number
+): InadimplenciaClassificacaoServer {
+  if (diasEmAtraso > 60 || (diasEmAtraso >= 31 && valorRestante >= 10000)) {
+    return 'Severa';
+  }
+  if (diasEmAtraso >= 31) {
+    return 'Alta';
+  }
+  if (diasEmAtraso >= 16) {
+    return 'Moderada';
+  }
+  return 'Leve';
+}
+
+function normalizeInadimplenciaItem(raw: any): InadimplenciaServerItem {
+  const valorTotal = roundCurrency(raw?.valor_total);
+  let valorPago = roundCurrency(raw?.valor_pago);
+  if (valorTotal > 0 && valorPago > valorTotal) {
+    valorPago = valorTotal;
+  }
+  let valorRestante = Math.max(0, roundCurrency(valorTotal - valorPago));
+
+  const isMarkedSettled = raw?.status === 'quitado' || (valorTotal > 0 && valorRestante <= 0.009);
+  const status: 'inadimplente' | 'quitado' = isMarkedSettled ? 'quitado' : 'inadimplente';
+
+  if (status === 'quitado') {
+    valorPago = valorTotal;
+    valorRestante = 0;
+  }
+
+  const dataVencimento = String(raw?.data_vencimento || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const diasEmAtraso = status === 'quitado' ? 0 : calculateDaysOverdueServer(dataVencimento);
+  const autoClassificacao = computeAutoClassificationServer(diasEmAtraso, valorRestante);
+  const validClasses: InadimplenciaClassificacaoServer[] = ['Leve', 'Moderada', 'Alta', 'Severa'];
+  const manualFlag = Boolean(raw?.classificacao_manual);
+  const classificacao: InadimplenciaClassificacaoServer =
+    manualFlag && validClasses.includes(raw?.classificacao)
+      ? raw.classificacao
+      : autoClassificacao;
+
+  const historico: InadimplenciaPagamentoServer[] = Array.isArray(raw?.historico_pagamentos)
+    ? raw.historico_pagamentos.map((h: any) => ({
+        id: String(h?.id || crypto.randomUUID()),
+        data: String(h?.data || new Date().toISOString()),
+        valor: roundCurrency(h?.valor),
+        forma_pagamento: String(h?.forma_pagamento || 'PIX'),
+        comprovante_info: h?.comprovante_info ? String(h.comprovante_info) : undefined,
+        registrado_por: String(h?.registrado_por || 'Administração'),
+      }))
+    : [];
+
+  return {
+    id: String(raw?.id || crypto.randomUUID()),
+    cliente_nome: String(raw?.cliente_nome || '').trim(),
+    documento_cpf_cnpj: raw?.documento_cpf_cnpj ? String(raw.documento_cpf_cnpj).trim() : undefined,
+    telefone: String(raw?.telefone || '').trim(),
+    email: raw?.email ? String(raw.email).trim() : undefined,
+    descricao: String(raw?.descricao || 'Pendência Financeira').trim(),
+    valor_total: valorTotal,
+    valor_pago: valorPago,
+    valor_restante: valorRestante,
+    data_vencimento: dataVencimento,
+    dias_em_atraso: diasEmAtraso,
+    classificacao,
+    classificacao_automatica: autoClassificacao,
+    classificacao_manual: manualFlag,
+    status,
+    forma_pagamento: raw?.forma_pagamento ? String(raw.forma_pagamento).trim() : 'PIX',
+    dados_pagamento: raw?.dados_pagamento ? String(raw.dados_pagamento).trim() : '',
+    observacoes: raw?.observacoes ? String(raw.observacoes).trim() : '',
+    historico_pagamentos: historico,
+    notificacao_automatica_gerada: raw?.notificacao_automatica_gerada ?? true,
+    data_entrada: String(raw?.data_entrada || new Date().toISOString()),
+    data_quitacao: status === 'quitado' ? String(raw?.data_quitacao || new Date().toISOString()) : undefined,
+    criado_por: String(raw?.criado_por || 'Administração'),
+    updated_at: String(raw?.updated_at || new Date().toISOString()),
+  };
+}
+
+function loadPersistedInadimplenciaFromDisk(): { exists: boolean; items: InadimplenciaServerItem[] } {
+  try {
+    const readPath = resolveStorageReadPath('inadimplencia.json');
+    if (readPath && fs.existsSync(readPath)) {
+      const raw = fs.readFileSync(readPath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return { exists: true, items: parsed.map(normalizeInadimplenciaItem) };
+      }
+    }
+  } catch (err) {
+    console.warn('[Inadimplencia] Erro ao ler arquivo do disco:', err);
+  }
+  return { exists: false, items: [] };
+}
+
+function savePersistedInadimplenciaToDisk(items: InadimplenciaServerItem[]) {
+  try {
+    const dir = path.dirname(INADIMPLENCIA_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(INADIMPLENCIA_FILE, JSON.stringify(items, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('[Inadimplencia] Erro ao salvar no disco:', err);
+  }
+}
+
+async function fetchR2Inadimplencia(): Promise<{ exists: boolean; items: InadimplenciaServerItem[] }> {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return { exists: false, items: [] };
+  try {
+    const res = await client.send(new GetObjectCommand({
+      Bucket: bucketName,
+      Key: R2_INADIMPLENCIA_KEY,
+    }));
+    if (res.Body) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as any) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+      if (Array.isArray(parsed)) {
+        return { exists: true, items: parsed.map(normalizeInadimplenciaItem) };
+      }
+    }
+  } catch (err: any) {
+    if (err?.name !== 'NoSuchKey' && err?.$metadata?.httpStatusCode !== 404) {
+      console.warn('[R2 Inadimplencia Fetch Aviso]', err?.message || err);
+    }
+  }
+  return { exists: false, items: [] };
+}
+
+async function saveR2Inadimplencia(items: InadimplenciaServerItem[]): Promise<boolean> {
+  const { client, bucketName, isConfigured } = getR2Client();
+  if (!isConfigured || !client) return false;
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: R2_INADIMPLENCIA_KEY,
+      Body: Buffer.from(JSON.stringify(items, null, 2), 'utf-8'),
+      ContentType: 'application/json',
+      Metadata: {
+        'system-sync': 'inadimplencia',
+        'updated-at': new Date().toISOString(),
+      },
+    }));
+    return true;
+  } catch (err: any) {
+    console.warn('[R2 Inadimplencia Save Aviso]', err?.message || err);
+    return false;
+  }
+}
+
+async function loadAllInadimplenciaForMutation(): Promise<InadimplenciaServerItem[]> {
+  const r2 = await fetchR2Inadimplencia();
+  if (r2.exists) {
+    inMemoryInadimplencia = r2.items;
+    inMemoryInadimplenciaInitialized = true;
+    savePersistedInadimplenciaToDisk(r2.items);
+    return r2.items;
+  }
+
+  const disk = loadPersistedInadimplenciaFromDisk();
+  if (disk.exists) {
+    inMemoryInadimplencia = disk.items;
+    inMemoryInadimplenciaInitialized = true;
+    return disk.items;
+  }
+
+  if (inMemoryInadimplenciaInitialized) {
+    return inMemoryInadimplencia.map(normalizeInadimplenciaItem);
+  }
+
+  inMemoryInadimplencia = [];
+  inMemoryInadimplenciaInitialized = true;
+  return [];
+}
+
+async function persistInadimplenciaState(items: InadimplenciaServerItem[]): Promise<void> {
+  const normalized = items.map(normalizeInadimplenciaItem);
+  inMemoryInadimplencia = normalized;
+  inMemoryInadimplenciaInitialized = true;
+  savePersistedInadimplenciaToDisk(normalized);
+  await saveR2Inadimplencia(normalized);
+}
+
+function buildInadimplenciaResponse(allItems: InadimplenciaServerItem[]) {
+  const normalized = allItems.map(normalizeInadimplenciaItem);
+  const classPriority: Record<InadimplenciaClassificacaoServer, number> = {
+    Severa: 4,
+    Alta: 3,
+    Moderada: 2,
+    Leve: 1,
+  };
+
+  const active = normalized
+    .filter((item) => item.status === 'inadimplente')
+    .sort((a, b) => {
+      const diffClass = classPriority[b.classificacao] - classPriority[a.classificacao];
+      if (diffClass !== 0) return diffClass;
+      return b.dias_em_atraso - a.dias_em_atraso;
+    });
+
+  const settled = normalized
+    .filter((item) => item.status === 'quitado')
+    .sort((a, b) => new Date(b.data_quitacao || b.updated_at).getTime() - new Date(a.data_quitacao || a.updated_at).getTime());
+
+  const byClassification: Record<InadimplenciaClassificacaoServer, number> = {
+    Leve: 0,
+    Moderada: 0,
+    Alta: 0,
+    Severa: 0,
+  };
+
+  let totalDebtAmount = 0;
+  let totalPaidActiveAmount = 0;
+  for (const item of active) {
+    byClassification[item.classificacao] = (byClassification[item.classificacao] || 0) + 1;
+    totalDebtAmount += item.valor_restante;
+    totalPaidActiveAmount += item.valor_pago;
+  }
+
+  let totalSettledRecoveredAmount = 0;
+  for (const item of settled) {
+    totalSettledRecoveredAmount += item.valor_total;
+  }
+
+  return {
+    active,
+    settled,
+    all: normalized,
+    summary: {
+      totalActiveCount: active.length,
+      totalSettledCount: settled.length,
+      totalDebtAmount: roundCurrency(totalDebtAmount),
+      totalPaidActiveAmount: roundCurrency(totalPaidActiveAmount),
+      totalSettledRecoveredAmount: roundCurrency(totalSettledRecoveredAmount),
+      byClassification,
+    },
+  };
+}
+
+app.get('/api/inadimplencia', async (req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  try {
+    const items = await loadAllInadimplenciaForMutation();
+    return res.json(buildInadimplenciaResponse(items));
+  } catch (err: any) {
+    console.warn('[GET /api/inadimplencia] Erro:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/inadimplencia/detectar-vencidos', async (req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const existingList = await loadAllInadimplenciaForMutation();
+    const activeNamesSet = new Set(
+      existingList
+        .filter((i) => i.status === 'inadimplente')
+        .map((i) => i.cliente_nome.toLowerCase().trim())
+    );
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const overdueCandidates: Array<{
+      file_id: string;
+      cliente_nome: string;
+      telefone: string;
+      descricao: string;
+      valor_total: number;
+      data_vencimento: string;
+      dias_em_atraso: number;
+      classificacao: InadimplenciaClassificacaoServer;
+    }> = [];
+
+    const allFiles = Array.isArray(persistedFiles) ? persistedFiles : [];
+    for (const f of allFiles) {
+      if (!f?.due_date) continue;
+      const dueStr = String(f.due_date).slice(0, 10);
+      if (dueStr < todayStr) {
+        const clientName = String(f.company_name || f.name || '').trim();
+        if (!clientName || activeNamesSet.has(clientName.toLowerCase())) continue;
+        const dias = calculateDaysOverdueServer(dueStr);
+        const amount = roundCurrency(f.amount || 0);
+        overdueCandidates.push({
+          file_id: f.id,
+          cliente_nome: clientName,
+          telefone: String(f.client_phone || '').trim(),
+          descricao: `Guia/Doc em atraso: ${f.name}${f.document_type ? ` (${f.document_type})` : ''}`,
+          valor_total: amount,
+          data_vencimento: dueStr,
+          dias_em_atraso: dias,
+          classificacao: computeAutoClassificationServer(dias, amount),
+        });
+      }
+    }
+
+    return res.json({ candidates: overdueCandidates });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/inadimplencia', async (req: Request, res: Response) => {
+  try {
+    const body = req.body || {};
+    const clienteNome = String(body.cliente_nome || '').trim();
+    const telefone = String(body.telefone || '').trim();
+    const valorTotal = roundCurrency(body.valor_total);
+
+    if (!clienteNome) {
+      return res.status(400).json({ error: 'Nome do cliente ou empresa é obrigatório.' });
+    }
+    if (!telefone) {
+      return res.status(400).json({ error: 'Telefone de contato do cliente é obrigatório para o alerta automático.' });
+    }
+    if (valorTotal <= 0) {
+      return res.status(400).json({ error: 'O valor total em aberto deve ser maior que zero.' });
+    }
+
+    const currentList = await loadAllInadimplenciaForMutation();
+    const nowIso = new Date().toISOString();
+
+    const newItem = normalizeInadimplenciaItem({
+      ...body,
+      id: crypto.randomUUID(),
+      cliente_nome: clienteNome,
+      telefone,
+      valor_total: valorTotal,
+      valor_pago: roundCurrency(body.valor_pago || 0),
+      data_vencimento: body.data_vencimento || nowIso.slice(0, 10),
+      notificacao_automatica_gerada: true,
+      data_entrada: nowIso,
+      updated_at: nowIso,
+    });
+
+    const nextList = [newItem, ...currentList];
+    await persistInadimplenciaState(nextList);
+
+    const alertaAutomatico = {
+      cliente_nome: newItem.cliente_nome,
+      telefone: newItem.telefone,
+      classificacao: newItem.classificacao,
+      dias_em_atraso: newItem.dias_em_atraso,
+      valor_restante: newItem.valor_restante,
+      mensagem: `Cliente "${newItem.cliente_nome}" (Tel: ${newItem.telefone}) entrou em inadimplência com classificação "${newItem.classificacao}".`,
+      timestamp: nowIso,
+    };
+
+    return res.status(201).json({
+      success: true,
+      item: newItem,
+      alerta_automatico: alertaAutomatico,
+      quitadoAutomaticamente: newItem.status === 'quitado',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/inadimplencia/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const body = req.body || {};
+    const currentList = await loadAllInadimplenciaForMutation();
+    const existing = currentList.find((i) => i.id === id);
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Registro de inadimplência não encontrado.' });
+    }
+
+    const prevStatus = existing.status;
+    const merged = normalizeInadimplenciaItem({
+      ...existing,
+      ...body,
+      id: existing.id,
+      data_entrada: existing.data_entrada,
+      historico_pagamentos: Array.isArray(body.historico_pagamentos)
+        ? body.historico_pagamentos
+        : existing.historico_pagamentos,
+      updated_at: new Date().toISOString(),
+    });
+
+    const nextList = currentList.map((i) => (i.id === id ? merged : i));
+    await persistInadimplenciaState(nextList);
+
+    return res.json({
+      success: true,
+      item: merged,
+      quitadoAutomaticamente: prevStatus !== 'quitado' && merged.status === 'quitado',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/inadimplencia/:id/pagamento', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const body = req.body || {};
+    const currentList = await loadAllInadimplenciaForMutation();
+    const existing = currentList.find((i) => i.id === id);
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Registro de inadimplência não encontrado.' });
+    }
+
+    const quitarTotal = Boolean(body.quitar_total);
+    const valorInformado = roundCurrency(body.valor_pagamento || 0);
+    const valorEfetivo = quitarTotal
+      ? existing.valor_restante
+      : Math.min(valorInformado, existing.valor_restante);
+
+    if (!quitarTotal && valorEfetivo <= 0) {
+      return res.status(400).json({ error: 'Informe um valor de pagamento maior que zero ou selecione Quitar Total.' });
+    }
+
+    const novoRegistroPagamento: InadimplenciaPagamentoServer = {
+      id: crypto.randomUUID(),
+      data: body.data_pagamento || new Date().toISOString(),
+      valor: valorEfetivo,
+      forma_pagamento: String(body.forma_pagamento || existing.forma_pagamento || 'PIX'),
+      comprovante_info: body.comprovante_info ? String(body.comprovante_info).trim() : undefined,
+      registrado_por: String(body.registrado_por || 'Administração'),
+    };
+
+    const novoValorPago = roundCurrency(existing.valor_pago + valorEfetivo);
+    const updatedItem = normalizeInadimplenciaItem({
+      ...existing,
+      valor_pago: novoValorPago,
+      forma_pagamento: body.forma_pagamento || existing.forma_pagamento,
+      dados_pagamento: body.dados_pagamento !== undefined ? body.dados_pagamento : existing.dados_pagamento,
+      observacoes: body.observacoes !== undefined ? body.observacoes : existing.observacoes,
+      status: quitarTotal || novoValorPago >= existing.valor_total ? 'quitado' : 'inadimplente',
+      historico_pagamentos: [novoRegistroPagamento, ...(existing.historico_pagamentos || [])],
+      updated_at: new Date().toISOString(),
+    });
+
+    const nextList = currentList.map((i) => (i.id === id ? updatedItem : i));
+    await persistInadimplenciaState(nextList);
+
+    return res.json({
+      success: true,
+      item: updatedItem,
+      quitadoAutomaticamente: updatedItem.status === 'quitado',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/inadimplencia/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const currentList = await loadAllInadimplenciaForMutation();
+    const nextList = currentList.filter((i) => i.id !== id);
+    await persistInadimplenciaState(nextList);
+    return res.json({ success: true, deletedId: id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 
 // ==============================================================================
