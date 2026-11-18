@@ -2111,7 +2111,7 @@ app.put('/api/profiles/:userId', async (req: Request, res: Response) => {
 });
 
 // 10c. Delete Profile (DELETE /api/profiles/:userId)
-app.delete('/api/profiles/:userId', async (req: Request, res: Response) => {
+app.delete('/api/profiles/:userId', requireAdminSession, async (req: Request, res: Response) => {
   try {
     const userId = req.params.userId;
     const email = (req.query.email as string)?.trim().toLowerCase();
@@ -2216,6 +2216,165 @@ app.get('/api/profiles', async (req: Request, res: Response) => {
     return res.status(200).json({ profiles: unifiedList, deletedEmails, source: 'unified' });
   } catch (error: any) {
     res.status(500).json({ error: 'Erro ao listar perfis', details: error.message });
+  }
+});
+
+// ==============================================================================
+// 11b. STATELESS HMAC-SHA256 SESSION AUTHENTICATION & ADMIN GUARD
+// ==============================================================================
+const SESSION_SIGNING_SECRET =
+  process.env.SESSION_SECRET ||
+  process.env.R2_SECRET_ACCESS_KEY ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  'mvrj-contabil-ged-hmac-secret-2026';
+
+interface SessionTokenPayload {
+  uid: string;
+  email: string;
+  role: string;
+  sector: string;
+  iat: number;
+  exp: number;
+}
+
+function toBase64Url(input: string | Buffer): string {
+  return Buffer.from(input)
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+function fromBase64Url(input: string): string {
+  const padded = input.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((input.length + 3) % 4);
+  return Buffer.from(padded, 'base64').toString('utf-8');
+}
+
+function signSessionToken(payload: Omit<SessionTokenPayload, 'iat' | 'exp'>, ttlSeconds = 86400): string {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const fullPayload: SessionTokenPayload = {
+    ...payload,
+    iat: nowSec,
+    exp: nowSec + ttlSeconds,
+  };
+  const headerB64 = toBase64Url(JSON.stringify({ alg: 'HS256', typ: 'MVRJ' }));
+  const payloadB64 = toBase64Url(JSON.stringify(fullPayload));
+  const sig = crypto
+    .createHmac('sha256', SESSION_SIGNING_SECRET)
+    .update(`${headerB64}.${payloadB64}`)
+    .digest();
+  return `${headerB64}.${payloadB64}.${toBase64Url(sig)}`;
+}
+
+function verifySessionToken(token?: string | null): SessionTokenPayload | null {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [headerB64, payloadB64, sigB64] = parts;
+  try {
+    const expectedSig = toBase64Url(
+      crypto
+        .createHmac('sha256', SESSION_SIGNING_SECRET)
+        .update(`${headerB64}.${payloadB64}`)
+        .digest()
+    );
+    const sigBuf = Buffer.from(sigB64);
+    const expBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return null;
+    }
+    const decoded = JSON.parse(fromBase64Url(payloadB64)) as SessionTokenPayload;
+    if (!decoded || !decoded.email || !decoded.exp) return null;
+    if (Math.floor(Date.now() / 1000) > decoded.exp) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function extractRequestSession(req: Request): SessionTokenPayload | null {
+  const authHeader = String(req.headers.authorization || '').trim();
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return null;
+  const token = authHeader.slice(7).trim();
+  return verifySessionToken(token);
+}
+
+function isAdminSessionPayload(session: SessionTokenPayload | null): boolean {
+  if (!session) return false;
+  const email = session.email.toLowerCase();
+  if (email === 'evandro230655@gmail.com' || email === 'evandro132213@gmail.com') return true;
+  const role = String(session.role || '').toLowerCase();
+  const sector = String(session.sector || '').toLowerCase();
+  return role === 'admin' || role === 'diretoria' || sector === 'diretoria';
+}
+
+function requireAdminSession(req: Request, res: Response, next: express.NextFunction) {
+  const session = extractRequestSession(req);
+  if (!session) {
+    return res.status(401).json({
+      error: 'Sessão não autenticada ou expirada. Faça login novamente para continuar.',
+    });
+  }
+  if (!isAdminSessionPayload(session)) {
+    return res.status(403).json({
+      error: 'Acesso restrito a Administradores ou Diretoria.',
+    });
+  }
+  (req as any).sessionUser = session;
+  return next();
+}
+
+app.post('/api/auth/session', async (req: Request, res: Response) => {
+  try {
+    const emailInput = String(req.body?.email || '').trim().toLowerCase();
+    const userIdInput = String(req.body?.userId || '').trim();
+    if (!emailInput && !userIdInput) {
+      return res.status(400).json({ error: 'E-mail ou ID do usuário é obrigatório.' });
+    }
+
+    const unified = await getAllUnifiedProfiles();
+    const matched = unified.find(
+      (p) =>
+        (emailInput && p.email?.toLowerCase() === emailInput) ||
+        (userIdInput && p.id === userIdInput)
+    );
+
+    const isMaster = emailInput === 'evandro230655@gmail.com' || emailInput === 'evandro132213@gmail.com';
+    if (!matched && !isMaster) {
+      return res.status(404).json({ error: 'Perfil não encontrado.' });
+    }
+
+    const effectiveUser = matched || {
+      id: userIdInput || (emailInput === 'evandro132213@gmail.com' ? 'evandro-master-2' : '57e1d483-669b-4791-b09e-7496570e63ea'),
+      email: emailInput,
+      full_name: String(req.body?.full_name || 'Administrador Geral'),
+      role: 'admin',
+      sector: 'Diretoria',
+      status: 'active',
+    };
+
+    const status = String(effectiveUser.status || '').toLowerCase();
+    if (!isMaster && status !== 'active' && status !== 'approved') {
+      return res.status(403).json({ error: 'Usuário não está ativo ou aprovado.' });
+    }
+
+    const role = isMaster ? 'admin' : String(effectiveUser.role || 'viewer');
+    const sector = isMaster ? 'Diretoria' : String(effectiveUser.sector || 'Geral');
+
+    const token = signSessionToken({
+      uid: effectiveUser.id,
+      email: effectiveUser.email,
+      role,
+      sector,
+    });
+
+    return res.json({
+      token,
+      expiresIn: 86400,
+      user: { ...effectiveUser, role, sector },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Erro ao gerar sessão autenticada.', details: err.message });
   }
 });
 
@@ -6154,11 +6313,12 @@ app.delete('/api/trash/permanent/:id', async (req: Request, res: Response) => {
 });
 
 // 5. Esvaziar toda a lixeira permanentemente (Somente Administradores)
-app.delete('/api/trash/empty', async (req: Request, res: Response) => {
+app.delete('/api/trash/empty', requireAdminSession, async (req: Request, res: Response) => {
   try {
-    const { user_role, user_name } = req.body;
-    const reqRole = (req.headers['x-user-role'] as string) || user_role || 'admin';
-    const reqUser = (req.headers['x-user-name'] as string) || user_name || 'Evandro (Administrador)';
+    const { user_role, user_name } = req.body || {};
+    const sessionUser = (req as any).sessionUser as SessionTokenPayload | undefined;
+    const reqRole = sessionUser?.role || (req.headers['x-user-role'] as string) || user_role || 'admin';
+    const reqUser = sessionUser?.email || (req.headers['x-user-name'] as string) || user_name || 'Evandro (Administrador)';
 
     const isAdmin = reqRole === 'admin' || reqRole === 'ADMIN' || reqRole === 'Diretoria';
     if (!isAdmin) {
@@ -7163,6 +7323,9 @@ interface InadimplenciaServerItem {
   status: 'inadimplente' | 'quitado';
   forma_pagamento?: string;
   dados_pagamento?: string;
+  pix_copia_cola?: string;
+  boleto_url?: string;
+  comprovante_url?: string;
   observacoes?: string;
   historico_pagamentos: InadimplenciaPagamentoServer[];
   notificacao_automatica_gerada?: boolean;
@@ -7271,6 +7434,9 @@ function normalizeInadimplenciaItem(raw: any): InadimplenciaServerItem {
     status,
     forma_pagamento: raw?.forma_pagamento ? String(raw.forma_pagamento).trim() : 'PIX',
     dados_pagamento: raw?.dados_pagamento ? String(raw.dados_pagamento).trim() : '',
+    pix_copia_cola: raw?.pix_copia_cola ? String(raw.pix_copia_cola).trim() : '',
+    boleto_url: raw?.boleto_url ? String(raw.boleto_url).trim() : '',
+    comprovante_url: raw?.comprovante_url ? String(raw.comprovante_url).trim() : '',
     observacoes: raw?.observacoes ? String(raw.observacoes).trim() : '',
     historico_pagamentos: historico,
     notificacao_automatica_gerada: raw?.notificacao_automatica_gerada ?? true,
@@ -7356,12 +7522,87 @@ async function saveR2Inadimplencia(items: InadimplenciaServerItem[]): Promise<bo
   }
 }
 
+async function fetchSupabaseInadimplencia(): Promise<{ available: boolean; items: InadimplenciaServerItem[] }> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { available: false, items: [] };
+  try {
+    const { data, error } = await supabase
+      .from('inadimplencia_registros')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    if (error) {
+      return { available: false, items: [] };
+    }
+    return {
+      available: true,
+      items: Array.isArray(data) ? data.map(normalizeInadimplenciaItem) : [],
+    };
+  } catch {
+    return { available: false, items: [] };
+  }
+}
+
+async function upsertSupabaseInadimplenciaItem(item: InadimplenciaServerItem): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return;
+  try {
+    await supabase.from('inadimplencia_registros').upsert({
+      id: item.id,
+      cliente_nome: item.cliente_nome,
+      documento_cpf_cnpj: item.documento_cpf_cnpj || null,
+      telefone: item.telefone,
+      email: item.email || null,
+      descricao: item.descricao,
+      valor_total: item.valor_total,
+      valor_pago: item.valor_pago,
+      valor_restante: item.valor_restante,
+      data_vencimento: item.data_vencimento,
+      dias_em_atraso: item.dias_em_atraso,
+      classificacao: item.classificacao,
+      classificacao_automatica: item.classificacao_automatica,
+      classificacao_manual: Boolean(item.classificacao_manual),
+      status: item.status,
+      forma_pagamento: item.forma_pagamento || 'PIX',
+      dados_pagamento: item.dados_pagamento || '',
+      pix_copia_cola: item.pix_copia_cola || '',
+      boleto_url: item.boleto_url || '',
+      comprovante_url: item.comprovante_url || '',
+      observacoes: item.observacoes || '',
+      historico_pagamentos: item.historico_pagamentos || [],
+      notificacao_automatica_gerada: item.notificacao_automatica_gerada ?? true,
+      data_entrada: item.data_entrada,
+      data_quitacao: item.data_quitacao || null,
+      criado_por: item.criado_por,
+      updated_at: item.updated_at,
+    });
+  } catch {}
+}
+
+async function deleteSupabaseInadimplenciaItem(id: string): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return;
+  try {
+    await supabase.from('inadimplencia_registros').delete().eq('id', id);
+  } catch {}
+}
+
 async function loadAllInadimplenciaForMutation(): Promise<InadimplenciaServerItem[]> {
+  const supa = await fetchSupabaseInadimplencia();
+  if (supa.available && supa.items.length > 0) {
+    inMemoryInadimplencia = supa.items;
+    inMemoryInadimplenciaInitialized = true;
+    savePersistedInadimplenciaToDisk(supa.items);
+    return supa.items;
+  }
+
   const r2 = await fetchR2Inadimplencia();
   if (r2.exists) {
     inMemoryInadimplencia = r2.items;
     inMemoryInadimplenciaInitialized = true;
     savePersistedInadimplenciaToDisk(r2.items);
+    if (supa.available && r2.items.length > 0) {
+      await Promise.all(r2.items.map(upsertSupabaseInadimplenciaItem));
+    }
     return r2.items;
   }
 
@@ -7381,11 +7622,14 @@ async function loadAllInadimplenciaForMutation(): Promise<InadimplenciaServerIte
   return [];
 }
 
-async function persistInadimplenciaState(items: InadimplenciaServerItem[]): Promise<void> {
+async function persistInadimplenciaState(items: InadimplenciaServerItem[], changedItem?: InadimplenciaServerItem): Promise<void> {
   const normalized = items.map(normalizeInadimplenciaItem);
   inMemoryInadimplencia = normalized;
   inMemoryInadimplenciaInitialized = true;
   savePersistedInadimplenciaToDisk(normalized);
+  if (changedItem) {
+    await upsertSupabaseInadimplenciaItem(normalizeInadimplenciaItem(changedItem));
+  }
   await saveR2Inadimplencia(normalized);
 }
 
@@ -7445,7 +7689,7 @@ function buildInadimplenciaResponse(allItems: InadimplenciaServerItem[]) {
   };
 }
 
-app.get('/api/inadimplencia', async (req: Request, res: Response) => {
+app.get('/api/inadimplencia', requireAdminSession, async (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   try {
     const items = await loadAllInadimplenciaForMutation();
@@ -7456,7 +7700,7 @@ app.get('/api/inadimplencia', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/inadimplencia/detectar-vencidos', async (req: Request, res: Response) => {
+app.get('/api/inadimplencia/detectar-vencidos', requireAdminSession, async (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
     const existingList = await loadAllInadimplenciaForMutation();
@@ -7506,7 +7750,7 @@ app.get('/api/inadimplencia/detectar-vencidos', async (req: Request, res: Respon
   }
 });
 
-app.post('/api/inadimplencia', async (req: Request, res: Response) => {
+app.post('/api/inadimplencia', requireAdminSession, async (req: Request, res: Response) => {
   try {
     const body = req.body || {};
     const clienteNome = String(body.cliente_nome || '').trim();
@@ -7540,7 +7784,7 @@ app.post('/api/inadimplencia', async (req: Request, res: Response) => {
     });
 
     const nextList = [newItem, ...currentList];
-    await persistInadimplenciaState(nextList);
+    await persistInadimplenciaState(nextList, newItem);
 
     const alertaAutomatico = {
       cliente_nome: newItem.cliente_nome,
@@ -7563,7 +7807,7 @@ app.post('/api/inadimplencia', async (req: Request, res: Response) => {
   }
 });
 
-app.put('/api/inadimplencia/:id', async (req: Request, res: Response) => {
+app.put('/api/inadimplencia/:id', requireAdminSession, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const body = req.body || {};
@@ -7587,7 +7831,7 @@ app.put('/api/inadimplencia/:id', async (req: Request, res: Response) => {
     });
 
     const nextList = currentList.map((i) => (i.id === id ? merged : i));
-    await persistInadimplenciaState(nextList);
+    await persistInadimplenciaState(nextList, merged);
 
     return res.json({
       success: true,
@@ -7599,7 +7843,7 @@ app.put('/api/inadimplencia/:id', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/inadimplencia/:id/pagamento', async (req: Request, res: Response) => {
+app.post('/api/inadimplencia/:id/pagamento', requireAdminSession, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const body = req.body || {};
@@ -7642,7 +7886,7 @@ app.post('/api/inadimplencia/:id/pagamento', async (req: Request, res: Response)
     });
 
     const nextList = currentList.map((i) => (i.id === id ? updatedItem : i));
-    await persistInadimplenciaState(nextList);
+    await persistInadimplenciaState(nextList, updatedItem);
 
     return res.json({
       success: true,
@@ -7654,11 +7898,12 @@ app.post('/api/inadimplencia/:id/pagamento', async (req: Request, res: Response)
   }
 });
 
-app.delete('/api/inadimplencia/:id', async (req: Request, res: Response) => {
+app.delete('/api/inadimplencia/:id', requireAdminSession, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const currentList = await loadAllInadimplenciaForMutation();
     const nextList = currentList.filter((i) => i.id !== id);
+    await deleteSupabaseInadimplenciaItem(id);
     await persistInadimplenciaState(nextList);
     return res.json({ success: true, deletedId: id });
   } catch (err: any) {

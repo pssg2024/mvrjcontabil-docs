@@ -30,6 +30,7 @@ import { UserAvatar } from './UserAvatar';
 export interface SidebarProps {
   currentUser: UserProfile;
   activeView: 'drive' | 'admin';
+  activeAdminTab?: 'pending' | 'matrix' | 'users' | 'audit' | 'appearance' | 'inadimplencia';
   onNavigate: (view: 'drive' | 'admin', adminTab?: 'pending' | 'users' | 'mural' | 'audit' | 'inadimplencia') => void;
   onNavigateHome: () => void;
   onOpenCompanyManager: () => void;
@@ -57,6 +58,7 @@ export interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   currentUser,
   activeView,
+  activeAdminTab = 'pending',
   onNavigate,
   onNavigateHome,
   onOpenCompanyManager,
@@ -289,19 +291,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       type="button"
                       id="sidebar-btn-invoice-emission"
                       onClick={() => handleLinkClick(onOpenInvoiceEmission)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-200 hover:bg-teal-500/10 hover:text-teal-300 transition-colors cursor-pointer group text-left border border-transparent hover:border-teal-500/25"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/50 hover:text-white transition-colors cursor-pointer group text-left"
                       title="Puxar Notas Fiscais Verdadeiras por Chave de Acesso (44 Dígitos) ou SEFAZ com Certificado A1"
                     >
-                      <div className="flex items-center gap-2.5 truncate">
-                        <FileDigit 
-                          className="w-4 h-4 text-teal-400 group-hover:scale-110 transition-transform shrink-0" 
-                          strokeWidth={1.75} 
-                        />
-                        <span className="truncate">Puxar NF-e (Chave de Acesso)</span>
-                      </div>
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-teal-500/20 text-teal-300 border border-teal-500/30 shrink-0">
-                        44 Dígitos
-                      </span>
+                      <FileDigit 
+                        className="w-4 h-4 text-teal-400/90 group-hover:text-teal-300 transition-colors shrink-0" 
+                        strokeWidth={1.75} 
+                      />
+                      <span className="truncate">Puxar NF-e (Chave 44)</span>
                     </button>
 
                     {/* Web Services SEFAZ (DF-e Lote: NF-e, CT-e, NFS-e com Certificado A1) */}
@@ -310,19 +307,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         type="button"
                         id="sidebar-btn-sefaz-module"
                         onClick={() => handleLinkClick(onOpenSefazModule)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-200 hover:bg-emerald-500/10 hover:text-emerald-300 transition-colors cursor-pointer group text-left border border-transparent hover:border-emerald-500/25"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/50 hover:text-white transition-colors cursor-pointer group text-left"
                         title="Web Services da SEFAZ: Consulta Automática por NSU, Certificados Digitais (.pfx) e Download Direto para o GED"
                       >
-                        <div className="flex items-center gap-2.5 truncate">
-                          <CloudDownload 
-                            className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform shrink-0" 
-                            strokeWidth={1.75} 
-                          />
-                          <span className="truncate">Web Services SEFAZ</span>
-                        </div>
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                          DF-e / A1
-                        </span>
+                        <CloudDownload 
+                          className="w-4 h-4 text-emerald-400/90 group-hover:text-emerald-300 transition-colors shrink-0" 
+                          strokeWidth={1.75} 
+                        />
+                        <span className="truncate">Web Services SEFAZ</span>
                       </button>
                     )}
 
@@ -331,18 +323,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       type="button"
                       id="sidebar-btn-sped-importer"
                       onClick={() => handleLinkClick(onOpenSpedImporter || (() => {}))}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-slate-200 hover:bg-[#DFB76C]/10 hover:text-[#DFB76C] transition-colors cursor-pointer group text-left border border-transparent hover:border-[#DFB76C]/25"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/50 hover:text-white transition-colors cursor-pointer group text-left"
+                      title="Importador SPED Fiscal (Domínio)"
                     >
-                      <div className="flex items-center gap-2.5 truncate">
-                        <FileText 
-                          className="w-4 h-4 text-[#DFB76C] group-hover:scale-105 transition-transform shrink-0" 
-                          strokeWidth={1.75} 
-                        />
-                        <span className="truncate">Importador SPED (.txt)</span>
-                      </div>
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-[#DFB76C]/20 text-[#DFB76C] border border-[#DFB76C]/30 shrink-0">
-                        Domínio
-                      </span>
+                      <FileText 
+                        className="w-4 h-4 text-[#DFB76C] transition-colors shrink-0" 
+                        strokeWidth={1.75} 
+                      />
+                      <span className="truncate">Importador SPED (.txt)</span>
                     </button>
 
                     {/* Portais Fiscais Externos */}
@@ -428,7 +416,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     <div className="flex items-center gap-1.5">
                       {pendingUsersCount > 0 && (
-                        <span className="px-1.5 py-0.2 bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-bold rounded-full">
+                        <span className="text-[10px] font-mono tabular-nums font-bold text-[#DFB76C]">
                           {pendingUsersCount}
                         </span>
                       )}
@@ -447,15 +435,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         id="sidebar-btn-admin-users"
                         onClick={() => handleLinkClick(() => onNavigate('admin', 'users'))}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer group text-left ${
-                          activeView === 'admin'
-                            ? 'bg-blue-600/20 text-white font-medium border border-blue-500/25'
+                          activeView === 'admin' && (activeAdminTab === 'users' || activeAdminTab === 'pending' || activeAdminTab === 'matrix')
+                            ? 'bg-blue-600/20 text-white border border-blue-500/25'
                             : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <Users 
                             className={`w-4 h-4 shrink-0 transition-colors ${
-                              activeView === 'admin' 
+                              activeView === 'admin' && (activeAdminTab === 'users' || activeAdminTab === 'pending' || activeAdminTab === 'matrix')
                                 ? 'text-blue-400' 
                                 : 'text-slate-400 group-hover:text-blue-400'
                             }`} 
@@ -464,7 +452,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           <span className="truncate">Usuários & Acessos</span>
                         </div>
                         {pendingUsersCount > 0 && (
-                          <span className="px-1.5 py-0.2 bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-bold rounded-full">
+                          <span className="text-[10px] font-mono tabular-nums font-bold text-[#DFB76C]">
                             {pendingUsersCount}
                           </span>
                         )}
@@ -489,17 +477,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         type="button"
                         id="sidebar-btn-admin-inadimplencia"
                         onClick={() => handleLinkClick(() => onNavigate('admin', 'inadimplencia'))}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-rose-500/10 hover:text-rose-200 transition-colors cursor-pointer group text-left"
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer group text-left ${
+                          activeView === 'admin' && activeAdminTab === 'inadimplencia'
+                            ? 'bg-rose-500/15 text-rose-100 border border-rose-500/30'
+                            : 'text-slate-300 hover:bg-rose-500/10 hover:text-rose-200'
+                        }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <BadgeDollarSign 
-                            className="w-4 h-4 text-rose-400 group-hover:text-rose-300 transition-colors shrink-0" 
+                            className={`w-4 h-4 transition-colors shrink-0 ${
+                              activeView === 'admin' && activeAdminTab === 'inadimplencia'
+                                ? 'text-rose-300'
+                                : 'text-rose-400 group-hover:text-rose-300'
+                            }`} 
                             strokeWidth={1.75} 
                           />
                           <span className="truncate">Inadimplência</span>
                         </div>
                         {inadimplenciaCount > 0 && (
-                          <span className="px-1.5 py-0.2 bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[9px] font-bold rounded-full">
+                          <span className="text-[10px] font-mono tabular-nums font-bold text-rose-300">
                             {inadimplenciaCount}
                           </span>
                         )}
@@ -510,10 +506,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         type="button"
                         id="sidebar-btn-admin-audit"
                         onClick={() => handleLinkClick(() => onNavigate('admin', 'audit'))}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/50 hover:text-white transition-colors cursor-pointer group text-left"
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer group text-left ${
+                          activeView === 'admin' && activeAdminTab === 'audit'
+                            ? 'bg-blue-600/20 text-white border border-blue-500/25'
+                            : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'
+                        }`}
                       >
                         <ScrollText 
-                          className="w-4 h-4 text-slate-400 group-hover:text-blue-400 transition-colors shrink-0" 
+                          className={`w-4 h-4 transition-colors shrink-0 ${
+                            activeView === 'admin' && activeAdminTab === 'audit'
+                              ? 'text-blue-400'
+                              : 'text-slate-400 group-hover:text-blue-400'
+                          }`} 
                           strokeWidth={1.75} 
                         />
                         <span className="truncate">Relatórios & Auditoria</span>
@@ -524,7 +528,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         type="button"
                         id="sidebar-btn-admin-background"
                         onClick={() => handleLinkClick(onOpenBackgroundModal)}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/50 hover:text-white transition-colors cursor-pointer group text-left"
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer group text-left ${
+                          activeView === 'admin' && activeAdminTab === 'appearance'
+                            ? 'bg-blue-600/20 text-white border border-blue-500/25'
+                            : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'
+                        }`}
                       >
                         <Palette 
                           className="w-4 h-4 text-slate-400 group-hover:text-blue-400 transition-colors shrink-0" 
@@ -548,9 +556,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     title="Administração & RBAC"
                   >
                     <ShieldCheck className="w-4 h-4" strokeWidth={1.75} />
-                    {pendingUsersCount > 0 && (
-                      <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-                    )}
                   </button>
                 </div>
               )}
@@ -592,7 +597,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {!isCollapsed && <span className="truncate">Lixeira (Backup)</span>}
                 </div>
                 {!isCollapsed && trashCount > 0 && (
-                  <span className="px-1.5 py-0.2 bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold rounded-full">
+                  <span className="text-[10px] font-mono tabular-nums font-bold text-rose-300">
                     {trashCount}
                   </span>
                 )}
@@ -618,18 +623,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     name={currentUser.full_name}
                     fallbackClassName="w-full h-full bg-slate-800 text-white font-bold text-xs flex items-center justify-center"
                   />
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 border-2 border-slate-950 absolute -bottom-0.5 -right-0.5"></span>
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-slate-200 group-hover:text-white transition-colors truncate leading-tight">
                     {currentUser.full_name}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-800/90 border border-slate-700/60 px-1.5 py-0.2 rounded leading-none">
-                      {currentUser.role === 'admin' ? 'ADMIN' : currentUser.sector || 'LEITOR'}
-                    </span>
-                  </div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5 truncate leading-none">
+                    {currentUser.role === 'admin' ? 'Admin' : currentUser.sector || 'Leitor'}
+                  </p>
                 </div>
               </div>
 
@@ -659,7 +661,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   name={currentUser.full_name}
                   fallbackClassName="w-full h-full bg-slate-800 text-white font-bold text-xs flex items-center justify-center"
                 />
-                <span className="w-2 h-2 rounded-full bg-emerald-500 border-2 border-slate-950 absolute -bottom-0.5 -right-0.5"></span>
               </button>
 
               <button

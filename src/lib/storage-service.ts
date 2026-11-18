@@ -1,4 +1,5 @@
 import { DocumentFile, Folder, Sector, SiteBackgroundConfig, AuthHeaderConfig, AuditLog, FolderPermission, PermissionLevel, UserProfile, TrashItem } from '../types';
+import { getAuthHeaders } from './auth-session';
 
 export interface PresignedUploadResponse {
   storageKey: string;
@@ -1142,11 +1143,11 @@ export async function emptyTrashInApi(
 ): Promise<{ status: string; message: string; deleted_count: number }> {
   const res = await fetch('/api/trash/empty', {
     method: 'DELETE',
-    headers: {
+    headers: getAuthHeaders({
       'Content-Type': 'application/json',
       'x-user-role': userRole,
       'x-user-name': encodeURIComponent(userName),
-    },
+    }),
     body: JSON.stringify({ user_role: userRole, user_name: userName }),
   });
 

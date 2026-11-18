@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "id": "039ab1a6-7d60-4c10-9574-e9b8986f07a0",
+    "cliente_nome": "MVRJ Serviços de Assessoria Contábil Ltda",
+    "documento_cpf_cnpj": "12.345.678/0001-90",
+    "telefone": "21973960077",
+    "email": "evandro132213@gmail.com",
+    "descricao": "Honorários / Pendência Financeira",
+    "valor_total": 499.98,
+    "valor_pago": 0,
+    "valor_restante": 499.98,
+    "data_vencimento": "2026-11-13",
+    "dias_em_atraso": 5,
+    "classificacao": "Moderada",
+    "classificacao_automatica": "Leve",
+    "classificacao_manual": true,
+    "status": "inadimplente",
+    "forma_pagamento": "Transferência / TED",
+    "dados_pagamento": "",
+    "pix_copia_cola": "",
+    "boleto_url": "",
+    "comprovante_url": "",
+    "observacoes": "obs: teste",
+    "historico_pagamentos": [],
+    "notificacao_automatica_gerada": true,
+    "data_entrada": "2026-11-13T15:25:40.967Z",
+    "criado_por": "Evandro (Administrador)",
+    "updated_at": "2026-11-13T15:25:40.967Z"
+  }
+]

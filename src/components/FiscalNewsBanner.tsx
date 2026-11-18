@@ -126,6 +126,7 @@ export const FiscalNewsBanner: React.FC<FiscalNewsBannerProps> = ({
     }
 
     timerRef.current = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       setCurrentIndex((prev) => (prev + 1) % news.length);
     }, 7000);
 

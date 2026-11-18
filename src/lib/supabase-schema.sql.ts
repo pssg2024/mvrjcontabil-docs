@@ -466,6 +466,46 @@ BEGIN
 END $$;
 
 -- ==============================================================================
+-- 12. TABELA DE CONTROLE DE INADIMPLÊNCIA & COBRANÇA (Concorrência Segura)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.inadimplencia_registros (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  cliente_nome TEXT NOT NULL,
+  documento_cpf_cnpj TEXT,
+  telefone TEXT NOT NULL,
+  email TEXT,
+  descricao TEXT NOT NULL DEFAULT 'Pendência Financeira',
+  valor_total NUMERIC(12,2) NOT NULL DEFAULT 0,
+  valor_pago NUMERIC(12,2) NOT NULL DEFAULT 0,
+  valor_restante NUMERIC(12,2) NOT NULL DEFAULT 0,
+  data_vencimento DATE NOT NULL,
+  dias_em_atraso INTEGER NOT NULL DEFAULT 0,
+  classificacao TEXT NOT NULL DEFAULT 'Leve',
+  classificacao_automatica TEXT NOT NULL DEFAULT 'Leve',
+  classificacao_manual BOOLEAN NOT NULL DEFAULT FALSE,
+  status TEXT NOT NULL DEFAULT 'inadimplente' CHECK (status IN ('inadimplente', 'quitado')),
+  forma_pagamento TEXT DEFAULT 'PIX',
+  dados_pagamento TEXT,
+  pix_copia_cola TEXT,
+  boleto_url TEXT,
+  comprovante_url TEXT,
+  observacoes TEXT,
+  historico_pagamentos JSONB NOT NULL DEFAULT '[]'::jsonb,
+  notificacao_automatica_gerada BOOLEAN NOT NULL DEFAULT TRUE,
+  data_entrada TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  data_quitacao TIMESTAMPTZ,
+  criado_por TEXT NOT NULL DEFAULT 'Administração',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inadimplencia_status ON public.inadimplencia_registros(status);
+CREATE INDEX IF NOT EXISTS idx_inadimplencia_vencimento ON public.inadimplencia_registros(data_vencimento);
+
+ALTER TABLE public.inadimplencia_registros ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Inadimplencia: Gestao administrativa" ON public.inadimplencia_registros;
+CREATE POLICY "Inadimplencia: Gestao administrativa" ON public.inadimplencia_registros FOR ALL USING (true);
+
+-- ==============================================================================
 -- DADOS INICIAIS (PASTAS PADRÃO POR SETOR CONTÁBIL)
 -- ==============================================================================
 DO $$

@@ -59,11 +59,13 @@ import { getPresignedDownloadUrl, getPermanentViewUrl } from '../lib/storage-ser
 import { FiscalNewsBanner } from './FiscalNewsBanner';
 import { WidgetAvisos } from './WidgetAvisos';
 import { UserAvatar } from './UserAvatar';
+import { showToast } from '../lib/toast';
 
 interface FileManagerProps {
   currentUser: UserProfile;
   folders: Folder[];
   files: DocumentFile[];
+  isInitialLoading?: boolean;
   allProfiles?: UserProfile[];
   storageMetrics?: StorageMetrics | null;
   onRefreshStorage?: () => void;
@@ -82,6 +84,8 @@ interface FileManagerProps {
   onOpenSefazModule?: () => void;
   onOpenRecycleBin?: () => void;
   trashCount?: number;
+  viewedFileIds?: Set<string>;
+  onLogFileDownload?: (file: DocumentFile) => void;
   externalSearchQuery?: string;
   onClearExternalSearch?: () => void;
 }
@@ -90,6 +94,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   currentUser,
   folders,
   files,
+  isInitialLoading = false,
   allProfiles,
   storageMetrics,
   onRefreshStorage,
@@ -100,6 +105,8 @@ export const FileManager: React.FC<FileManagerProps> = ({
   onOpenSefazModule,
   onOpenRecycleBin,
   trashCount = 0,
+  viewedFileIds,
+  onLogFileDownload,
   onCreateFolder,
   onDeleteFolder,
   onDeleteFile,
@@ -455,7 +462,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const handleCreateFolderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canCreateSubfolder) {
-      alert('Seu perfil de usuário possui permissão apenas de Leitura e não pode criar novas pastas.');
+      showToast('Seu perfil possui permissão apenas de leitura e não pode criar novas pastas.', 'warning');
       return;
     }
     if (!newFolderName.trim() || isSubmittingFolder) return;
@@ -466,9 +473,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
       await onCreateFolder(newFolderName.trim(), currentFolderId, sectorForFolder);
       setNewFolderName('');
       setIsCreatingFolder(false);
+      showToast('Pasta criada com sucesso.', 'success');
     } catch (err: any) {
       console.error('[ERRO CRIAR PASTA]', err);
-      alert('Erro ao salvar pasta: ' + (err.message || 'Falha ao salvar pasta no banco de dados.'));
+      showToast('Erro ao salvar pasta: ' + (err.message || 'Falha ao salvar pasta no banco de dados.'), 'error');
     } finally {
       setIsSubmittingFolder(false);
     }
@@ -569,7 +577,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
         setPermsSuccessMessage('');
       }, 700);
     } catch (err: any) {
-      alert('Erro ao salvar permissões: ' + (err.message || 'Falha de sincronização.'));
+      showToast('Erro ao salvar permissões: ' + (err.message || 'Falha de sincronização.'), 'error');
     } finally {
       setIsSavingPerms(false);
     }
@@ -577,11 +585,12 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
   const handleDirectDownload = async (file: DocumentFile) => {
     if (!canDownload) {
-      alert('Seu perfil de usuário possui permissão apenas de visualização. O download de arquivos não é permitido.');
+      showToast('Seu perfil possui permissão apenas de visualização. Download não permitido.', 'warning');
       return;
     }
     try {
       const res = await getPresignedDownloadUrl(file.storage_key, file.name);
+      onLogFileDownload?.(file);
       const a = document.createElement('a');
       a.href = res.downloadUrl;
       a.download = file.name;
@@ -590,13 +599,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
       a.click();
       document.body.removeChild(a);
     } catch (e) {
-      alert('Falha ao gerar URL de download seguro');
+      showToast('Falha ao gerar URL de download seguro.', 'error');
     }
   };
 
   const handleShareDirectDocument = async (file: DocumentFile) => {
     if (!canShare) {
-      alert('Seu perfil de usuário possui permissão apenas de visualização. O compartilhamento de arquivos não é permitido.');
+      showToast('Seu perfil possui permissão apenas de visualização. Compartilhamento não permitido.', 'warning');
       return;
     }
     if (sharingFileId) return;
@@ -703,39 +712,28 @@ export const FileManager: React.FC<FileManagerProps> = ({
       {/* ========================================================= */}
       {/* LAYOUT DESKTOP (Exibido somente em telas grandes: hidden lg:flex) */}
       {/* ========================================================= */}
-      <div className="hidden lg:flex flex-col gap-5 w-full">
-        {/* Banner Superior Desktop (Tema Azul Marinho Corporativo) */}
-        <div className="bg-gradient-to-r from-[#0B1736] via-[#142654] to-[#1B357B] rounded-2xl p-6 lg:p-7 shadow-lg relative flex flex-col gap-5 text-white w-full border border-blue-900/40">
-          <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-            <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl" />
-            <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl" />
-          </div>
-
+      <div className="hidden lg:flex flex-col gap-4 w-full">
+        {/* Banner Superior Desktop Compacto (Deixa Pastas visíveis acima da dobra) */}
+        <div className="bg-gradient-to-r from-[#0B1736] via-[#122452] to-[#193273] rounded-2xl p-4 lg:p-5 shadow-md relative flex flex-col gap-3.5 text-white w-full border border-blue-900/40">
           <div className="relative z-10 flex items-center justify-between gap-6 w-full">
-            <div className="space-y-2 flex-1 min-w-0 pr-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs border border-white/15 text-blue-100 text-xs font-semibold tracking-wide">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#DFB76C]" />
-                <span>Drive Corporativo • MVRJ Contábil</span>
-              </div>
-              <h2 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-snug">
+            <div className="space-y-1.5 flex-1 min-w-0 pr-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#DFB76C]">
+                Drive Corporativo · MVRJ Contábil
+              </p>
+              <h2 className="text-xl lg:text-2xl font-bold text-white tracking-tight leading-snug">
                 Gestão Eletrônica de Documentos
               </h2>
-              <p className="text-blue-100/80 text-xs sm:text-sm font-normal leading-relaxed">
-                Drive Corporativo seguro para armazenamento, consulta e organização de arquivos fiscais, contábeis e departamentais com controle de permissões.
+              <p className="text-blue-100/75 text-xs font-normal leading-relaxed max-w-2xl">
+                Armazenamento seguro e consulta de documentos fiscais, contábeis e departamentais com controle granular de acesso.
               </p>
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-xs font-semibold text-[#DFB76C] bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">
-                  Seja bem-vindo(a), {currentUser.full_name}!
-                </span>
-              </div>
             </div>
 
-            <div className="w-[380px] xl:w-[420px] shrink-0">
+            <div className="w-[360px] xl:w-[400px] shrink-0">
               <WidgetAvisos currentUser={currentUser} isAdmin={isFullAdmin} variant="card" />
             </div>
           </div>
 
-          <div className="relative z-10 pt-3.5 border-t border-white/10 w-full">
+          <div className="relative z-10 pt-2.5 border-t border-white/10 w-full">
             <FiscalNewsBanner embedded={true} variant="ticker" />
           </div>
         </div>
@@ -835,28 +833,28 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
       {/* Inline Create Folder Input */}
       {isCreatingFolder && (
-        <div className="bg-white border border-blue-200 rounded-2xl p-4 shadow-md animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="bg-[#091124] border border-slate-800 rounded-2xl p-4 shadow-md animate-in fade-in slide-in-from-top-2 duration-150">
           <form onSubmit={handleCreateFolderSubmit} className="flex flex-col sm:flex-row items-center gap-3">
-            <div className="flex items-center space-x-2 flex-1 w-full">
-              <FolderPlus className="w-5 h-5 text-blue-600 shrink-0" />
+            <div className="flex items-center space-x-2.5 flex-1 w-full">
+              <FolderPlus className="w-5 h-5 text-[#DFB76C] shrink-0" />
               <input
                 type="text"
                 autoFocus
                 placeholder="Nome da nova pasta (ex: Guias DARF 2026)..."
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
-                className="flex-1 px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 text-slate-900 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-hidden placeholder:text-slate-400 font-medium"
+                className="flex-1 px-3.5 py-2.5 text-xs sm:text-sm bg-[#0B1736] text-slate-100 border border-slate-700 rounded-xl focus:ring-2 focus:ring-[#DFB76C]/30 focus:border-[#DFB76C] outline-hidden placeholder:text-slate-500 font-medium"
               />
             </div>
             <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
               <button
                 type="submit"
                 disabled={isSubmittingFolder}
-                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors flex items-center space-x-1.5 shadow-xs cursor-pointer"
+                className="px-4 py-2.5 bg-[#1B357B] dark:bg-[#DFB76C] hover:brightness-105 disabled:opacity-50 text-white dark:text-slate-950 text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 shadow-xs cursor-pointer"
               >
                 {isSubmittingFolder ? (
                   <>
-                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
                     <span>Salvando...</span>
                   </>
                 ) : (
@@ -867,7 +865,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 type="button"
                 disabled={isSubmittingFolder}
                 onClick={() => setIsCreatingFolder(false)}
-                className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 text-xs font-semibold rounded-xl transition-colors border border-slate-200 cursor-pointer"
+                className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
                 Cancelar
               </button>
@@ -876,30 +874,60 @@ export const FileManager: React.FC<FileManagerProps> = ({
         </div>
       )}
 
-      {/* Breadcrumbs Navigation */}
-      <nav className="flex items-center space-x-2 text-xs font-medium text-slate-600 dark:text-slate-300 bg-white/90 dark:bg-slate-900/80 backdrop-blur-md px-3.5 sm:px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-2xs w-full">
-        <button
-          onClick={() => setCurrentFolderId(null)}
-          className={`flex items-center space-x-1.5 hover:text-[#1B357B] dark:hover:text-[#DFB76C] transition-colors cursor-pointer shrink-0 ${!currentFolderId ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
-        >
-          <Home className="w-4 h-4 text-[#1B357B] dark:text-[#DFB76C]" />
-          <span>Drive Raiz</span>
-        </button>
+      {/* Breadcrumbs Navigation + Filtro Rápido por Setor */}
+      <nav className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-slate-300 bg-[#091124] px-3.5 sm:px-4 py-2 rounded-xl border border-slate-800 w-full">
+        <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar min-w-0">
+          <button
+            onClick={() => setCurrentFolderId(null)}
+            className={`flex items-center space-x-1.5 hover:text-[#DFB76C] transition-colors cursor-pointer shrink-0 py-1 ${!currentFolderId ? 'font-bold text-white' : 'text-slate-400'}`}
+          >
+            <Home className="w-4 h-4 text-[#DFB76C]" />
+            <span>Drive Raiz</span>
+          </button>
 
-        {breadcrumbs.map((crumb, idx) => (
-          <React.Fragment key={crumb.id}>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600 shrink-0" />
-            <button
-              onClick={() => setCurrentFolderId(crumb.id)}
-              className={`hover:text-[#1B357B] dark:hover:text-[#DFB76C] transition-colors whitespace-nowrap cursor-pointer ${idx === breadcrumbs.length - 1 ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 font-medium'}`}
-            >
-              {crumb.name}
-            </button>
-          </React.Fragment>
-        ))}
+          {breadcrumbs.map((crumb, idx) => (
+            <React.Fragment key={crumb.id}>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+              <button
+                onClick={() => setCurrentFolderId(crumb.id)}
+                className={`hover:text-[#DFB76C] transition-colors whitespace-nowrap cursor-pointer py-1 ${idx === breadcrumbs.length - 1 ? 'font-bold text-white' : 'text-slate-400 font-medium'}`}
+              >
+                {crumb.name}
+              </button>
+            </React.Fragment>
+          ))}
+        </div>
+
+        {!currentFolder && !searchQuery && (
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar ml-auto">
+            {(
+              [
+                { id: 'ALL', label: 'Todos' },
+                { id: 'Fiscal', label: 'Fiscal' },
+                { id: 'Contábil', label: 'Contábil' },
+                { id: 'Departamento Pessoal', label: 'DP' },
+                { id: 'Financeiro', label: 'Financeiro' },
+                { id: 'Diretoria', label: 'Diretoria' },
+              ] as const
+            ).map((sec) => (
+              <button
+                key={sec.id}
+                type="button"
+                onClick={() => setSelectedSector(sec.id)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap cursor-pointer ${
+                  selectedSector === sec.id
+                    ? 'bg-[#DFB76C] text-slate-950 font-bold'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+                }`}
+              >
+                {sec.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {searchQuery && (
-          <span className="ml-auto text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800 shrink-0">
+          <span className="ml-auto text-xs font-semibold text-amber-300 bg-amber-950/50 px-2.5 py-1 rounded-lg border border-amber-800/60 shrink-0">
             Filtro: "{searchQuery}"
           </span>
         )}
@@ -915,10 +943,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 setOpenFolderMenuId(null);
                 setOpenFileMenuId(null);
               }}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 transition-colors shrink-0 cursor-pointer shadow-2xs"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition-colors shrink-0 cursor-pointer"
               title="Opções da Pasta Atual"
             >
-              <MoreHorizontal className="w-4 h-4 text-[#1B357B] dark:text-[#DFB76C]" />
+              <MoreHorizontal className="w-4 h-4 text-[#DFB76C]" />
               <span>Opções da Pasta</span>
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isBreadcrumbMenuOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -926,9 +954,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
             {isBreadcrumbMenuOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 top-full mt-1.5 w-60 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-left"
+                className="absolute right-0 top-full mt-1.5 w-60 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 text-left"
               >
-                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1">
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800 mb-1">
                   Gerenciar Pasta Atual
                 </div>
                 {onRenameFolder && (
@@ -940,14 +968,14 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       setNewFolderNameInput(currentFolder.name);
                       setFolderRenameError(null);
                     }}
-                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300 flex items-center gap-2.5 transition-colors cursor-pointer group"
+                    className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-amber-950/40 hover:text-amber-300 flex items-center gap-2.5 transition-colors cursor-pointer group"
                   >
-                    <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 group-hover:scale-105 transition-transform">
+                    <div className="p-1 rounded-lg bg-amber-900/50 text-amber-300 group-hover:scale-105 transition-transform">
                       <Edit2 className="w-3.5 h-3.5" />
                     </div>
                     <div>
                       <div className="font-bold">Renomear Pasta</div>
-                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Alterar o nome desta pasta</div>
+                      <div className="text-[10px] text-slate-500 font-normal">Alterar o nome desta pasta</div>
                     </div>
                   </button>
                 )}
@@ -957,14 +985,14 @@ export const FileManager: React.FC<FileManagerProps> = ({
                     setIsBreadcrumbMenuOpen(false);
                     handleOpenPermsModal(currentFolder);
                   }}
-                  className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
+                  className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-blue-950/40 hover:text-blue-300 flex items-center gap-2.5 transition-colors cursor-pointer group mt-0.5"
                 >
-                  <div className="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 group-hover:scale-105 transition-transform">
+                  <div className="p-1 rounded-lg bg-blue-900/50 text-blue-300 group-hover:scale-105 transition-transform">
                     <ShieldCheck className="w-3.5 h-3.5" />
                   </div>
                   <div>
                     <div className="font-bold">Permissões de Acesso</div>
-                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Definir quem pode acessar</div>
+                    <div className="text-[10px] text-slate-500 font-normal">Definir quem pode acessar</div>
                   </div>
                 </button>
               </div>
@@ -973,17 +1001,41 @@ export const FileManager: React.FC<FileManagerProps> = ({
         )}
       </nav>
 
-      {/* FOLDERS SECTION (Item 5: Título 'Pastas' à esquerda, alternador grade/lista sempre visível à direita, 2 colunas no mobile, ícone dourado, nome e quantidade de arquivos) */}
+      {/* INITIAL LOADING SKELETON */}
+      {isInitialLoading && folders.length === 0 && !searchQuery && (
+        <section className="space-y-3 w-full animate-pulse" aria-label="Carregando pastas">
+          <div className="flex items-center gap-2 pt-1">
+            <div className="w-5 h-5 rounded-md bg-slate-800" />
+            <div className="w-20 h-4 rounded-md bg-slate-800" />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 w-full">
+            {[1, 2, 3, 4, 5, 6].map((idx) => (
+              <div
+                key={idx}
+                className="bg-[#091124] border border-slate-800 rounded-2xl p-4 min-h-[110px] flex flex-col justify-between"
+              >
+                <div className="w-10 h-10 rounded-xl bg-slate-800/80" />
+                <div className="space-y-1.5 mt-4">
+                  <div className="h-3.5 w-3/4 rounded bg-slate-800" />
+                  <div className="h-2.5 w-1/2 rounded bg-slate-800/70" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* FOLDERS SECTION */}
       {!searchQuery && visibleFolders.length > 0 && (
         <section className="space-y-3 w-full">
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
               <FolderIcon className="w-5 h-5 text-[#DFB76C]" />
-              <h3 className="text-base font-extrabold text-white tracking-tight">
+              <h3 className="text-base font-bold text-white tracking-tight">
                 Pastas
               </h3>
-              <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-mono font-bold">
-                {visibleFolders.length}
+              <span className="text-xs font-mono tabular-nums font-semibold text-slate-300">
+                ({visibleFolders.length})
               </span>
             </div>
 
@@ -1282,21 +1334,21 @@ export const FileManager: React.FC<FileManagerProps> = ({
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+              <FileText className="w-4 h-4 text-[#DFB76C]" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
                 {searchQuery ? `Documentos Encontrados` : `Arquivos na Pasta`}
               </h3>
-              <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-mono font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-200 text-[10px] font-mono font-bold">
                 {sortedFiles.length}
               </span>
             </div>
             
-            <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-300 font-medium">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+            <div className="flex items-center space-x-2 text-xs text-slate-300 font-medium">
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 font-semibold text-slate-800 dark:text-slate-200 text-xs shadow-2xs focus:ring-2 focus:ring-[#1B357B]/20 dark:focus:ring-amber-500/20 cursor-pointer outline-none transition-colors"
+                className="bg-[#091124] border border-slate-800 rounded-xl px-2.5 py-1.5 font-semibold text-slate-200 text-xs focus:ring-2 focus:ring-amber-500/20 cursor-pointer outline-none transition-colors"
               >
                 <option value="date">Ordenar por Data</option>
                 <option value="name">Ordenar por Nome</option>
@@ -1305,17 +1357,15 @@ export const FileManager: React.FC<FileManagerProps> = ({
             </div>
           </div>
 
-          <div className="max-h-[680px] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
+          <div className="max-h-[680px] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-700">
             {sortedFiles.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900/90 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 p-12 text-center flex flex-col items-center justify-center gap-3">
-                <div className="relative">
-                  <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-slate-800/80 border border-blue-100 dark:border-slate-700 flex items-center justify-center">
-                    <FileText className="w-8 h-8 text-[#1B357B] dark:text-[#E2C37A]" />
-                  </div>
+              <div className="bg-[#091124] rounded-2xl border border-dashed border-slate-800 py-8 px-6 text-center flex flex-col items-center justify-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-[#DFB76C]" />
                 </div>
                 <div className="max-w-sm">
-                  <h4 className="text-base font-bold text-slate-900 dark:text-slate-200">Nenhum documento encontrado</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed font-normal">
+                  <h4 className="text-sm font-bold text-slate-100">Nenhum documento encontrado</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed font-normal">
                     {currentFolderId 
                       ? 'Esta pasta ainda não possui arquivos armazenados.' 
                       : 'Nenhum arquivo na raiz. Selecione uma pasta acima ou faça o upload de um documento.'}
@@ -1324,7 +1374,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 {canUpload ? (
                   <button
                     onClick={() => onOpenUploadModal(currentFolderId)}
-                    className="mt-2 bg-gradient-to-r from-[#1B357B] to-[#122452] dark:from-[#DFB76C] dark:via-[#E8C785] dark:to-[#D4A755] dark:text-slate-950 text-white font-bold shadow-xs rounded-xl px-5 py-2.5 inline-flex items-center gap-2 text-xs transition-all cursor-pointer active:scale-98"
+                    className="mt-1 bg-gradient-to-r from-[#DFB76C] via-[#E8C785] to-[#D4A755] text-slate-950 font-bold shadow-xs rounded-xl px-5 py-2.5 inline-flex items-center gap-2 text-xs transition-all cursor-pointer active:scale-98"
                   >
                     <UploadCloud className="w-4 h-4 shrink-0" />
                     <span>Upload de Documento</span>
@@ -1346,12 +1396,12 @@ export const FileManager: React.FC<FileManagerProps> = ({
               return (
                 <div
                   key={file.id}
-                  className="bg-white dark:bg-[#0c1527] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-4 sm:p-4.5 flex flex-col justify-between group relative min-w-0"
+                  className="bg-[#091124] rounded-2xl border border-slate-800 hover:border-[#DFB76C]/50 hover:shadow-md transition-all duration-200 p-4 flex flex-col justify-between group relative min-w-0"
                 >
                   <div>
-                    {/* Top Bar: File Icon & Status Badge */}
-                    <div className="flex items-start justify-between">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition-transform duration-200 group-hover:scale-105 ${
+                    {/* Top Bar: File Icon + Single Quiet Status Label (Zero-Pill Discipline) */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105 ${
                         isPdf ? 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20' :
                         isImage ? 'bg-blue-500/10 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20' :
                         (isSpreadsheet || isXml) ? 'bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
@@ -1368,59 +1418,65 @@ export const FileManager: React.FC<FileManagerProps> = ({
                          <FileGenericIcon className="w-5 h-5" />}
                       </div>
 
-                      {isPfx ? (
-                        <span className="bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60 text-[10px] font-semibold px-2 py-0.5 rounded-lg flex items-center gap-1">
-                          <KeyRound className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                          <span>Certificado</span>
+                      {viewedFileIds?.has(file.id) ? (
+                        <span
+                          className="text-[11px] font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1 shrink-0 pt-0.5"
+                          title="Documento já visualizado ou baixado"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>Visto</span>
                         </span>
-                      ) : file.compression_ratio > 0 ? (
-                        <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 text-[10px] font-semibold px-2 py-0.5 rounded-lg flex items-center gap-1 font-mono">
-                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                          <span>-{file.compression_ratio}%</span>
+                      ) : (Date.now() - new Date(file.created_at).getTime()) < 14 * 86400000 ? (
+                        <span
+                          className="text-[11px] font-bold text-amber-600 dark:text-[#DFB76C] shrink-0 pt-0.5"
+                          title="Documento recente ainda não visualizado"
+                        >
+                          Novo
                         </span>
-                      ) : (
-                        <span className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60 text-[10px] font-medium px-2 py-0.5 rounded-lg flex items-center gap-1">
-                          <Check className="w-3 h-3 text-emerald-500" />
-                          <span>Íntegro</span>
+                      ) : isPfx ? (
+                        <span className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 shrink-0 pt-0.5">
+                          Certificado
                         </span>
-                      )}
+                      ) : null}
                     </div>
 
-                    {/* File Title & Sector/Folder */}
+                    {/* File Title & Clean Metadata Row */}
                     <div className="min-w-0">
                       <h4 
                         onClick={() => onOpenFileViewer(file)}
-                        className="text-[13px] font-bold text-slate-900 dark:text-slate-100 break-words group-hover:text-blue-600 dark:group-hover:text-[#E2C37A] transition-colors mt-3 cursor-pointer leading-snug line-clamp-2" 
+                        className="text-[13px] font-bold text-slate-900 dark:text-slate-100 break-words group-hover:text-blue-600 dark:group-hover:text-[#DFB76C] transition-colors mt-3 cursor-pointer leading-snug line-clamp-2" 
                         title={file.name}
                       >
                         {file.name}
                       </h4>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 min-w-0 truncate mt-1.5">
-                        <FolderIcon className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 min-w-0 truncate mt-1.5">
                         <span className="truncate">{file.sector}</span>
                         {file.pages_count && file.pages_count > 1 && (
-                          <span className="text-slate-400 dark:text-slate-500 shrink-0">· {file.pages_count} págs</span>
+                          <span className="font-mono tabular-nums text-slate-400 dark:text-slate-500 shrink-0">· {file.pages_count}p</span>
                         )}
                         {file.tags && file.tags.find(t => t.startsWith('Ref: ')) && (
-                          <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] px-1.5 py-0.2 rounded font-mono font-medium border border-slate-200 dark:border-slate-700 ml-1 shrink-0">
-                            {file.tags.find(t => t.startsWith('Ref: '))}
+                          <span className="text-slate-400 dark:text-slate-500 font-mono truncate shrink-0">
+                            · {file.tags.find(t => t.startsWith('Ref: '))}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Footer Actions */}
-                  <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
-                      {new Date(file.created_at).toLocaleDateString('pt-BR')}
-                    </span>
+                  {/* Footer Actions & Tabular File Info */}
+                  <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                    <div className="text-[11px] font-mono tabular-nums text-slate-500 dark:text-slate-400 truncate">
+                      <span>{new Date(file.created_at).toLocaleDateString('pt-BR')}</span>
+                      {file.compression_ratio > 0 && (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold ml-1.5">-{file.compression_ratio}%</span>
+                      )}
+                    </div>
 
-                    <div className="flex items-center space-x-1.5 relative">
+                    <div className="flex items-center space-x-1.5 relative shrink-0">
                       <button
                         type="button"
                         onClick={() => onOpenFileViewer(file)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-[#E2C37A] bg-slate-100/70 dark:bg-slate-800/70 hover:bg-slate-200/70 dark:hover:bg-slate-750 border border-slate-200/80 dark:border-slate-700/80 transition-all cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-[#DFB76C] bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-750 border border-slate-200/80 dark:border-slate-700/80 transition-all cursor-pointer"
                         title="Visualizar documento"
                       >
                         <Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -1562,10 +1618,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
           </div>
         ) : (
           /* LIST VIEW */
-          <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-2xs overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
+          <div className="bg-[#091124] rounded-2xl border border-slate-800 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700">
             <table className="w-full text-left text-xs border-collapse min-w-[520px] sm:min-w-full">
               <thead>
-                <tr className="bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
+                <tr className="bg-[#070e1e] border-b border-slate-800 text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
                   <th className="p-3 sm:p-3.5">Nome do Documento</th>
                   <th className="p-3 sm:p-3.5 hidden sm:table-cell">Setor</th>
                   <th className="p-3 sm:p-3.5 hidden lg:table-cell">Tamanho Original</th>

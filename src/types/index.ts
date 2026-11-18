@@ -355,6 +355,9 @@ export interface InadimplenciaItem {
   status: InadimplenciaStatus;
   forma_pagamento?: InadimplenciaFormaPagamento | string;
   dados_pagamento?: string;
+  pix_copia_cola?: string;
+  boleto_url?: string;
+  comprovante_url?: string;
   observacoes?: string;
   historico_pagamentos: InadimplenciaPagamentoRegistro[];
   notificacao_automatica_gerada?: boolean;

@@ -394,14 +394,14 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
         <div
           className={`p-4 rounded-2xl text-xs font-bold flex items-center space-x-2.5 shadow-xs animate-in fade-in duration-200 border ${
             feedbackMessage.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-              : 'bg-rose-50 border-rose-200 text-rose-900'
+              ? 'bg-emerald-950/60 border-emerald-800/70 text-emerald-200'
+              : 'bg-rose-950/60 border-rose-800/70 text-rose-200'
           }`}
         >
           {feedbackMessage.type === 'success' ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           ) : (
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
           )}
           <span>{feedbackMessage.text}</span>
         </div>
@@ -414,56 +414,56 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
         <div className="lg:col-span-7 space-y-4">
 
           {/* Segmented Tab Bar */}
-          <div className="bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200 flex flex-wrap gap-1 shadow-2xs">
+          <div className="bg-[#091124] p-1.5 rounded-2xl border border-slate-800 flex flex-wrap gap-1">
             <button
               type="button"
               onClick={() => setActiveTab('text-brand')}
-              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === 'text-brand'
-                  ? 'bg-white text-[#1B357B] shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-[#DFB76C] text-slate-950 font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
               }`}
             >
-              <Type className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <Type className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'text-brand' ? 'text-slate-950' : 'text-[#DFB76C]'}`} />
               <span>Textos & Marca</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('colors-gradient')}
-              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === 'colors-gradient'
-                  ? 'bg-white text-[#1B357B] shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-[#DFB76C] text-slate-950 font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
               }`}
             >
-              <Palette className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+              <Palette className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'colors-gradient' ? 'text-slate-950' : 'text-purple-400'}`} />
               <span>Cores & Gradientes</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('background-image')}
-              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === 'background-image'
-                  ? 'bg-white text-[#1B357B] shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-[#DFB76C] text-slate-950 font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
               }`}
             >
-              <ImageIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <ImageIcon className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'background-image' ? 'text-slate-950' : 'text-emerald-400'}`} />
               <span>Imagem de Fundo</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('layers-display')}
-              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === 'layers-display'
-                  ? 'bg-white text-[#1B357B] shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-[#DFB76C] text-slate-950 font-bold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
               }`}
             >
-              <Layers className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <Layers className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'layers-display' ? 'text-slate-950' : 'text-amber-400'}`} />
               <span>Camadas & Exibição</span>
             </button>
           </div>
@@ -472,14 +472,14 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
           {activeTab === 'text-brand' && (
             <div className="space-y-4">
               {/* Card 1: Informações Institucionais */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
-                <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div className="bg-[#091124] rounded-2xl border border-slate-800 p-5 space-y-4">
+                <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-[#DFB76C]" />
                       <span>Textos Institucionais do Cabeçalho</span>
                     </h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       Identificação oficial exibida no topo do cartão de acesso dos usuários.
                     </p>
                   </div>
@@ -487,7 +487,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
 
                 <div className="space-y-3.5">
                   <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-200 mb-1.5 flex items-center justify-between">
                       <span>Título Principal da Marca</span>
                       <span className="text-[10px] text-slate-400 font-normal">Máx 60 caracteres</span>
                     </label>
@@ -502,13 +502,13 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                         }}
                         placeholder="Ex: MVRJ CONTÁBIL"
                         maxLength={60}
-                        className="w-full h-11 px-3.5 rounded-xl border border-slate-300 bg-white focus:border-[#1B357B] focus:ring-3 focus:ring-blue-100 text-xs font-bold text-slate-900 shadow-2xs transition-all outline-hidden"
+                        className="w-full h-11 px-3.5 rounded-xl border border-slate-700 bg-[#0B1736] focus:border-[#DFB76C] focus:ring-2 focus:ring-[#DFB76C]/25 text-xs font-bold text-white placeholder:text-slate-500 transition-all outline-hidden"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-200 mb-1.5 flex items-center justify-between">
                       <span>Subtítulo Institucional</span>
                       <span className="text-[10px] text-slate-400 font-normal">Máx 120 caracteres</span>
                     </label>
@@ -523,7 +523,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                         }}
                         placeholder="Ex: Gestão Eletrônica Contábil"
                         maxLength={120}
-                        className="w-full h-11 px-3.5 rounded-xl border border-slate-300 bg-white focus:border-[#1B357B] focus:ring-3 focus:ring-blue-100 text-xs font-medium text-slate-800 shadow-2xs transition-all outline-hidden"
+                        className="w-full h-11 px-3.5 rounded-xl border border-slate-700 bg-[#0B1736] focus:border-[#DFB76C] focus:ring-2 focus:ring-[#DFB76C]/25 text-xs font-medium text-slate-100 placeholder:text-slate-500 transition-all outline-hidden"
                       />
                     </div>
                   </div>
@@ -531,17 +531,17 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
               </div>
 
               {/* Card 2: Selo Técnico & Conformidade */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
+              <div className="bg-[#091124] rounded-2xl border border-slate-800 p-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/30">
                       <ShieldAlert className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-extrabold text-slate-900 leading-tight">
+                      <h4 className="text-xs font-bold text-white leading-tight">
                         Selo de Segurança & Infraestrutura
                       </h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-slate-400 mt-0.5">
                         Exibe uma etiqueta elegante comprovando proteção de dados e auditoria.
                       </p>
                     </div>
@@ -559,14 +559,14 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1B357B]"></div>
+                    <div className="w-11 h-6 bg-slate-700 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-slate-950 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#DFB76C]"></div>
                   </label>
                 </div>
 
                 {config.showBadge && (
-                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <div className="space-y-3 pt-3 border-t border-slate-800">
                     <div>
-                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">
+                      <label className="text-xs font-semibold text-slate-200 mb-1.5 block">
                         Texto da Etiqueta
                       </label>
                       <input
@@ -579,12 +579,12 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                         }}
                         placeholder="Ex: Ambiente Seguro & Homologado"
                         maxLength={50}
-                        className="w-full h-10 px-3.5 rounded-xl border border-slate-300 bg-white focus:border-[#1B357B] focus:ring-3 focus:ring-blue-100 text-xs font-semibold text-slate-900 shadow-2xs transition-all outline-hidden"
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-700 bg-[#0B1736] focus:border-[#DFB76C] focus:ring-2 focus:ring-[#DFB76C]/25 text-xs font-semibold text-white placeholder:text-slate-500 transition-all outline-hidden"
                       />
                     </div>
 
                     <div>
-                      <span className="text-[11px] font-bold text-slate-500 block mb-1.5">
+                      <span className="text-[11px] font-semibold text-slate-400 block mb-1.5">
                         Sugestões rápidas de conformidade:
                       </span>
                       <div className="flex flex-wrap gap-1.5">
@@ -605,8 +605,8 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                             }}
                             className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
                               config.badgeText === suggestion
-                                ? 'bg-blue-50 border-blue-400 text-blue-700 font-bold'
-                                : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600'
+                                ? 'bg-[#DFB76C]/20 border-[#DFB76C]/60 text-[#DFB76C] font-bold'
+                                : 'bg-[#0B1736] hover:bg-slate-800 border-slate-700 text-slate-300'
                             }`}
                           >
                             {suggestion}
@@ -619,19 +619,19 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
               </div>
 
               {/* Card 3: Símbolo Central da Marca */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="bg-[#091124] rounded-2xl border border-slate-800 p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
                   <div>
-                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <Lock className="w-3.5 h-3.5 text-blue-600" />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-[#DFB76C]" />
                       <span>Símbolo Central da Marca</span>
                     </h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       Ícone vetorial corporativo ou logotipo com imagem própria.
                     </p>
                   </div>
 
-                  <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold shrink-0">
+                  <div className="flex items-center bg-[#070e1e] border border-slate-800 p-1 rounded-xl text-xs font-semibold shrink-0">
                     <button
                       type="button"
                       onClick={() => {
@@ -641,8 +641,8 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                       }}
                       className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                         config.logoType === 'icon' 
-                          ? 'bg-white text-[#1B357B] shadow-xs font-black' 
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-[#DFB76C] text-slate-950 font-bold' 
+                          : 'text-slate-300 hover:text-white'
                       }`}
                     >
                       Ícone Executivo
@@ -656,8 +656,8 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                       }}
                       className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                         config.logoType === 'image' 
-                          ? 'bg-white text-[#1B357B] shadow-xs font-black' 
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-[#DFB76C] text-slate-950 font-bold' 
+                          : 'text-slate-300 hover:text-white'
                       }`}
                     >
                       Upload de Logotipo
@@ -681,18 +681,18 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                           }}
                           className={`p-3.5 rounded-2xl border text-left flex flex-col items-center justify-center gap-2.5 transition-all cursor-pointer relative ${
                             isSelected
-                              ? 'bg-blue-50/80 border-[#1B357B] ring-2 ring-blue-500/20 text-[#1B357B] shadow-xs font-bold'
-                              : 'bg-slate-50/60 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                              ? 'bg-[#DFB76C]/15 border-[#DFB76C] text-white font-bold'
+                              : 'bg-[#0B1736] border-slate-800 text-slate-300 hover:bg-slate-800/80 hover:text-white'
                           }`}
                         >
-                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${isSelected ? 'bg-[#1B357B] text-white shadow-xs' : 'bg-white text-slate-700 border border-slate-200'}`}>
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${isSelected ? 'bg-[#DFB76C] text-slate-950' : 'bg-[#070e1e] text-[#DFB76C] border border-slate-700'}`}>
                             <IconComponent className="w-5 h-5" />
                           </div>
                           <span className="text-[11px] text-center leading-tight">
                             {opt.name}
                           </span>
                           {isSelected && (
-                            <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#C59B4B] text-slate-950 flex items-center justify-center">
+                            <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#DFB76C] text-slate-950 flex items-center justify-center">
                               <Check className="w-2.5 h-2.5 stroke-3" />
                             </div>
                           )}
@@ -701,10 +701,10 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                     })}
                   </div>
                 ) : (
-                  <div className="border border-dashed border-slate-300 rounded-2xl p-5 bg-slate-50/70 text-center space-y-4">
+                  <div className="border border-dashed border-slate-700 rounded-2xl p-5 bg-[#0B1736]/60 text-center space-y-4">
                     {config.logoImageUrl ? (
                       <div className="space-y-3">
-                        <div className="w-24 h-24 mx-auto rounded-2xl bg-white border border-slate-200 flex items-center justify-center p-3 shadow-sm overflow-hidden">
+                        <div className="w-24 h-24 mx-auto rounded-2xl bg-white border border-slate-700 flex items-center justify-center p-3 shadow-sm overflow-hidden">
                           <img
                             src={config.logoImageUrl}
                             alt="Logotipo da Empresa"
@@ -712,10 +712,10 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                           />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-slate-900">
+                          <p className="text-xs font-bold text-white">
                             Logotipo Ativo no Cloudflare R2
                           </p>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-[11px] text-slate-400">
                             Visível no cabeçalho de login oficial.
                           </p>
                         </div>
@@ -723,9 +723,9 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                           <button
                             type="button"
                             onClick={() => logoFileInputRef.current?.click()}
-                            className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
+                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                           >
-                            <Upload className="w-3.5 h-3.5 text-blue-600" />
+                            <Upload className="w-3.5 h-3.5 text-[#DFB76C]" />
                             <span>Substituir</span>
                           </button>
                           <button
@@ -735,7 +735,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                               setConfig(updated);
                               onConfigChange(updated);
                             }}
-                            className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
+                            className="px-3.5 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800/70 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             <span>Remover</span>
@@ -744,22 +744,22 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                       </div>
                     ) : (
                       <div className="py-2">
-                        <div className="w-14 h-14 rounded-2xl bg-blue-100/70 text-[#1B357B] mx-auto flex items-center justify-center mb-3 shadow-inner">
+                        <div className="w-14 h-14 rounded-2xl bg-[#DFB76C]/15 border border-[#DFB76C]/30 text-[#DFB76C] mx-auto flex items-center justify-center mb-3">
                           <Upload className="w-7 h-7" />
                         </div>
-                        <h5 className="text-xs font-bold text-slate-900">
+                        <h5 className="text-xs font-bold text-white">
                           Enviar Logotipo Oficial da MVRJCONTÁBIL
                         </h5>
-                        <p className="text-[11px] text-slate-500 mt-1 mb-4 max-w-sm mx-auto">
+                        <p className="text-[11px] text-slate-400 mt-1 mb-4 max-w-sm mx-auto">
                           Formatos aceitos: PNG transparente, SVG, WEBP ou JPG (até 10 MB).
                         </p>
                         <button
                           type="button"
                           onClick={() => logoFileInputRef.current?.click()}
                           disabled={isUploadingLogo}
-                          className="px-5 py-2.5 bg-[#1B357B] hover:bg-[#142654] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md inline-flex items-center gap-2"
+                          className="px-5 py-2.5 bg-[#DFB76C] hover:brightness-105 text-slate-950 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md inline-flex items-center gap-2"
                         >
-                          <Upload className="w-4 h-4 text-[#DFB76C]" />
+                          <Upload className="w-4 h-4" />
                           <span>{isUploadingLogo ? `Enviando (${uploadLogoProgress}%)...` : 'Selecionar Arquivo de Logo'}</span>
                         </button>
                       </div>
@@ -784,19 +784,19 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
           {activeTab === 'colors-gradient' && (
             <div className="space-y-4">
               {/* Card 1: Tipo de Fundo */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
-                <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="bg-[#091124] rounded-2xl border border-slate-800 p-5 space-y-4">
+                <div className="border-b border-slate-800 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <Palette className="w-3.5 h-3.5 text-purple-600" />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Palette className="w-3.5 h-3.5 text-purple-400" />
                       <span>Estilo do Fundo do Cartão</span>
                     </h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       Escolha entre gradientes ultra-nítidos ou textura fotográfica com imagem.
                     </p>
                   </div>
 
-                  <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold shrink-0">
+                  <div className="flex items-center bg-[#070e1e] border border-slate-800 p-1 rounded-xl text-xs font-semibold shrink-0">
                     <button
                       type="button"
                       onClick={() => {
@@ -806,8 +806,8 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                       }}
                       className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                         config.bgType === 'gradient' 
-                          ? 'bg-white text-[#1B357B] shadow-xs font-black' 
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-[#DFB76C] text-slate-950 font-bold' 
+                          : 'text-slate-300 hover:text-white'
                       }`}
                     >
                       Gradiente Corporativo
@@ -821,8 +821,8 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                       }}
                       className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                         config.bgType === 'image' 
-                          ? 'bg-white text-[#1B357B] shadow-xs font-black' 
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-[#DFB76C] text-slate-950 font-bold' 
+                          : 'text-slate-300 hover:text-white'
                       }`}
                     >
                       Imagem / Foto
@@ -832,7 +832,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
 
                 {config.bgType === 'gradient' ? (
                   <div className="space-y-3">
-                    <span className="text-[11px] font-bold text-slate-500 block">
+                    <span className="text-[11px] font-semibold text-slate-400 block">
                       Paletas de Cores Corporativas Oficiais:
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -853,8 +853,8 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                             }}
                             className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                               isSelected
-                                ? 'border-[#1B357B] ring-2 ring-blue-500/20 bg-blue-50/40 shadow-xs'
-                                : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50'
+                                ? 'border-[#DFB76C] bg-[#DFB76C]/10'
+                                : 'border-slate-800 hover:border-slate-700 bg-[#0B1736]'
                             }`}
                           >
                             <div className="flex items-center space-x-3 mb-2">
@@ -863,16 +863,16 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                                 style={{ background: preset.previewBg }}
                               />
                               <div className="min-w-0 pr-5">
-                                <div className="text-xs font-bold text-slate-900 leading-tight truncate">
+                                <div className="text-xs font-bold text-white leading-tight truncate">
                                   {preset.name}
                                 </div>
-                                <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
+                                <div className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
                                   {preset.description}
                                 </div>
                               </div>
                             </div>
                             {isSelected && (
-                              <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-[#1B357B] text-white flex items-center justify-center shadow-xs">
+                              <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-[#DFB76C] text-slate-950 flex items-center justify-center">
                                 <Check className="w-3 h-3 stroke-3" />
                               </div>
                             )}
@@ -882,17 +882,17 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-blue-50/80 border border-blue-200/90 rounded-2xl p-4 text-xs text-blue-950 flex items-start space-x-3">
-                    <ImageIcon className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="bg-blue-950/40 border border-blue-900/50 rounded-2xl p-4 text-xs text-slate-200 flex items-start space-x-3">
+                    <ImageIcon className="w-5 h-5 text-[#DFB76C] shrink-0 mt-0.5" />
                     <div>
-                      <strong className="font-bold">Modo de Imagem Ativo:</strong>
-                      <p className="mt-0.5 text-blue-900/90 leading-relaxed">
+                      <strong className="font-bold text-white">Modo de Imagem Ativo:</strong>
+                      <p className="mt-0.5 text-slate-300 leading-relaxed">
                         Você pode escolher uma foto corporativa, enviar imagens próprias para o Cloudflare R2 e ajustar opacidade, desfoque e enquadramento na aba <strong>"Imagem de Fundo"</strong>.
                       </p>
                       <button
                         type="button"
                         onClick={() => setActiveTab('background-image')}
-                        className="mt-2.5 px-3 py-1.5 bg-[#1B357B] text-white rounded-lg text-[11px] font-bold shadow-xs hover:bg-[#142654] transition-colors cursor-pointer inline-flex items-center gap-1"
+                        className="mt-2.5 px-3 py-1.5 bg-[#DFB76C] text-slate-950 rounded-lg text-[11px] font-bold hover:brightness-105 transition-colors cursor-pointer inline-flex items-center gap-1"
                       >
                         <span>Ir para Ajustes de Imagem</span>
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -908,14 +908,14 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
           {activeTab === 'background-image' && (
             <div className="space-y-4">
               {/* Card 1: Seleção de Imagem */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="bg-[#091124] rounded-2xl border border-slate-800 p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div>
-                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Imagem de Fundo do Cabeçalho</span>
                     </h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       Selecione imagens corporativas oficiais ou faça upload direto.
                     </p>
                   </div>
@@ -924,9 +924,9 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                     type="button"
                     onClick={() => headerFileInputRef.current?.click()}
                     disabled={isUploadingHeader}
-                    className="px-3.5 py-2 bg-[#1B357B] hover:bg-[#142654] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-xs"
+                    className="px-3.5 py-2 bg-[#DFB76C] hover:brightness-105 text-slate-950 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5"
                   >
-                    <Upload className="w-3.5 h-3.5 text-[#DFB76C]" />
+                    <Upload className="w-3.5 h-3.5" />
                     <span>{isUploadingHeader ? `Enviando (${uploadHeaderProgress}%)...` : 'Upload Imagem (R2)'}</span>
                   </button>
                   <input
@@ -943,7 +943,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
 
                 {/* Preset Quick Picks */}
                 <div>
-                  <span className="text-[11px] font-bold text-slate-500 block mb-2">
+                  <span className="text-[11px] font-semibold text-slate-400 block mb-2">
                     Fotografias e Texturas Pré-configuradas:
                   </span>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -964,8 +964,8 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                           }}
                           className={`group relative rounded-2xl overflow-hidden border text-left aspect-4/3 transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-[#1B357B] ring-2 ring-blue-500/30 shadow-md'
-                              : 'border-slate-200 hover:border-slate-300'
+                              ? 'border-[#DFB76C] ring-2 ring-[#DFB76C]/30 shadow-md'
+                              : 'border-slate-800 hover:border-slate-600'
                           }`}
                         >
                           <img
@@ -979,7 +979,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                             </span>
                           </div>
                           {isSelected && (
-                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#1B357B] text-white flex items-center justify-center shadow-xs">
+                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#DFB76C] text-slate-950 flex items-center justify-center shadow-xs">
                               <Check className="w-3 h-3 stroke-3" />
                             </div>
                           )}
@@ -991,7 +991,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
 
                 {/* External Image URL Input */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">
+                  <label className="text-xs font-semibold text-slate-200 mb-1.5 block">
                     Ou informe a URL direta de uma imagem externa:
                   </label>
                   <input
@@ -1007,21 +1007,21 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                       onConfigChange(updated);
                     }}
                     placeholder="https://exemplo.com/minha-imagem.jpg"
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-300 bg-white focus:border-[#1B357B] focus:ring-3 focus:ring-blue-100 text-xs text-slate-800 shadow-2xs transition-all outline-hidden"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-700 bg-[#0B1736] focus:border-[#DFB76C] focus:ring-2 focus:ring-[#DFB76C]/25 text-xs text-slate-100 placeholder:text-slate-500 transition-all outline-hidden"
                   />
                 </div>
               </div>
 
               {/* Card 2: Enquadramento & Dimensões */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
-                <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-3">
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
+              <div className="bg-[#091124] rounded-2xl border border-slate-800 p-5 space-y-4">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800 pb-3">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#DFB76C]" />
                   <span>Enquadramento & Proporções</span>
                 </h4>
 
                 {/* Modo de Enquadramento */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 mb-2 block">
+                  <label className="text-xs font-semibold text-slate-200 mb-2 block">
                     Modo de Ajuste da Imagem
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1034,17 +1034,17 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                       }}
                       className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                         (config.bgSize || 'contain') === 'contain'
-                          ? 'border-[#1B357B] bg-blue-50/50 ring-2 ring-blue-500/20'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                          ? 'border-[#DFB76C] bg-[#DFB76C]/10'
+                          : 'border-slate-800 hover:border-slate-700 bg-[#0B1736]'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-900">Ajustar Inteira (Contain)</span>
+                        <span className="text-xs font-bold text-white">Ajustar Inteira (Contain)</span>
                         {(config.bgSize || 'contain') === 'contain' && (
-                          <Check className="w-4 h-4 text-[#1B357B] stroke-3" />
+                          <Check className="w-4 h-4 text-[#DFB76C] stroke-3" />
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-tight">
+                      <p className="text-[11px] text-slate-400 leading-tight">
                         Exibe 100% da arte sem nenhum corte no topo ou rodapé.
                       </p>
                     </button>
@@ -1058,17 +1058,17 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                       }}
                       className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                         config.bgSize === 'cover'
-                          ? 'border-[#1B357B] bg-blue-50/50 ring-2 ring-blue-500/20'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                          ? 'border-[#DFB76C] bg-[#DFB76C]/10'
+                          : 'border-slate-800 hover:border-slate-700 bg-[#0B1736]'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-900">Preencher Tudo (Cover)</span>
+                        <span className="text-xs font-bold text-white">Preencher Tudo (Cover)</span>
                         {config.bgSize === 'cover' && (
-                          <Check className="w-4 h-4 text-[#1B357B] stroke-3" />
+                          <Check className="w-4 h-4 text-[#DFB76C] stroke-3" />
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-tight">
+                      <p className="text-[11px] text-slate-400 leading-tight">
                         Preenche a moldura inteira de borda a borda.
                       </p>
                     </button>
@@ -1077,7 +1077,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
 
                 {/* Altura do Cabeçalho */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 mb-2 block">
+                  <label className="text-xs font-semibold text-slate-200 mb-2 block">
                     Altura do Cabeçalho
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -1099,12 +1099,12 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                           }}
                           className={`py-2.5 px-3 rounded-xl border text-center transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-[#1B357B] bg-blue-50 text-[#1B357B] font-black ring-2 ring-blue-500/20'
-                              : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700 font-semibold'
+                              ? 'border-[#DFB76C] bg-[#DFB76C]/15 text-[#DFB76C] font-bold'
+                              : 'border-slate-800 hover:border-slate-700 bg-[#0B1736] text-slate-200 font-semibold'
                           }`}
                         >
                           <div>{h.name}</div>
-                          <div className="text-[10px] text-slate-400 font-normal">{h.desc}</div>
+                          <div className="text-[10px] text-slate-400 font-mono font-normal">{h.desc}</div>
                         </button>
                       );
                     })}
@@ -1113,7 +1113,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
 
                 {/* Cor de Fundo da Moldura */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 mb-2 block">
+                  <label className="text-xs font-semibold text-slate-200 mb-2 block">
                     Cor da Moldura de Mesclagem
                   </label>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1136,8 +1136,8 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                         title={c.name}
                         className={`w-8 h-8 rounded-full border-2 transition-transform cursor-pointer shrink-0 ${
                           (config.bgColor || '#091830') === c.color
-                            ? 'scale-120 border-blue-500 ring-2 ring-blue-500/30'
-                            : 'border-white hover:scale-110 shadow-xs'
+                            ? 'scale-120 border-[#DFB76C] ring-2 ring-[#DFB76C]/30'
+                            : 'border-slate-600 hover:scale-110'
                         }`}
                         style={{ backgroundColor: c.color }}
                       />
@@ -1150,7 +1150,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                         setConfig(updated);
                         onConfigChange(updated);
                       }}
-                      className="w-24 h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-800"
+                      className="w-24 h-8 px-2.5 bg-[#0B1736] border border-slate-700 rounded-lg text-xs font-mono text-slate-100"
                       placeholder="#091830"
                     />
                   </div>
@@ -1158,18 +1158,18 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
               </div>
 
               {/* Card 3: Efeitos & Tratamento de Imagem */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
-                <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-3">
-                  <Sliders className="w-3.5 h-3.5 text-purple-600" />
+              <div className="bg-[#091124] rounded-2xl border border-slate-800 p-5 space-y-4">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800 pb-3">
+                  <Sliders className="w-3.5 h-3.5 text-purple-400" />
                   <span>Tratamento Visual da Imagem</span>
                 </h4>
 
                 <div className="space-y-4">
                   {/* Opacidade Slider */}
                   <div>
-                    <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                    <div className="flex justify-between text-xs font-semibold text-slate-200 mb-1.5">
                       <span>Opacidade da Imagem</span>
-                      <span className="text-[#1B357B] bg-blue-50 px-2 py-0.5 rounded-md font-mono">{config.bgOpacity}%</span>
+                      <span className="text-[#DFB76C] font-mono tabular-nums">{config.bgOpacity}%</span>
                     </div>
                     <input
                       type="range"
@@ -1182,15 +1182,15 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                         setConfig(updated);
                         onConfigChange(updated);
                       }}
-                      className="w-full accent-[#1B357B] cursor-pointer"
+                      className="w-full accent-[#DFB76C] cursor-pointer"
                     />
                   </div>
 
                   {/* Blur Slider */}
                   <div>
-                    <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                    <div className="flex justify-between text-xs font-semibold text-slate-200 mb-1.5">
                       <span>Desfoque / Blur Artístico</span>
-                      <span className="text-[#1B357B] bg-blue-50 px-2 py-0.5 rounded-md font-mono">{config.bgBlur}px</span>
+                      <span className="text-[#DFB76C] font-mono tabular-nums">{config.bgBlur}px</span>
                     </div>
                     <input
                       type="range"
@@ -1203,14 +1203,14 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                         setConfig(updated);
                         onConfigChange(updated);
                       }}
-                      className="w-full accent-[#1B357B] cursor-pointer"
+                      className="w-full accent-[#DFB76C] cursor-pointer"
                     />
                   </div>
 
                   {/* Contrast Overlay Type & Opacity */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
                     <div>
-                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">
+                      <label className="text-xs font-semibold text-slate-200 mb-1.5 block">
                         Filtro de Sobreposição
                       </label>
                       <select
@@ -1223,7 +1223,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                           setConfig(updated);
                           onConfigChange(updated);
                         }}
-                        className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800"
+                        className="w-full h-10 px-3 bg-[#0B1736] border border-slate-700 rounded-xl text-xs font-semibold text-slate-100"
                       >
                         <option value="dark">Escura (Recomendada)</option>
                         <option value="light">Clara</option>
@@ -1233,9 +1233,9 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
 
                     {config.bgOverlayType !== 'none' && (
                       <div>
-                        <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                        <div className="flex justify-between text-xs font-semibold text-slate-200 mb-1.5">
                           <span>Opacidade do Filtro</span>
-                          <span className="text-[#1B357B] bg-blue-50 px-2 py-0.5 rounded-md font-mono">{config.bgOverlayOpacity}%</span>
+                          <span className="text-[#DFB76C] font-mono tabular-nums">{config.bgOverlayOpacity}%</span>
                         </div>
                         <input
                           type="range"
@@ -1251,7 +1251,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                             setConfig(updated);
                             onConfigChange(updated);
                           }}
-                          className="w-full accent-[#1B357B] cursor-pointer mt-2"
+                          className="w-full accent-[#DFB76C] cursor-pointer mt-2"
                         />
                       </div>
                     )}
@@ -1265,17 +1265,17 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
           {activeTab === 'layers-display' && (
             <div className="space-y-4">
               {/* Presets Rápidos de 1 Clique */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/90 rounded-2xl p-5 shadow-xs space-y-3">
+              <div className="bg-[#091124] border border-blue-900/50 rounded-2xl p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-blue-950 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-[#DFB76C]" />
                     <span>Configurações Rápidas de Camadas</span>
                   </span>
-                  <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
+                  <span className="text-[10px] font-bold text-[#DFB76C] uppercase tracking-wider">
                     1 Clique
                   </span>
                 </div>
-                <p className="text-[11px] text-blue-900/90 leading-relaxed">
+                <p className="text-[11px] text-slate-300 leading-relaxed">
                   Se a imagem selecionada já tiver o emblema e o nome da MVRJ gravados, clique no modo limpo para ocultar textos repetidos:
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1296,10 +1296,10 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                         text: 'Modo Emblema Limpo ativado! Todos os textos sobrepostos foram ocultados.',
                       });
                     }}
-                    className="px-4 py-2.5 bg-[#1B357B] hover:bg-[#142654] text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2.5 bg-[#DFB76C] hover:brightness-105 text-slate-950 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-[#DFB76C]" />
-                    <span>✨ Modo Emblema Limpo</span>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Modo Emblema Limpo</span>
                   </button>
                   <button
                     type="button"
@@ -1318,17 +1318,17 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                         text: 'Modo Completo restaurado: ícone, títulos e selo visíveis.',
                       });
                     }}
-                    className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2.5 bg-[#0B1736] hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <span>🔄 Modo Completo Padrão</span>
+                    <span>Modo Completo Padrão</span>
                   </button>
                 </div>
               </div>
 
               {/* Gerenciamento Individual de Cada Camada */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-3.5">
-                <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-3">
-                  <Layers className="w-3.5 h-3.5 text-amber-600" />
+              <div className="bg-[#091124] rounded-2xl border border-slate-800 p-5 space-y-3.5">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800 pb-3">
+                  <Layers className="w-3.5 h-3.5 text-[#DFB76C]" />
                   <span>Interruptores de Visibilidade</span>
                 </h4>
 
@@ -1360,13 +1360,13 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                 ].map((item) => (
                   <div
                     key={item.key}
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-colors"
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-800 bg-[#0B1736] hover:border-slate-700 transition-colors"
                   >
                     <div className="min-w-0 pr-3">
-                      <div className="text-xs font-bold text-slate-900 leading-tight">
+                      <div className="text-xs font-bold text-white leading-tight">
                         {item.label}
                       </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
+                      <div className="text-[11px] text-slate-400 mt-0.5">
                         {item.desc}
                       </div>
                     </div>
@@ -1381,7 +1381,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
                         }}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1B357B]"></div>
+                      <div className="w-11 h-6 bg-slate-700 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-slate-950 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#DFB76C]"></div>
                     </label>
                   </div>
                 ))}
@@ -1393,19 +1393,19 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
 
         {/* RIGHT COLUMN: REALISTIC LIVE PREVIEW (5 COLS) */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="bg-slate-100/90 rounded-3xl border border-slate-200 p-5 shadow-sm sticky top-4">
+          <div className="bg-[#091124] rounded-3xl border border-slate-800 p-5 shadow-sm sticky top-4">
             <div className="flex items-center justify-between mb-3.5">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <Eye className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+                <Eye className="w-4 h-4 text-[#DFB76C]" />
                 <span>Prévia em Tempo Real</span>
               </span>
-              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                100% Fiel à Tela de Login
+              <span className="text-[10px] font-semibold text-emerald-400">
+                Fiel à Tela de Login
               </span>
             </div>
 
             {/* SIMULATED LOGIN MODAL CARD CONTAINER */}
-            <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden mx-auto max-w-sm">
+            <div className="bg-[#091124] rounded-3xl shadow-2xl border border-slate-700/70 overflow-hidden mx-auto max-w-sm">
               
               {/* THE EXACT HEADER COMPONENT BEING CUSTOMIZED */}
               <div 
@@ -1505,24 +1505,24 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
               </div>
 
               {/* FAKE LOGIN MODAL BODY FOR FAITHFUL CONTEXT */}
-              <div className="p-5 bg-white border-t border-slate-100 space-y-3.5">
-                <div className="flex border-b border-slate-100 pb-2.5 text-xs font-bold text-slate-500">
-                  <div className="flex-1 text-[#1B357B] border-b-2 border-[#C59B4B] pb-1.5 text-center font-black">
+              <div className="p-5 bg-[#091124] border-t border-slate-800 space-y-3.5">
+                <div className="flex border-b border-slate-800 pb-2.5 text-xs font-bold text-slate-400">
+                  <div className="flex-1 text-[#DFB76C] border-b-2 border-[#DFB76C] pb-1.5 text-center font-bold">
                     Acessar Sistema
                   </div>
-                  <div className="flex-1 pb-1.5 text-center text-slate-400">
+                  <div className="flex-1 pb-1.5 text-center text-slate-500">
                     Solicitar Acesso
                   </div>
                 </div>
 
                 <div className="space-y-2.5">
-                  <div className="h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 flex items-center gap-2 text-xs text-slate-400">
-                    <Mail className="w-3.5 h-3.5" />
+                  <div className="h-9 bg-[#0B1736] border border-slate-700/80 rounded-xl px-3 flex items-center gap-2 text-xs text-slate-400">
+                    <Mail className="w-3.5 h-3.5 text-[#DFB76C]" />
                     <span>usuario@mvrjcontabil.com.br</span>
                   </div>
-                  <div className="h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 flex items-center justify-between text-xs text-slate-400">
+                  <div className="h-9 bg-[#0B1736] border border-slate-700/80 rounded-xl px-3 flex items-center justify-between text-xs text-slate-400">
                     <div className="flex items-center gap-2">
-                      <Lock className="w-3.5 h-3.5" />
+                      <Lock className="w-3.5 h-3.5 text-[#DFB76C]" />
                       <span>••••••••</span>
                     </div>
                   </div>
@@ -1534,7 +1534,7 @@ export const AuthHeaderCustomizer: React.FC<AuthHeaderCustomizerProps> = ({
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 text-center mt-3.5">
+            <p className="text-[11px] text-slate-400 text-center mt-3.5">
               Todas as modificações são sincronizadas no banco e refletem imediatamente para todos os usuários da MVRJCONTÁBIL.
             </p>
           </div>

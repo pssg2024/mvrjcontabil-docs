@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Paperclip, Bot, User, AlertCircle, FileText, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { showToast } from '../lib/toast';
 
 export function AssistantAvatar({
   className = "w-full h-full",
@@ -96,7 +97,7 @@ export function MvrjAssistantWidget() {
     if (!file) return;
 
     if (file.size > 15 * 1024 * 1024) {
-      alert('O ficheiro é muito grande. O limite máximo é 15MB.');
+      showToast('O ficheiro é muito grande. O limite máximo é 15 MB.', 'warning');
       return;
     }
 
@@ -112,7 +113,7 @@ export function MvrjAssistantWidget() {
       });
     };
     reader.onerror = () => {
-      alert('Erro ao ler o ficheiro.');
+      showToast('Erro ao ler o ficheiro selecionado.', 'error');
     };
     reader.readAsDataURL(file);
     // Reset file input

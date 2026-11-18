@@ -4,6 +4,28 @@ import {
   InadimplenciaItem,
   InadimplenciaSummary,
 } from '../types';
+import { getAuthHeaders, issueServerSessionToken } from './auth-session';
+
+async function fetchWithSessionRetry(url: string, init: RequestInit = {}): Promise<Response> {
+  const buildInit = () => ({
+    ...init,
+    headers: getAuthHeaders((init.headers as Record<string, string>) || {}),
+  });
+  let res = await fetch(url, buildInit());
+  if (res.status === 401 && typeof window !== 'undefined') {
+    try {
+      const rawUser = sessionStorage.getItem('mvrj_session_user') || localStorage.getItem('mvrj_session_user');
+      if (rawUser) {
+        const parsedUser = JSON.parse(rawUser);
+        const refreshed = await issueServerSessionToken(parsedUser);
+        if (refreshed) {
+          res = await fetch(url, buildInit());
+        }
+      }
+    } catch {}
+  }
+  return res;
+}
 
 const INADIMPLENCIA_SYNC_EVENT = 'mvrj-inadimplencia-sync';
 const INADIMPLENCIA_CHANNEL = 'mvrj-inadimplencia-channel';
@@ -112,6 +134,12 @@ export function buildWhatsAppCobrancaUrl(item: InadimplenciaItem): string {
   const pagamentoInfo = item.dados_pagamento
     ? `\n\n💳 *Dados para Pagamento (${item.forma_pagamento || 'PIX'}):*\n${item.dados_pagamento}`
     : '';
+  const pixInfo = item.pix_copia_cola
+    ? `\n\n💠 *PIX Copia e Cola:*\n${item.pix_copia_cola}`
+    : '';
+  const boletoInfo = item.boleto_url
+    ? `\n\n📄 *Link do Boleto / Fatura:*\n${item.boleto_url}`
+    : '';
   const msg =
     `Olá, *${item.cliente_nome}*! Aqui é da *MVRJ Contábil*.\n\n` +
     `Identificamos pendência financeira em aberto:\n` +
@@ -120,12 +148,14 @@ export function buildWhatsAppCobrancaUrl(item: InadimplenciaItem): string {
     `• *Valor em aberto:* ${formatCurrencyBRL(item.valor_restante)}\n` +
     `• *Classificação:* ${item.classificacao}${item.dias_em_atraso > 0 ? ` (${item.dias_em_atraso} dias em atraso)` : ''}` +
     pagamentoInfo +
+    pixInfo +
+    boletoInfo +
     `\n\nAssim que efetuar o pagamento, por favor nos envie o comprovante para darmos baixa imediata no sistema.`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
 }
 
 export async function fetchInadimplenciaData(): Promise<InadimplenciaResponseData> {
-  const res = await fetch(`/api/inadimplencia?t=${Date.now()}`, {
+  const res = await fetchWithSessionRetry(`/api/inadimplencia?t=${Date.now()}`, {
     cache: 'no-store',
     headers: { Accept: 'application/json' },
   });
@@ -136,8 +166,9 @@ export async function fetchInadimplenciaData(): Promise<InadimplenciaResponseDat
 }
 
 export async function detectOverdueCandidates(): Promise<OverdueCandidate[]> {
-  const res = await fetch(`/api/inadimplencia/detectar-vencidos?t=${Date.now()}`, {
+  const res = await fetchWithSessionRetry(`/api/inadimplencia/detectar-vencidos?t=${Date.now()}`, {
     cache: 'no-store',
+    headers: { Accept: 'application/json' },
   });
   if (!res.ok) return [];
   const data = await res.json();
@@ -155,6 +186,8 @@ export async function createInadimplencia(payload: {
   data_vencimento: string;
   forma_pagamento?: string;
   dados_pagamento?: string;
+  pix_copia_cola?: string;
+  boleto_url?: string;
   observacoes?: string;
   classificacao?: InadimplenciaClassificacao;
   classificacao_manual?: boolean;
@@ -164,7 +197,7 @@ export async function createInadimplencia(payload: {
   alerta_automatico: InadimplenciaAlertaAutomatico;
   quitadoAutomaticamente: boolean;
 }> {
-  const res = await fetch('/api/inadimplencia', {
+  const res = await fetchWithSessionRetry('/api/inadimplencia', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -181,7 +214,7 @@ export async function updateInadimplencia(
   id: string,
   updates: Partial<InadimplenciaItem>
 ): Promise<{ item: InadimplenciaItem; quitadoAutomaticamente: boolean }> {
-  const res = await fetch(`/api/inadimplencia/${encodeURIComponent(id)}`, {
+  const res = await fetchWithSessionRetry(`/api/inadimplencia/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
@@ -207,7 +240,7 @@ export async function registerInadimplenciaPayment(
     registrado_por: string;
   }
 ): Promise<{ item: InadimplenciaItem; quitadoAutomaticamente: boolean }> {
-  const res = await fetch(`/api/inadimplencia/${encodeURIComponent(id)}/pagamento`, {
+  const res = await fetchWithSessionRetry(`/api/inadimplencia/${encodeURIComponent(id)}/pagamento`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -221,7 +254,7 @@ export async function registerInadimplenciaPayment(
 }
 
 export async function deleteInadimplencia(id: string): Promise<void> {
-  const res = await fetch(`/api/inadimplencia/${encodeURIComponent(id)}`, {
+  const res = await fetchWithSessionRetry(`/api/inadimplencia/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
   const json = await res.json().catch(() => ({}));

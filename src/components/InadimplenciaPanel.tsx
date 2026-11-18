@@ -23,6 +23,9 @@ import {
   History,
   Building2,
   Check,
+  Download,
+  ExternalLink,
+  QrCode,
 } from 'lucide-react';
 import {
   Company,
@@ -46,6 +49,7 @@ import {
   subscribeInadimplenciaSync,
   updateInadimplencia,
 } from '../lib/inadimplencia-service';
+import { downloadCsvFile } from '../lib/auth-session';
 
 interface InadimplenciaPanelProps {
   currentUser: UserProfile;
@@ -149,6 +153,8 @@ export const InadimplenciaPanel: React.FC<InadimplenciaPanelProps> = ({
   const [dataVencimento, setDataVencimento] = useState(() => new Date().toISOString().slice(0, 10));
   const [formaPagamento, setFormaPagamento] = useState<string>('PIX');
   const [dadosPagamento, setDadosPagamento] = useState('');
+  const [pixCopiaCola, setPixCopiaCola] = useState('');
+  const [boletoUrl, setBoletoUrl] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [classificacaoManual, setClassificacaoManual] = useState(false);
   const [classificacaoSelecionada, setClassificacaoSelecionada] = useState<InadimplenciaClassificacao>('Leve');
@@ -221,6 +227,8 @@ export const InadimplenciaPanel: React.FC<InadimplenciaPanelProps> = ({
     setDataVencimento(prefill?.data_vencimento || new Date().toISOString().slice(0, 10));
     setFormaPagamento('PIX');
     setDadosPagamento('');
+    setPixCopiaCola('');
+    setBoletoUrl('');
     setObservacoes('');
     setClassificacaoManual(false);
     setClassificacaoSelecionada(prefill?.classificacao || 'Leve');
@@ -240,6 +248,8 @@ export const InadimplenciaPanel: React.FC<InadimplenciaPanelProps> = ({
     setDataVencimento(item.data_vencimento.slice(0, 10));
     setFormaPagamento(item.forma_pagamento || 'PIX');
     setDadosPagamento(item.dados_pagamento || '');
+    setPixCopiaCola(item.pix_copia_cola || '');
+    setBoletoUrl(item.boleto_url || '');
     setObservacoes(item.observacoes || '');
     setClassificacaoManual(Boolean(item.classificacao_manual));
     setClassificacaoSelecionada(item.classificacao);
@@ -300,6 +310,8 @@ export const InadimplenciaPanel: React.FC<InadimplenciaPanelProps> = ({
           data_vencimento: dataVencimento,
           forma_pagamento: formaPagamento,
           dados_pagamento: dadosPagamento.trim(),
+          pix_copia_cola: pixCopiaCola.trim(),
+          boleto_url: boletoUrl.trim(),
           observacoes: observacoes.trim(),
           classificacao_manual: classificacaoManual,
           classificacao: classificacaoManual ? classificacaoSelecionada : liveAutoClass.classificacao,
@@ -335,6 +347,8 @@ export const InadimplenciaPanel: React.FC<InadimplenciaPanelProps> = ({
           data_vencimento: dataVencimento,
           forma_pagamento: formaPagamento,
           dados_pagamento: dadosPagamento.trim(),
+          pix_copia_cola: pixCopiaCola.trim(),
+          boleto_url: boletoUrl.trim(),
           observacoes: observacoes.trim(),
           classificacao_manual: classificacaoManual,
           classificacao: classificacaoManual ? classificacaoSelecionada : liveAutoClass.classificacao,
@@ -480,6 +494,48 @@ export const InadimplenciaPanel: React.FC<InadimplenciaPanelProps> = ({
     setTimeout(() => setCopiedId(null), 1800);
   };
 
+  const handleExportCsv = () => {
+    const exportList = subTab === 'active' ? activeList : settledList;
+    const headers = [
+      'Cliente / Empresa',
+      'CPF/CNPJ',
+      'Telefone',
+      'E-mail',
+      'Descrição',
+      'Vencimento',
+      'Dias em Atraso',
+      'Classificação',
+      'Status',
+      'Valor Total (R$)',
+      'Valor Pago (R$)',
+      'Saldo Restante (R$)',
+      'Forma Pagamento',
+      'Dados Pagamento',
+      'PIX Copia e Cola',
+      'Link Boleto',
+    ];
+    const rows = exportList.map((item) => [
+      item.cliente_nome,
+      item.documento_cpf_cnpj || '',
+      item.telefone,
+      item.email || '',
+      item.descricao,
+      item.data_vencimento.split('-').reverse().join('/'),
+      item.dias_em_atraso,
+      item.classificacao,
+      item.status === 'quitado' ? 'Quitado' : 'Inadimplente',
+      item.valor_total.toFixed(2).replace('.', ','),
+      item.valor_pago.toFixed(2).replace('.', ','),
+      item.valor_restante.toFixed(2).replace('.', ','),
+      item.forma_pagamento || 'PIX',
+      item.dados_pagamento || '',
+      item.pix_copia_cola || '',
+      item.boleto_url || '',
+    ]);
+    const suffix = subTab === 'active' ? 'ativos' : 'quitados';
+    downloadCsvFile(`mvrj-inadimplencia-${suffix}-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  };
+
   const displayedList = useMemo(() => {
     const source = subTab === 'active' ? activeList : settledList;
     return source.filter((item) => {
@@ -524,6 +580,16 @@ export const InadimplenciaPanel: React.FC<InadimplenciaPanelProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-xs font-bold text-slate-100 flex items-center gap-2 transition-all cursor-pointer"
+            title="Exportar lista atual para planilha Excel (CSV)"
+          >
+            <Download className="w-4 h-4 text-emerald-400" />
+            <span>Exportar CSV</span>
+          </button>
+
           <button
             type="button"
             onClick={handleDetectOverdue}
@@ -915,35 +981,74 @@ export const InadimplenciaPanel: React.FC<InadimplenciaPanelProps> = ({
                           <CreditCard className="w-4 h-4 text-[#DFB76C]" />
                           <span>Informações de Pagamento ({item.forma_pagamento || 'PIX'})</span>
                         </div>
-                        {item.dados_pagamento && (
-                          <button
-                            type="button"
-                            onClick={() => handleCopyPaymentData(item.id, item.dados_pagamento || '')}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 cursor-pointer"
-                          >
-                            {copiedId === item.id ? (
-                              <>
-                                <Check className="w-3 h-3 text-emerald-400" />
-                                <span className="text-emerald-300">Copiado</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3 h-3" />
-                                <span>Copiar dados</span>
-                              </>
-                            )}
-                          </button>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.pix_copia_cola && (
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPaymentData(`pix-${item.id}`, item.pix_copia_cola || '')}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-700/40 text-[11px] font-bold text-emerald-300 cursor-pointer"
+                            >
+                              {copiedId === `pix-${item.id}` ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-400" />
+                                  <span>PIX Copiado</span>
+                                </>
+                              ) : (
+                                <>
+                                  <QrCode className="w-3 h-3" />
+                                  <span>Copiar PIX</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                          {item.boleto_url && (
+                            <a
+                              href={item.boleto_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-950/60 hover:bg-blue-900/70 border border-blue-700/40 text-[11px] font-bold text-blue-300"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>Abrir Boleto</span>
+                            </a>
+                          )}
+                          {item.dados_pagamento && (
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPaymentData(item.id, item.dados_pagamento || '')}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 cursor-pointer"
+                            >
+                              {copiedId === item.id ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-400" />
+                                  <span className="text-emerald-300">Copiado</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  <span>Copiar dados</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {item.dados_pagamento ? (
                         <p className="text-xs font-mono text-amber-200/90 bg-black/30 px-3 py-2 rounded-lg border border-slate-800 break-all">
                           {item.dados_pagamento}
                         </p>
-                      ) : (
+                      ) : !item.pix_copia_cola && !item.boleto_url ? (
                         <p className="text-[11px] text-slate-500 italic">
                           Nenhum dado de pagamento (chave PIX, boleto ou link) adicionado ainda — clique em Editar para informar.
                         </p>
+                      ) : null}
+
+                      {item.pix_copia_cola && (
+                        <div className="text-[11px] font-mono text-emerald-200/90 bg-emerald-950/20 px-3 py-2 rounded-lg border border-emerald-900/40 break-all">
+                          <span className="font-sans font-bold text-emerald-400 mr-1.5">PIX Copia e Cola:</span>
+                          {item.pix_copia_cola}
+                        </div>
                       )}
 
                       {item.observacoes && (
@@ -1308,15 +1413,43 @@ export const InadimplenciaPanel: React.FC<InadimplenciaPanelProps> = ({
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-300">
-                    Chave PIX / Linha Digitável do Boleto / Link ou Conta para Pagamento
+                    Chave PIX / Linha Digitável do Boleto / Conta para Pagamento
                   </label>
                   <input
                     type="text"
                     value={dadosPagamento}
                     onChange={(e) => setDadosPagamento(e.target.value)}
-                    placeholder="Ex: Chave PIX CNPJ 00.000.000/0001-00 ou código de barras do boleto"
+                    placeholder="Ex: Chave PIX CNPJ 00.000.000/0001-00 ou conta bancária"
                     className="w-full h-10 px-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white font-mono"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-emerald-300">
+                      PIX Copia e Cola (opcional — enviado no WhatsApp)
+                    </label>
+                    <input
+                      type="text"
+                      value={pixCopiaCola}
+                      onChange={(e) => setPixCopiaCola(e.target.value)}
+                      placeholder="00020126580014br.gov.bcb.pix..."
+                      className="w-full h-10 px-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-blue-300">
+                      Link do Boleto / Fatura (opcional)
+                    </label>
+                    <input
+                      type="url"
+                      value={boletoUrl}
+                      onChange={(e) => setBoletoUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full h-10 px-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1">

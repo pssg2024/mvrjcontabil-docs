@@ -5,7 +5,7 @@ import { UserProfile } from '../types';
 interface LgpdTermsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentUser: UserProfile;
+  currentUser?: UserProfile | null;
 }
 
 export const LgpdTermsModal: React.FC<LgpdTermsModalProps> = ({
@@ -19,7 +19,7 @@ export const LgpdTermsModal: React.FC<LgpdTermsModalProps> = ({
     window.print();
   };
 
-  const formattedDate = currentUser.lgpd_accepted_at 
+  const formattedDate = currentUser?.lgpd_accepted_at 
     ? new Date(currentUser.lgpd_accepted_at).toLocaleString('pt-BR')
     : 'Aceite registrado no sistema';
 
@@ -62,17 +62,19 @@ export const LgpdTermsModal: React.FC<LgpdTermsModalProps> = ({
         </div>
 
         {/* Certificate Badge */}
-        <div className="bg-emerald-50/70 border border-emerald-200 text-emerald-800 rounded-xl p-3 m-4 flex items-center justify-between text-xs">
-          <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>
-              Termo Homologado para: <strong>{currentUser.full_name}</strong> ({currentUser.email})
+        {currentUser && (
+          <div className="bg-emerald-50/70 border border-emerald-200 text-emerald-800 rounded-xl p-3 m-4 flex items-center justify-between text-xs">
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                Termo Homologado para: <strong>{currentUser.full_name}</strong> ({currentUser.email})
+              </span>
+            </div>
+            <span className="font-mono text-[11px] bg-emerald-200/60 px-2 py-0.5 rounded text-emerald-800 font-bold">
+              {formattedDate}
             </span>
           </div>
-          <span className="font-mono text-[11px] bg-emerald-200/60 px-2 py-0.5 rounded text-emerald-800 font-bold">
-            {formattedDate}
-          </span>
-        </div>
+        )}
         
         {/* Legal Text */}
         <div className="p-6 overflow-y-auto space-y-4 text-xs text-slate-700 leading-relaxed font-sans select-text scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
@@ -84,7 +86,7 @@ export const LgpdTermsModal: React.FC<LgpdTermsModalProps> = ({
               TERMO DE CIÊNCIA, CONFIDENCIALIDADE E RESPONSABILIDADE NO TRATAMENTO DE DADOS (LGPD)
             </p>
             <p className="text-[10px] text-blue-700 font-mono">
-              Versão do Termo: {currentUser.lgpd_terms_version || 'v1.0-2026-LGPD-13709'}
+              Versão do Termo: {currentUser?.lgpd_terms_version || 'v1.0-2026-LGPD-13709'}
             </p>
           </div>
 

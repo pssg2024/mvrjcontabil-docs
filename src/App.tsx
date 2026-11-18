@@ -22,6 +22,8 @@ import { SpedImporterModal } from './components/SpedImporterModal';
 import { RecycleBinModal } from './components/RecycleBinModal';
 import { MvrjAssistantWidget } from './components/MvrjAssistantWidget';
 import { UserAvatar, normalizeAvatarUrl } from './components/UserAvatar';
+import { ToastContainer } from './components/ToastContainer';
+import { showToast } from './lib/toast';
 import { ShieldCheck, Menu } from 'lucide-react';
 import { 
   UserProfile, 
@@ -64,6 +66,7 @@ import {
   fetchProfilesFromApi
 } from './lib/storage-service';
 import { fetchInadimplenciaData, subscribeInadimplenciaSync } from './lib/inadimplencia-service';
+import { getAuthHeaders, getStoredSessionToken, issueServerSessionToken, saveSessionCredentials } from './lib/auth-session';
 import { getSupabase } from './lib/supabase';
 
 export default function App() {
@@ -164,6 +167,7 @@ export default function App() {
   const [folderPermissions, setFolderPermissions] = useState<FolderPermission[]>([]);
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [isInitialDataLoading, setIsInitialDataLoading] = useState(true);
 
   // Track timestamp of recent folder operations to prevent sync race conditions
   const lastFolderActionRef = useRef<number>(0);
@@ -202,20 +206,12 @@ export default function App() {
     };
   });
 
-  // Dynamic Corporate Theme Synchronization (Aligns with siteBackgroundConfig.overlayType)
+  // Enforce Dark Corporate Theme across the dark-navy GED shell
   useEffect(() => {
-    const isDark = siteBackgroundConfig.overlayType === 'dark';
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      try {
-        localStorage.setItem('ged-theme-mode', 'dark');
-      } catch {}
-    } else {
-      document.documentElement.classList.remove('dark');
-      try {
-        localStorage.setItem('ged-theme-mode', 'light');
-      } catch {}
-    }
+    document.documentElement.classList.add('dark');
+    try {
+      localStorage.setItem('ged-theme-mode', 'dark');
+    } catch {}
   }, [siteBackgroundConfig.overlayType]);
 
   // CNPJ & Company Consultation Modal State
@@ -253,11 +249,24 @@ export default function App() {
 
   useEffect(() => {
     if (!currentUser || (currentUser.role !== 'admin' && currentUser.sector !== 'Diretoria')) return;
-    refreshInadimplenciaCount();
+    let cancelled = false;
+    const ensureSessionAndRefresh = async () => {
+      const existingToken = getStoredSessionToken();
+      if (!existingToken || !existingToken.includes('.')) {
+        await issueServerSessionToken(currentUser);
+      }
+      if (!cancelled) {
+        refreshInadimplenciaCount();
+      }
+    };
+    ensureSessionAndRefresh();
     const unsub = subscribeInadimplenciaSync(() => {
       refreshInadimplenciaCount();
     });
-    return unsub;
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, [currentUser, refreshInadimplenciaCount]);
 
   const handleNavigateHome = () => {
@@ -674,17 +683,20 @@ export default function App() {
     };
 
     // Initial load
-    fetchFoldersFromApi().then(apiFolders => {
-      if (apiFolders && Array.isArray(apiFolders)) {
-        setFolders(apiFolders);
-      }
-    }).catch(() => {});
-
-    fetchFilesFromApi().then(apiFiles => {
-      if (apiFiles && Array.isArray(apiFiles)) {
-        setFiles(apiFiles);
-      }
-    }).catch(() => {});
+    Promise.allSettled([
+      fetchFoldersFromApi().then(apiFolders => {
+        if (apiFolders && Array.isArray(apiFolders)) {
+          setFolders(apiFolders);
+        }
+      }),
+      fetchFilesFromApi().then(apiFiles => {
+        if (apiFiles && Array.isArray(apiFiles)) {
+          setFiles(apiFiles);
+        }
+      }),
+    ]).finally(() => {
+      setIsInitialDataLoading(false);
+    });
 
     fetchAuditLogsFromApi().then(apiLogs => {
       if (apiLogs && apiLogs.length > 0) setAuditLogs(apiLogs);
@@ -698,10 +710,43 @@ export default function App() {
     syncProfiles();
     refreshTrashCount();
 
-    // Intervals otimizados para tempo real (polling de 3s para profiles e 2.5s para pastas/arquivos)
-    const syncInterval = setInterval(syncData, 2500);
-    const profilesInterval = setInterval(syncProfiles, 3000);
-    const metricsInterval = setInterval(fetchStorageMetrics, 5000);
+    // Intervals otimizados para Vercel/Serverless (30s pastas/arquivos, 45s perfis, 60s métricas)
+    // Pausam automaticamente quando a aba está oculta e sincronizam instantaneamente ao retornar
+    const runVisibleSyncData = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      syncData();
+    };
+    const runVisibleSyncProfiles = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      syncProfiles();
+    };
+    const runVisibleMetrics = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      fetchStorageMetrics();
+    };
+
+    const syncInterval = setInterval(runVisibleSyncData, 30000);
+    const profilesInterval = setInterval(runVisibleSyncProfiles, 45000);
+    const metricsInterval = setInterval(runVisibleMetrics, 60000);
+
+    let lastVisibilityRefreshAt = Date.now();
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastVisibilityRefreshAt < 5000) return;
+      lastVisibilityRefreshAt = now;
+      syncData();
+      syncProfiles();
+      fetchStorageMetrics();
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleVisibilityOrFocus);
+      window.addEventListener('online', handleVisibilityOrFocus);
+    }
 
     // Canal global de sincronização do GED
     const supabaseClient = getSupabase();
@@ -771,6 +816,13 @@ export default function App() {
       clearInterval(syncInterval);
       clearInterval(profilesInterval);
       clearInterval(metricsInterval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleVisibilityOrFocus);
+        window.removeEventListener('online', handleVisibilityOrFocus);
+      }
       if (bc) {
         try { bc.close(); } catch {}
       }
@@ -918,7 +970,7 @@ export default function App() {
 
     try {
       const deleteUrl = `/api/profiles/${encodeURIComponent(userId)}${targetEmail ? `?email=${encodeURIComponent(targetEmail)}` : ''}`;
-      await fetch(deleteUrl, { method: 'DELETE' });
+      await fetch(deleteUrl, { method: 'DELETE', headers: getAuthHeaders() });
     } catch (err) {
       console.warn('Aviso ao excluir perfil recusado do Supabase:', err);
     }
@@ -979,10 +1031,11 @@ export default function App() {
           const deleteUrl = `/api/profiles/${encodeURIComponent(userId)}${targetEmail ? `?email=${encodeURIComponent(targetEmail)}` : ''}`;
           const res = await fetch(deleteUrl, {
             method: 'DELETE',
+            headers: getAuthHeaders(),
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok && data.error) {
-            alert(`Erro ao excluir: ${data.error}`);
+            showToast(`Erro ao excluir: ${data.error}`, 'error');
           }
           // Atualiza lista unificada de perfis do servidor
           const refreshRes = await fetch('/api/profiles');
@@ -1256,7 +1309,7 @@ export default function App() {
       notifyBroadcastSync();
     } catch (err: any) {
       console.error('Erro ao renomear arquivo:', err);
-      alert('Erro ao renomear arquivo: ' + (err.message || 'Erro desconhecido'));
+      showToast('Erro ao renomear arquivo: ' + (err.message || 'Erro desconhecido'), 'error');
       const updatedFiles = await fetchFilesFromApi();
       setFiles(updatedFiles);
     }
@@ -1339,7 +1392,7 @@ export default function App() {
           setFiles(updatedFiles);
         } catch (err: any) {
           console.error('[ERRO EXCLUIR PASTA]', err);
-          alert('Erro ao excluir pasta e seus documentos: ' + (err.message || 'Erro desconhecido'));
+          showToast('Erro ao excluir pasta e seus documentos: ' + (err.message || 'Erro desconhecido'), 'error');
           
           // Refresh to sync state if failed
           const updatedFolders = await fetchFoldersFromApi().catch(() => []);
@@ -1385,7 +1438,7 @@ export default function App() {
     const exists = profiles.some(p => (p.id === currentUser.id || p.email.toLowerCase() === currentUser.email.toLowerCase()) && (p.status === 'active' || p.status === 'approved'));
 
     if (!exists && !isMaster) {
-      alert('Seu perfil foi excluído pelo administrador. Você não possui mais acesso ao perfil ou ao sistema.');
+      showToast('Seu perfil foi excluído pelo administrador. Você não possui mais acesso ao perfil ou ao sistema.', 'error');
       try {
         sessionStorage.removeItem('mvrj_session_user');
         sessionStorage.removeItem('mvrj_session_token');
@@ -1434,7 +1487,7 @@ export default function App() {
     const exists = profiles.some(p => (p.id === currentUser.id || p.email.toLowerCase() === currentUser.email.toLowerCase()) && (p.status === 'active' || p.status === 'approved'));
 
     if (!exists && !isMaster) {
-      alert('Seu perfil foi excluído pelo administrador. Você não possui mais acesso ao perfil.');
+      showToast('Seu perfil foi excluído pelo administrador. Você não possui mais acesso ao perfil.', 'error');
       try {
         sessionStorage.removeItem('mvrj_session_user');
         sessionStorage.removeItem('mvrj_session_token');
@@ -1566,6 +1619,7 @@ export default function App() {
           <Sidebar
             currentUser={currentUser}
             activeView={activeView}
+            activeAdminTab={adminInitialTab}
             onNavigate={(view, tab) => {
               setActiveView(view);
               if (tab === 'users' || tab === 'audit' || tab === 'inadimplencia' || tab === 'pending') {
@@ -1625,10 +1679,10 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Foto de perfil no cabeçalho mobile (sem botão de sair ao lado, como estava antes) */}
+              {/* Foto de perfil no cabeçalho mobile */}
               <div 
                 onClick={() => handleOpenProfileModal('profile')}
-                className="w-8 h-8 rounded-lg overflow-hidden ring-1.5 ring-emerald-500/80 cursor-pointer shadow-xs shrink-0"
+                className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-slate-700 cursor-pointer shadow-xs shrink-0"
                 title="Meu Perfil"
               >
                 <UserAvatar src={currentUser.avatar_url} name={currentUser.full_name} />
@@ -1637,13 +1691,12 @@ export default function App() {
 
             {/* Header Desktop - Exibido apenas no modo Computador (hidden lg:flex) */}
             <header className="hidden lg:flex items-center justify-between px-6 lg:px-8 h-16 bg-[#091124] border-b border-slate-800/80 shrink-0 sticky top-0 z-20">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+              <div className="flex items-center gap-2.5 min-w-0">
                 <span className="text-sm font-normal text-slate-300 truncate">
-                  Seja bem-vindo(a), <strong className="text-white font-bold">{currentUser.full_name}</strong>!
+                  Seja bem-vindo(a), <strong className="text-white font-semibold">{currentUser.full_name}</strong>
                 </span>
-                <span className="hidden xl:inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-[#DFB76C] bg-[#DFB76C]/10 border border-[#DFB76C]/30 px-2 py-0.5 rounded-full shrink-0">
-                  {currentUser.role === 'admin' ? 'Administrador Geral' : currentUser.sector || 'Colaborador'}
+                <span className="hidden xl:inline text-xs font-medium text-[#DFB76C] shrink-0">
+                  · {currentUser.role === 'admin' ? 'Administrador Geral' : currentUser.sector || 'Colaborador'}
                 </span>
               </div>
 
@@ -1653,7 +1706,7 @@ export default function App() {
                   className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group shadow-xs"
                   title="Meu Perfil & Configurações"
                 >
-                  <div className="w-7 h-7 rounded-lg overflow-hidden ring-1 ring-emerald-500/80 shrink-0">
+                  <div className="w-7 h-7 rounded-lg overflow-hidden ring-1 ring-slate-700 shrink-0">
                     <UserAvatar src={currentUser.avatar_url} name={currentUser.full_name} />
                   </div>
                   <span className="text-xs font-semibold text-slate-200 group-hover:text-white transition-colors truncate max-w-[140px]">
@@ -1670,10 +1723,18 @@ export default function App() {
                   currentUser={currentUser}
                   folders={folders}
                   files={files}
+                  isInitialLoading={isInitialDataLoading}
                   allProfiles={profiles}
                   storageMetrics={storageMetrics}
                   onRefreshStorage={fetchStorageMetrics}
-                  onOpenFileViewer={(file) => setViewingFile(file)}
+                  viewedFileIds={new Set(auditLogs.filter(l => l.action === 'FILE_VIEW' || l.action === 'FILE_DOWNLOAD').map(l => l.target_id))}
+                  onLogFileDownload={(file) => {
+                    logAudit('FILE_DOWNLOAD', 'FILE', file.id, { file_name: file.name, sector: file.sector });
+                  }}
+                  onOpenFileViewer={(file) => {
+                    logAudit('FILE_VIEW', 'FILE', file.id, { file_name: file.name, sector: file.sector });
+                    setViewingFile(file);
+                  }}
                   onOpenUploadModal={(folderId) => {
                     setUploadTargetFolderId(folderId || null);
                     setIsUploadModalOpen(true);
@@ -1704,6 +1765,7 @@ export default function App() {
                   siteBackgroundConfig={siteBackgroundConfig}
                   authHeaderConfig={authHeaderConfig}
                   initialTab={adminInitialTab}
+                  onTabChange={setAdminInitialTab}
                   inadimplenciaCount={inadimplenciaCount}
                   onInadimplenciaCountChange={setInadimplenciaCount}
                   onInadimplenciaAuditLog={(action, targetId, details) => {
@@ -1756,14 +1818,11 @@ export default function App() {
           setBackgroundModalTab('auth-header');
           setIsBackgroundModalOpen(true);
         }}
-        onLoginSuccess={(user) => {
-          const token = `mvrj_session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-          try {
-            sessionStorage.setItem('mvrj_session_token', token);
-            sessionStorage.setItem('mvrj_session_user', JSON.stringify(user));
-            localStorage.setItem('mvrj_session_token', token);
-            localStorage.setItem('mvrj_session_user', JSON.stringify(user));
-          } catch {}
+        onOpenLgpdModal={() => setIsLgpdModalOpen(true)}
+        onLoginSuccess={async (user) => {
+          const fallbackToken = `mvrj_session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          saveSessionCredentials(fallbackToken, user);
+          await issueServerSessionToken(user);
           setCurrentUser(user);
           setIsAuthModalOpen(false);
           logAudit('LOGIN', 'USER', user.id, { email: user.email, name: user.full_name });
@@ -1866,13 +1925,13 @@ export default function App() {
         />
       )}
 
-      {currentUser && (
-        <LgpdTermsModal
-          isOpen={isLgpdModalOpen}
-          onClose={() => setIsLgpdModalOpen(false)}
-          currentUser={currentUser}
-        />
-      )}
+      <LgpdTermsModal
+        isOpen={isLgpdModalOpen}
+        onClose={() => setIsLgpdModalOpen(false)}
+        currentUser={currentUser}
+      />
+
+      <ToastContainer />
 
       {currentUser && currentUser.role === 'admin' && (
         <BackgroundModal
